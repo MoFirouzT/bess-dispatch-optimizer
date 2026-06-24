@@ -1,6 +1,8 @@
 # Formulation — single source of truth for the math
 
-This file holds the canonical mathematics of the optimizer. Specs, the README, and ADRs **point here**; they never restate equations. Each phase appends a section; nothing is duplicated elsewhere.
+This file holds the canonical mathematics of the optimizer.
+Specs, the README, and ADRs **point here**; they never restate equations.
+Each phase appends a section; nothing is duplicated elsewhere.
 
 GitHub renders the `$$…$$` LaTeX below.
 
@@ -8,7 +10,9 @@ GitHub renders the `$$…$$` LaTeX below.
 
 ## Conventions
 
-**Metering convention — the correctness trap.** All power variables are measured at the **grid / AC terminal** (the metering point). Efficiency therefore appears in the state-of-charge balance, and **never in the objective**:
+**Metering convention — the correctness trap.**
+All power variables are measured at the **grid / AC terminal** (the metering point).
+Efficiency therefore appears in the state-of-charge balance, and **never in the objective**:
 
 - charging draws $p^{ch}_t$ from the grid, but only $\eta^{ch} p^{ch}_t$ reaches storage (charge losses);
 - delivering $p^{dis}_t$ to the grid requires withdrawing $p^{dis}_t / \eta^{dis}$ from storage (discharge losses).
@@ -30,7 +34,7 @@ The round-trip efficiency $\eta^{rt}=\eta^{ch}\eta^{dis}$ is **emergent**, not a
 ### Parameters
 
 | Symbol | Meaning | Unit |
-|---|---|---|
+| --- | --- | --- |
 | $\pi_t$ | day-ahead price in period $t$ (known) | €/MWh |
 | $\Delta t$ | period length | h |
 | $\eta^{ch}, \eta^{dis}$ | charge / discharge efficiency, $\in(0,1]$ | — |
@@ -43,7 +47,7 @@ The round-trip efficiency $\eta^{rt}=\eta^{ch}\eta^{dis}$ is **emergent**, not a
 ### Decision variables
 
 | Symbol | Meaning | Domain |
-|---|---|---|
+| --- | --- | --- |
 | $p^{ch}_t$ | grid-side charging power | $\ge 0$ |
 | $p^{dis}_t$ | grid-side discharging power | $\ge 0$ |
 | $e_t$ | state of charge at end of $t$ | $[e_{\min}, e_{\max}]$ |
@@ -85,7 +89,7 @@ $$e_{T} = e^{\mathrm{tgt}}$$
 
 ### Worked example (sanity, $\eta = 1$)
 
-$T=3$, $\pi=[10,50,20]$, $\Delta t=1$, 1 MWh / 1 MW, $e_0=e^{\mathrm{tgt}}=0$, $R$ disabled → charge at $t_1$, discharge at $t_2$, idle at $t_3$; objective $=40$. The full oracle set (including the lossy and no-trade cases) is the test contract in `docs/specs/R1.1-deterministic-core.md`.
+$T=3$, $\pi=[10,50,20]$, $\Delta t=1$, a 1 MWh / 1 MW battery (energy capacity / power rating — a 1-hour, i.e. 1C, asset), $e_0=e^{\mathrm{tgt}}=0$, $R$ disabled → charge at $t_1$, discharge at $t_2$, idle at $t_3$; objective $=40$. The full oracle set (including the lossy and no-trade cases) is the test contract in [specs/R1.1-deterministic-core.md](specs/R1.1-deterministic-core.md).
 
 ---
 

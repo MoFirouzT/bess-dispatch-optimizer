@@ -1,6 +1,6 @@
 # Market reference — Belgium & Netherlands
 
-Domain reference for the BE and NL power markets: *what the market does*. This is a **knowledge artifact**, not a build spec — `docs/formulation.md` and the phase specs define what the code actually models.
+Domain reference for the BE and NL power markets: *what the market does*. This is a **knowledge artifact**, not a build spec — [`formulation.md`](formulation.md) and the phase specs define what the code actually models.
 
 > **Scope flags.** Only the **day-ahead** market is in build scope for Release 1–2. FCR, aFRR, imbalance, and intraday are **reference only** — kept here for correctness of reasoning, interview readiness, and possible future work. Build scope is marked per section.
 
@@ -82,7 +82,7 @@ EPEX SPOT continuous trading, opens ~15:00 CET on D-1, runs until ~5 min before 
  morning  CET          (build scope)   → pre-delivery
 ```
 
-In a single-pass perfect-foresight solve this ordering is invisible. In the **rolling-horizon / recourse** model (R2.3) the order matters: each later decision is constrained by earlier firm commitments. For the day-ahead-only scope, the relevant fact is simply that the full 24h (96-period) schedule is committed at the 12:00 CET gate — which is exactly why a naive single-shot stochastic model has no recourse value (see the VSS discussion in the master plan / `formulation.md` R2.3 section when written).
+In a single-pass perfect-foresight solve this ordering is invisible. In the **rolling-horizon / recourse** model (R2.3) the order matters: each later decision is constrained by earlier firm commitments. For the day-ahead-only scope, the relevant fact is simply that the full 24h (96-period) schedule is committed at the 12:00 CET gate — which is exactly why a naive single-shot stochastic model has no recourse value (see the VSS discussion in the [`formulation.md`](formulation.md) R2.3 section, when written).
 
 ---
 

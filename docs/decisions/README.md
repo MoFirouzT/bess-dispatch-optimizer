@@ -51,5 +51,6 @@ The other options and why they were rejected.
 | 0006 | Day-ahead is 15-minute native; the R1.1 hourly core is a deliberate simplification | Proposed |
 | 0007 | Stochastic value requires a risk-aware objective and/or genuine recourse (avoid the VSS=0 trap) | Proposed |
 | 0008 | `uv` + `ruff` toolchain; import-linter enforces the dependency layering | Proposed |
+| 0009 | [SoC expressed per-unit in config, absolute MWh in the model](0009-soc-per-unit-in-config.md) | Accepted |
 
 Write each as its own file when the decision is locked. Keep this index in sync.

@@ -1,0 +1,75 @@
+# Glossary / knowledge bank
+
+Entry shape: **term — definition.** *Why here:* relevance to this project. *Gotcha:* what an interviewer (or a bug) probes. Grown one section per build phase. The gotcha field is what makes this a living artifact rather than a dictionary.
+
+---
+
+## Market
+
+**Day-ahead (DA) market** — auction (EPEX SPOT, gate closure 12:00 CET on D-1) clearing the next day's energy at the marginal price. *Why here:* the price input the optimizer arbitrages. *Gotcha:* since 2025-10-01 it clears in **15-minute** MTU (96 periods/day), not hourly — a model built on "24 periods" is now modelling a published index, not the real product.
+
+**Market Time Unit (MTU)** — the settlement granularity of a market product. *Why here:* sets the optimizer's period length `Δt`. *Gotcha:* DA MTU is now 15-min in BE/NL; the 60-min series is just the average of the four quarter-hours.
+
+**Gate closure** — the deadline after which a market's bids are firm. *Why here:* defines the information set at decision time and the look-ahead-bias boundary in the backtest. *Gotcha:* the whole 24h day-ahead schedule is committed at the 12:00 CET gate — that single-shot commitment is *why* a naive day-ahead stochastic model has no recourse value.
+
+**Imbalance settlement** — real-time charge/payment for deviating from your nominated schedule, per 15-min ISP. *Why here:* distinct from arbitrage; the value proposition must not conflate them. *Gotcha:* a "day-ahead dispatch optimizer" does **not** reduce imbalance costs unless it models the imbalance market — claiming so is a market-mechanics error.
+
+**FBMC (Flow-Based Market Coupling)** — the CORE-region method allocating cross-border capacity in the day-ahead clear. *Why here:* explains why BE and NL prices are tightly correlated. *Gotcha:* BE/NL co-movement means a "BE optimizer" and "NL optimizer" share most of their signal.
+
+**FCR / aFRR / mFRR** — frequency-response reserve products (primary/secondary/tertiary). *Why here:* reference only — out of build scope, in interview scope. *Gotcha:* FCR is **symmetric** (equal up/down) in 4-hour blocks with a 15-min sustain requirement (→ SoC headroom); aFRR is **asymmetric** with separate capacity and activation revenue. Mixing these up is a classic tell.
+
+**TSO / BRP** — Transmission System Operator (TenneT in NL, Elia in BE) / Balance Responsible Party. *Why here:* the BRP is who bears imbalance; the TSO publishes prices and procures reserves.
+
+**Negative prices** — day-ahead prices below zero during renewable oversupply. *Why here:* increasingly common; the formulation must handle them. *Gotcha:* under negative prices, simultaneous charge+discharge could look "profitable" (burning energy) — the mutual-exclusion binary exists to prevent that.
+
+---
+
+## Battery / physical
+
+**State of charge (SoC)** — energy currently stored, in MWh. *Why here:* the coupling state across periods. *Gotcha:* the SoC balance is where efficiency lives; a sign or placement error here is the #1 correctness trap.
+
+**Round-trip efficiency (η_rt = η_ch·η_dis)** — fraction of energy returned over a full charge→discharge cycle. *Why here:* sets the minimum price spread that makes a trade profitable. *Gotcha:* it's **emergent** from the grid-side balance, not a term you multiply into revenue; delivering 1 MWh costs 1/η_rt MWh drawn.
+
+**Inverter / power limit** — max charge or discharge power (MW). *Why here:* a hard physical constraint and a validation check. *Gotcha:* "can't charge faster than the inverter" — energy capacity and power capacity are independent (1 MWh / 1 MW = 1-hour battery).
+
+**C-rate** — charge/discharge power relative to capacity (1C = full energy in 1 h). *Why here:* a 1 MWh/1 MW battery is 1C; duration = 1/C-rate.
+
+**Depth of discharge (DoD) / cycle** — how deep a discharge goes / one full charge-discharge. *Why here:* drives degradation. *Gotcha:* deep cycles age the cell faster than shallow ones — the reason degradation is modelled as a non-linear (PWL) cost, not a flat per-MWh fee.
+
+**Degradation** — capacity/health loss from cycling and calendar age. *Why here:* a cost term in the objective (R1.2). *Gotcha:* if ignored, the optimizer over-cycles for tiny spreads; the PWL cost must make marginal deep cycling unprofitable.
+
+---
+
+## Optimization
+
+**MILP** — Mixed-Integer Linear Program. *Why here:* the dispatch model (binaries for charge/discharge exclusivity; PWL via SOS2). *Gotcha:* the solve time is the solver's, not the modelling language's — a Pyomo-vs-JuMP "speed race" on a small MILP measures construction overhead, i.e. noise.
+
+**LP relaxation** — the MILP with integrality dropped. *Why here:* its tightness governs branch-and-bound speed. *Gotcha:* a loose big-M weakens the relaxation; prefer indicator constraints / SOS, and let the power cap *be* the big-M.
+
+**SOS2 (Special Ordered Set type 2)** — at most two consecutive members non-zero; encodes piecewise-linear functions. *Why here:* the degradation cost (R1.2). *Gotcha:* breakpoint count trades accuracy against solve time.
+
+**Recourse / two-stage stochastic program** — first-stage decisions made under uncertainty, second-stage decisions adapt after it resolves. *Why here:* the R2.3 layer. *Gotcha:* with a linear objective and a price-independent feasible set, the two-stage program **collapses to the mean** (VSS=0); value needs a risk-aware objective or genuine recourse.
+
+**Value of the Stochastic Solution (VSS)** — gain from solving the stochastic model vs. optimizing on the mean forecast. *Why here:* the headline Release-2 metric. *Gotcha:* a measured VSS≈0 means the recourse structure is wrong, not that stochastic methods "don't help."
+
+**Chance constraint / CVaR** — constrain a probability (e.g. P(profit>0)≥0.95) / penalize tail loss. *Why here:* the risk-aware path that adds value even single-shot. *Gotcha:* this is where stochastic value comes from when there's no recourse.
+
+**Shadow price (dual)** — marginal value of relaxing a constraint by one unit. *Why here:* the explainability endpoint (why the battery sat idle during a spike). *Gotcha:* duals are only well-defined for the LP relaxation / fixed integers — be precise about what you're reporting.
+
+**MPC / receding horizon** — re-optimize on a rolling, shrinking window as new information arrives. *Why here:* the intraday recourse layer *is* this. *Gotcha:* needs a re-optimization trigger and state (SoC) continuity across windows; warm-start each re-solve from the previous one.
+
+**Benders decomposition** — split a large two-stage problem into a master + subproblems. *Why here:* the optional Julia/JuMP scale comparison. *Gotcha:* only worth it at scenario scale, not on the base MILP.
+
+---
+
+## ML / validation
+
+**Conformal prediction** — wraps any model to produce intervals with distribution-free coverage. *Why here:* the forecaster outputs price *intervals*, not points (via MAPIE). *Gotcha:* coverage holds under exchangeability; recalibrate on a rolling window as the price distribution drifts.
+
+**Coverage** — fraction of true values falling inside the predicted interval. *Why here:* the forecaster's acceptance gate. *Gotcha:* nominal 90% must be *empirically* ~90% out-of-sample, or the intervals are miscalibrated.
+
+**Walk-forward (expanding window) validation** — train on the past, test on the strictly-later future, roll forward. *Why here:* the only valid backtest scheme for time series. *Gotcha:* a random train/test split leaks the future; transfers directly from financial-ML discipline.
+
+**Look-ahead / leakage** — using information not available at decision time. *Why here:* the backtest's leakage assertion guards it. *Gotcha:* if the backtest beats perfect foresight, it's leakage, not alpha — hence the sanity band.
+
+**Perfect-foresight baseline** — the optimum given the realized prices. *Why here:* the ceiling; results are reported as "% of perfect foresight captured." *Gotcha:* it's an upper bound by construction — nothing can exceed it.

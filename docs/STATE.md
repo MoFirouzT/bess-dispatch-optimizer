@@ -7,9 +7,9 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ## Current phase
 
-**R1.1 — Deterministic MILP core.** Spec: [`docs/specs/R1.1-deterministic-core.md`](specs/R1.1-deterministic-core.md) — status **Implemented (local gate green)**.
+**R1.2 — Piecewise-linear degradation cost.** Spec: [`docs/specs/R1.2-degradation.md`](specs/R1.2-degradation.md) — status **Draft (awaiting human review)**.
 
-R1.1 is code-complete and the acceptance gate passes locally: **8 tests pass** (4 golden oracles + 3 property tests + solver smoke), ruff + format clean, import-linter 2/2 contracts kept. Not yet committed/pushed — so "CI green on a clean clone" is unverified. Ready to commit, then start R1.2.
+R1.1 is **committed** (deterministic core, gate green). R1.2 spec + formulation delta are drafted and **blocked on human review** before any tests/code (phase-gate workflow). The R1.2 formulation section in `formulation.md` is marked DRAFT.
 
 ## Done
 
@@ -49,10 +49,12 @@ R1.1 is code-complete and the acceptance gate passes locally: **8 tests pass** (
   - Two implementation bugs fixed during bring-up: optimality check reads `results.solver.termination_condition` (legacy-wrapped appsi returns classic `SolverResults`); `zip(strict=True)` for ruff B905.
 - **SoC units inconsistency resolved → per-unit config (this session).** conventions §2 (locked) said SoC is per-unit in config, but the spec/`BatterySpec` used absolute MWh (invisible at the 1 MWh default). Resolved in favour of the convention: `soc_min`/`soc_initial`/`soc_terminal` are now per-unit fractions of `capacity` (∈ [soc_min, 1.0]); `Battery.register()` converts to MWh (`e_x = soc_x · capacity`); model + `Schedule.soc` stay MWh. Recorded in [ADR-0009](decisions/0009-soc-per-unit-in-config.md) (Accepted). Spec parameter table + tests updated; gate still green (8 passed). Now exercised at `capacity ≠ 1` via the property strategy.
 
+- **Theory-reference methodology established (this session).** New rule in `CLAUDE.md` §1: each part picks **one governing reference** (textbook preferred), recorded in new `docs/references.md` (Tier-2) with why + rejected alternatives; **house conventions win for shared quantities** (reference governs only new concepts, reconciled to house notation); formulation sections stay brief summaries pinned to chapter/section, edition cited, verified before relying. Seeded `references.md` for R1.1 (Williams; domain Kirschen & Strbac) and R1.2 (Williams SOS2/PWL; domain Plett), with R2 candidates stubbed. Both formulation §R1.1 and §R1.2 now carry a governing-reference line; R1.2's inline reference list moved into `references.md`. *(Replaces the earlier ad-hoc references, incl. the unverifiable Xu et al. paper.)*
+
 ## Next (in order)
 
-1. **Commit** the R1.1 work (scaffold + CI + tests + implementation) — see commit-narrative in MASTER_PLAN §14 (`feat: deterministic MILP baseline …`). On `main`; branch first. Then confirm CI green on the push.
-2. Begin R1.2 (PWL degradation cost in the objective) — spec-first: formulation delta → failing golden/property → implement. Do NOT start until R1.1 is committed and CI is green.
+1. **Human reviews + approves** the R1.2 spec + formulation delta. Key decisions to hand-check: degradation is a *cost subtracted from revenue* (no efficiency term in the cash flow, not in SoC balance); throughput is **storage-side, both directions** `τ_t = η_ch·p_ch·dt + p_dis/η_dis·dt` (a round trip of depth q costs `2·g(q)`); convex PWL via λ-method + SOS2 (SOS2 slack under convexity, kept — parallels `u_t`); breakpoints per-unit of `τ_max` (ADR-0009 consistency); disabled ⇒ exactly R1.1. Golden oracles: **15.0** (bites), **44.0** (cheap→full), **12.5** (η<1, pins storage-side), **40.0** (disabled→R1.1). Rainflow + calendar aging are the genuinely-deferred items; equivalent-full-cycle is a cheap variation, not built.
+2. On approval: flip spec → Approved, mark the formulation R1.2 section non-draft, write the **failing** R1.2 golden + property tests first, then implement to green. Do not break the R1.1 gate.
 
 ## Known blockers / open questions
 

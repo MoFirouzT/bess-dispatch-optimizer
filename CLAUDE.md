@@ -8,6 +8,7 @@ Built phase-by-phase under strict formulation discipline. Read this file, then `
 - Before editing `src/bess/optimizer/`, restate the relevant constraint from `formulation.md` and the invariant it must satisfy.
 - **Power variables are grid-side; efficiency lives in the SoC balance, never in the objective.** If you ever find an efficiency term in the revenue/objective expression, stop — the formulation is wrong.
 - Golden tests (`tests/golden/`) and property tests (`tests/property/`) are gates. Do NOT weaken, skip, `xfail`, or loosen tolerances to make them pass. A failing gate means the formulation or the code is wrong — surface it, don't suppress it.
+- **Theory comes from one governing reference per part.** For each part, pick a single *governing reference* — educational, textbook preferred (lecture notes fine) — recorded in `docs/references.md` with why it was chosen and the alternatives rejected. It is the notation and scope authority for the *new* theory that part introduces. **House conventions win for shared quantities** (`docs/conventions.md` + the `formulation.md` preamble: grid-side power, per-unit SoC, `π/e/η/Δt`, unit-suffixed names) — reconcile the reference's notation to house style and note any mapping. The `formulation.md` section is then a *brief, self-contained* summary: only what the project implements, in reconciled notation, plus any nuance a gate depends on, plus an explicit "considered but out of scope" list — with claims pinned to the reference's chapter/section, edition cited, and **verified before relying** (don't cite from memory). Secondary references are allowed but strictly subordinate (pointers only, no competing notation).
 
 ## 2. Documentation architecture (four tiers)
 
@@ -15,7 +16,7 @@ Strategy stays private; everything committed describes the project, not how to w
 
 - **Tier 0 — `planning/` (GITIGNORED, never commit):** the master plan and the open-questions log. Source of truth for *why* and *what to build*. Read it for context; never copy its career / positioning / interview framing into a committed file.
 - **Tier 1 — public face (committed):** `README.md`, `docs/architecture.md`. Stable, minimal, project-only.
-- **Tier 2 — canonical references (committed):** `docs/formulation.md` (math), `docs/glossary.md`, `docs/decisions/` (ADRs).
+- **Tier 2 — canonical references (committed):** `docs/formulation.md` (math), `docs/glossary.md`, `docs/references.md` (governing references per part), `docs/decisions/` (ADRs).
 - **Tier 3 — per-phase work orders (committed):** `docs/specs/<phase>.md`. One per phase, generated from the master plan + this contract, reviewed by the human, frozen, then implemented.
 
 **Governing rule:** strategy / positioning / career / interview content lives ONLY in Tier 0. If you are about to write "resume", "hiring", "interview", "anti-candidate", or similar into a committed file, stop and leave it out.

@@ -31,14 +31,16 @@ def build_model(
     prices: Sequence[float], battery: BatterySpec, dt: float = 1.0
 ) -> pyo.ConcreteModel:
     """Assemble the Pyomo MILP: asset registers physics, optimizer adds the objective."""
-    model = pyo.ConcreteModel(name="bess_r11")
+    model = pyo.ConcreteModel(name="bess_dispatch")
     Battery(battery).register(model, prices, dt)
 
-    # Objective — grid-side arbitrage revenue. NO efficiency factor here.
-    model.revenue = pyo.Objective(
-        expr=sum(prices[t] * dt * (model.p_discharge[t] - model.p_charge[t]) for t in model.T),
-        sense=pyo.maximize,
+    # Objective — grid-side arbitrage revenue (NO efficiency factor) minus the
+    # asset-provided degradation cost (R1.2; zero/absent ⇒ identical to R1.1).
+    revenue = sum(prices[t] * dt * (model.p_discharge[t] - model.p_charge[t]) for t in model.T)
+    degradation = (
+        sum(model.degradation_cost[t] for t in model.T) if hasattr(model, "degradation_cost") else 0
     )
+    model.revenue = pyo.Objective(expr=revenue - degradation, sense=pyo.maximize)
     return model
 
 

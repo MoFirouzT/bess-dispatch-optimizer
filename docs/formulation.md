@@ -30,7 +30,11 @@ If an efficiency factor ever appears in the revenue expression, the formulation 
 
 ## R1.1 — Deterministic core
 
-*Governing reference:* Williams, *Model Building in Mathematical Programming* — MILP formulation (binary indicators, mutual exclusion, big-M); domain context Kirschen & Strbac. House notation (preamble / `conventions.md`) governs shared quantities. See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch).
+*Governing reference:*
+Williams, *Model Building in Mathematical Programming* — MILP formulation (binary indicators, mutual exclusion, big-M);
+domain context Kirschen & Strbac.
+House notation (preamble / `conventions.md`) governs shared quantities.
+See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch).
 
 ### Sets
 
@@ -107,9 +111,13 @@ The full oracle set (including the lossy and no-trade cases) is the test contrac
 
 ---
 
-## R1.2 — Piecewise-linear degradation cost (DRAFT — awaiting review)
+## R1.2 — Piecewise-linear degradation cost
 
-*Governing reference:* Williams, *Model Building in Mathematical Programming* — separable / piecewise-linear programming and SOS2 (the λ-method); domain context Plett, *Battery Management Systems*. House notation governs shared quantities. See [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost).
+*Governing reference:*
+Williams, *Model Building in Mathematical Programming* — separable / piecewise-linear programming (convex PWL via the **epigraph form**; SOS2 noted as the non-convex tool);
+domain context Plett, *Battery Management Systems*.
+House notation governs shared quantities.
+See [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost).
 
 Extends R1.1 by appending a **degradation cost** to the objective.
 All R1.1 sets, parameters, decision variables, and constraints (1)–(5) are unchanged — in particular the **SoC balance and grid-side metering are untouched**.
@@ -127,11 +135,14 @@ Per-period **storage-side throughput** — the energy that actually passes throu
 
 $$\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t \qquad \in [0,\ \tau_{\max}]$$
 
-Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so exactly one term is non-zero; the per-period maximum is
+Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so exactly one term is non-zero. The per-period throughput is capped by **power** (only $\bar P\Delta t$ of energy can move in one period) *and* by the **usable SoC window** (you cannot push more through the cell in one period than it can take in or give up), so its maximum is
 
-$$\tau_{\max} = \max\!\Bigl(\eta^{ch}\bar P^{ch}\Delta t,\ \ \tfrac{\bar P^{dis}\Delta t}{\eta^{dis}}\Bigr).$$
+$$\tau_{\max} = \min\!\Bigl(\ \max\!\bigl(\eta^{ch}\bar P^{ch}\Delta t,\ \tfrac{\bar P^{dis}\Delta t}{\eta^{dis}}\bigr),\ \ e_{\max}-e_{\min}\ \Bigr).$$
+
+So the SoC *capacity* does enter — as the per-period *flow* limit $e_{\max}-e_{\min}$. (The SoC *level* across periods is still governed by balance (1) and bounds (2); those are unchanged.)
 
 This is a per-period throughput proxy for cycle depth.
+
 **Out of scope** — genuinely harder or different, deliberately deferred:
 **rainflow** cycle counting (path-dependent and non-convex — it does *not* reduce to a per-period cost) and **calendar aging**.
 A coarser "equivalent-full-cycle" normalization is a cheap future variation, not a barrier; it is simply not built here.
@@ -152,27 +163,23 @@ The configured curve passes through $(x_0,g_0),\dots,(x_K,g_K)$, starting at the
 
 | Symbol | Meaning | Domain |
 | --- | --- | --- |
-| $\lambda_{t,k}$ | weight on breakpoint $k$ in period $t$ — the share of the convex combination placed on the point $(x_k,g_k)$ | $\ge 0$, SOS2 over $k$ (see (7)) |
+| $D_t$ | degradation cost incurred in period $t$ | $\ge 0$ |
 
 ### Constraints (new, $\forall t\in\mathcal T$)
 
-The PWL cost is encoded by the **convex-combination ("λ") method**: write the throughput $\tau_t$ as a weighted average of the breakpoint abscissae $x_k$, and read the cost off as the *same* weighted average of the ordinates $g_k$.
+Because the cost is **convex**, it equals the upper envelope of its segment lines, so it is encoded by the **epigraph form**: bound $D_t$ below by every segment's affine extension, and let the (cost-minimizing) objective pull it down onto that envelope. No λ-weights, binaries, or special-ordered sets are needed — a convex PWL cost is an LP object.
 
-**(6) Interpolation + partition of unity** (with $\tau_t = \eta^{ch} p^{ch}_t\Delta t + \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$, the throughput defined above):
+For each segment $k=1,\dots,K$, the line through $(x_{k-1},g_{k-1})$ and $(x_k,g_k)$ has
 
-$$\tau_t = \sum_{k=0}^{K}\lambda_{t,k}\,x_k, \qquad \sum_{k=0}^{K}\lambda_{t,k}=1, \qquad \lambda_{t,k}\ge 0$$
+$$a_k = \frac{g_k-g_{k-1}}{x_k-x_{k-1}}, \qquad b_k = g_{k-1}-a_k\,x_{k-1}.$$
 
-The first equation places $\tau_t$ as a convex combination of the breakpoints; the second forces the weights to sum to one (a genuine weighted average).
+**(6) Epigraph cuts** (with $\tau_t = \eta^{ch} p^{ch}_t\Delta t + \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$, the throughput defined above):
 
-**(7) Adjacency — SOS2 on $\{\lambda_{t,k}\}_{k}$:** for each period $t$, the weight vector $\{\lambda_{t,0},\dots,\lambda_{t,K}\}$ is a **Special Ordered Set of type 2 (SOS2)** — *at most two weights may be non-zero, and if two are non-zero they must be adjacent* (consecutive indices $k$ and $k{+}1$).
+$$D_t \ge a_k\,\tau_t + b_k \qquad \forall k=1,\dots,K.$$
 
-*Why it is needed.* Without it the weights could land on non-adjacent breakpoints — e.g. $\tfrac12$ on $x_0$ and $\tfrac12$ on $x_2$ — which represents the straight **chord** from $(x_0,g_0)$ to $(x_2,g_2)$, not the function value at $\tau_t$. Restricting to two *adjacent* non-zero weights forces $\tau_t$ onto a single segment $[x_k,x_{k+1}]$, so the cost below returns the exact PWL value there. SOS2 is exactly the rule that turns the λ-weights into a faithful piecewise-linear interpolation (it generalizes SOS1, "at most one non-zero").
+Since the objective subtracts $D_t$, maximizing drives it down to $\max_k(a_k\tau_t+b_k)$, which — because the $a_k$ are non-decreasing (convexity) — is exactly the PWL cost at $\tau_t$. Non-negativity $D_t\ge0$ holds automatically (the first segment passes through the origin: $b_1=0$, $a_1\ge0$) and is kept as the variable's domain.
 
-### Degradation cost
-
-The period cost is the matching weighted average of the breakpoint costs:
-
-$$D_t = \sum_{k=0}^{K}\lambda_{t,k}\,g_k \;\ge 0$$
+*Landing exactly on a breakpoint.* If $\tau_t=x_k$, the two adjacent segment cuts are both tight and agree at $g_k$, so $D_t=g_k$ exactly — breakpoints are not special cases.
 
 ### Modified objective
 
@@ -182,18 +189,32 @@ Revenue is unchanged and still carries **no efficiency term**; the only addition
 
 ### Modeling notes
 
-- **Both directions, storage-side.** $\tau_t$ counts charge *and* discharge energy at the cell, so a full round trip of depth $q$ is penalized on both the charging period and the discharging period. Efficiency appears inside $\tau_t$ because it is a *cell-side energy* quantity — this is a degradation measure, not the objective's cash flow, which stays grid-side with no efficiency term.
-- **SOS2 is slack under convexity (kept for correctness).** With the costs $g_k$ convex and $D_t$ minimized inside a maximization, the relaxation (dropping the SOS2 rule) already selects adjacent breakpoints on its own, so SOS2 is typically non-binding — exactly as the mutual-exclusion binary $u_t$ is usually slack in R1.1. It becomes *required* the moment the $g_k$ are non-convex; keep it. (For convex $g_k$ one could instead use an epigraph form $D_t\ge s_k\,\tau_t + b_k$ per segment and drop $\lambda$/SOS2 entirely; the $\lambda$-method is chosen to exercise SOS2 and to generalize to non-convex costs.)
-- **Breakpoints vs. accuracy.** More breakpoints approximate a smooth degradation curve better at the cost of more $\lambda$ variables / SOS2 sets — the accuracy-vs-solve-time trade-off.
-- **Monotonicity.** $g$ non-decreasing $\Rightarrow$ a deeper discharge never lowers degradation cost (the gate's monotonicity property).
+- **Both directions, storage-side.**
+    $\tau_t$ counts charge *and* discharge energy at the cell, so a full round trip of depth $q$ is penalized on both the charging period and the discharging period.
+    Efficiency appears inside $\tau_t$ because it is a *cell-side energy* quantity — this is a degradation measure, not the objective's cash flow, which stays grid-side with no efficiency term.
+- **Convex ⇒ epigraph, not SOS2.**
+    A convex PWL cost is exactly the max of its segment lines, so the cuts (6) represent it in a pure LP — no λ-weights, binaries, or special-ordered sets.
+    SOS2 (the convex-combination method plus an adjacency rule) is the tool for **non-convex** PWL; it is not used here, and our solver (HiGHS) does not support SOS constraints in any case.
+    A non-convex degradation curve (future work) would need SOS2 via a SOS-capable solver or a binary segment-selection encoding — see [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost).
+- **Breakpoints vs. accuracy.**
+    More breakpoints approximate a smooth degradation curve better at the cost of more cuts (one per segment) — the accuracy-vs-solve-time trade-off.
+- **Monotonicity.**
+    $g$ non-decreasing $\Rightarrow$ a deeper discharge never lowers degradation cost (the gate's monotonicity property).
 
 ### Worked example (degradation bites; $\eta=1$)
 
-$T=2$, $\pi=[0,50]$, $\eta^{ch}=\eta^{dis}=1$, 1 MWh / 1 MW, $e_0=e^{\mathrm{tgt}}=0$, $\Delta t=1$, so $\tau_{\max}=1$. Breakpoints $\phi=[0,0.5,1]$, costs $g=[0,5,35]$ (slopes 10 then 60 €/MWh; convex). Terminal $=0$ forces discharge $=$ charge $=q$; with $\eta=1$ the throughput is $\tau=q$ in **each** of the two periods, so degradation is $2\,g(q)$ and the objective is $50q-2g(q)$: for $q\le0.5$ the margin is $50-2\cdot10>0$; for $q>0.5$ it is $50-2\cdot60<0$. Optimum at the kink $q^\star=0.5$ → charge $[0.5,0]$, discharge $[0,0.5]$, soc $[0.5,0]$, objective $=25-2\cdot5=\mathbf{15}$. The $\eta<1$ oracle (which pins the *storage-side* placement) and the full set are in [specs/R1.2-degradation.md](specs/R1.2-degradation.md).
+$T=2$, $\pi=[0,50]$, $\eta^{ch}=\eta^{dis}=1$, 1 MWh / 1 MW, $e_0=e^{\mathrm{tgt}}=0$, $\Delta t=1$, so $\tau_{\max}=\min(\max(1,1),\,1)=1$. Breakpoints $\phi=[0,0.5,1]$, costs $g=[0,5,35]$ (segment slopes 10 then 60 €/MWh; convex).
+
+Terminal $=0$ forces discharge $=$ charge $=q$; with $\eta=1$ the throughput is $\tau=q$ in **each** period, so total degradation is $2g(q)$ and the objective is $f(q)=50q-2g(q)$, evaluated piecewise:
+
+- first segment ($0\le q\le 0.5$, slope 10): $f(q)=50q-2(10q)=30q$ — increasing;
+- second segment ($0.5\le q\le 1$, slope 60): $f(q)=50q-2\bigl(5+60(q-0.5)\bigr)=-70q+50$ — decreasing.
+
+Both pieces equal $15$ at $q=0.5$, so the maximum is the kink $q^\star=0.5$ → charge $[0.5,0]$, discharge $[0,0.5]$, soc $[0.5,0]$, objective $=\mathbf{15}$. The $\eta<1$ oracle (which pins the *storage-side* placement) and the full set are in [specs/R1.2-degradation.md](specs/R1.2-degradation.md).
 
 ---
 
 ## Changelog
 
 - **R1.1** — deterministic core.
-- **R1.2** — PWL degradation cost appended to the objective ($\lambda$-method + SOS2); R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 when no breakpoints are configured. *(Draft — under review.)*
+- **R1.2** — convex PWL degradation cost appended to the objective (epigraph form; SOS2 is the non-convex tool, not used here / unsupported by HiGHS); R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 when no breakpoints are configured.

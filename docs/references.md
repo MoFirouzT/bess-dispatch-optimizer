@@ -6,32 +6,33 @@ How this project handles theory (the rule lives in `CLAUDE.md` §1):
 - **House conventions take precedence for shared quantities.** Grid-side power, per-unit SoC, the symbols `π / e / η / Δt`, and unit-suffixed names are fixed by `docs/conventions.md` and the `docs/formulation.md` preamble. The governing reference rules only the genuinely new concepts a part adds; its notation is **reconciled to house style**, with any mapping noted.
 - The `formulation.md` section is a **brief, self-contained summary** — only what the project implements, plus gate-critical nuance, plus an explicit out-of-scope list — pinned to the reference's chapter/section.
 - **Secondary references** are allowed but strictly subordinate: pointers for context only, never competing notation.
-- **Verify before relying.** Cite edition + chapter/section; do not quote results from memory. Editions below are recalled and **must be checked against the source** before being treated as authoritative.
+- **Verify before relying.** Cite edition + chapter/section; do not quote from memory. Editions below are recalled and **must be checked against the source**; chapter pointers are descriptive until verified.
 
-This file grows one entry per part as phases are built (like `glossary.md`).
+Each entry lists the source first, then — as sub-bullets — exactly what the project draws from it and where. This file grows one entry per part as phases are built (like `glossary.md`).
 
 ---
 
 ## R1.1 — Deterministic MILP dispatch
 
-**Governing reference:** H. P. Williams, *Model Building in Mathematical Programming*, 5th ed., Wiley, 2013.
-**Why:** the standard educational text for MILP *formulation* — binary indicator variables, mutual-exclusion modeling, and big-M (the chapters on integer/logical modeling). It governs how R1.1's discrete structure is written.
-**Notation reconciliation:** house style wins. Williams' generic decision variables / objective map onto the project's `p^ch_t, p^dis_t` (grid-side), `e_t` (SoC, per-unit in config per [ADR-0009](decisions/0009-soc-per-unit-in-config.md)), `u_t` (binary), `π_t`, `Δt`. The mutual-exclusion binary and "big-M is the power cap" idiom are Williams'; the metering/efficiency placement is the house convention (`formulation.md` preamble), not from Williams.
-
-**Secondary (domain context, pointer only):** D. S. Kirschen & G. Strbac, *Fundamentals of Power System Economics*, 2nd ed., Wiley, 2018 — day-ahead market mechanics, marginal pricing, and arbitrage; the economic backdrop for the objective. See also `docs/market_reference.md`.
-
-**Alternatives considered:** D. Bertsimas & J. N. Tsitsiklis, *Introduction to Linear Optimization*, Athena Scientific, 1997 — excellent LP fundamentals but lighter on integer/logical modeling, so not the governing text; kept as a fundamentals backup.
+- **H. P. Williams, *Model Building in Mathematical Programming*, 5th ed., Wiley, 2013** — *governing reference* (MILP formulation).
+  - Binary indicator variable + mutual-exclusion ("one of") modeling → constraint (3) and the `u_t` charge flag. *(Chapters on building integer-programming models / modeling logical conditions — verify exact ch.)*
+  - "Let the natural bound be the big-M" idiom — here the power cap `P̄` *is* the big-M, so no loose constant is introduced → constraint (3). *(Same chapters.)*
+  - Notation reconciliation: house style wins. Williams' generic decision variables / objective map onto `p^ch_t, p^dis_t` (grid-side), `e_t` (SoC, per-unit in config per [ADR-0009](decisions/0009-soc-per-unit-in-config.md)), `u_t`, `π_t`, `Δt`. The metering/efficiency placement is the house convention, not from Williams.
+- **D. S. Kirschen & G. Strbac, *Fundamentals of Power System Economics*, 2nd ed., Wiley, 2018** — *secondary (domain context, pointer only).*
+  - Day-ahead marginal pricing and storage arbitrage → the economic meaning of the objective. *(Chapter on electricity markets — verify.)* See also `docs/market_reference.md`.
+- *Alternatives considered:* D. Bertsimas & J. N. Tsitsiklis, *Introduction to Linear Optimization*, Athena Scientific, 1997 — strong LP fundamentals but lighter on integer/logical modeling; kept as a fundamentals backup, not governing.
 
 ---
 
 ## R1.2 — Piecewise-linear degradation cost
 
-**Governing reference:** H. P. Williams, *Model Building in Mathematical Programming*, 5th ed., Wiley, 2013 — the chapters on **separable / piecewise-linear programming and special ordered sets (SOS1/SOS2)**. It governs the convex-combination (λ) method and the SOS2 adjacency rule.
-**Notation reconciliation:** house style wins. The λ-method uses Williams' weights `λ_{t,k}` and breakpoints, written here with **subscript** indices `φ_k, x_k, g_k` (indices, not exponents); the throughput `τ_t` is built from the house grid-side power and efficiency.
-
-**Secondary (domain context, pointer only):** G. L. Plett, *Battery Management Systems* (Vols. I–II), Artech House, 2015, with the companion open lecture notes "Algorithms for Battery Management Systems" (CU Boulder) — cell-aging fundamentals that justify a convex, depth-increasing degradation cost.
-
-**Alternatives considered:** the battery cycle-aging-cost literature for electricity markets (rainflow-based marginal cycle costing). Deferred per the textbook-first policy: paper-specific and harder to verify; R1.2 takes only the textbook abstraction (a convex PWL cost), and rainflow is explicitly out of scope (`formulation.md` §R1.2).
+- **H. P. Williams, *Model Building in Mathematical Programming*, 5th ed., Wiley, 2013** — *governing reference* (separable / piecewise-linear programming).
+  - Convex PWL cost as the upper envelope of its segment lines → the **epigraph cuts** (6) and the cost `D_t`. *(Section on separable / piecewise-linear programming — verify exact ch.)*
+  - SOS2 (special ordered set of type 2) — the method for **non-convex** PWL; documented but *not used* in R1.2 (it's convex) and unsupported by HiGHS. *(Section on special ordered sets — verify.)*
+  - Notation reconciliation: house style wins. Breakpoints written with **subscript** indices `φ_k, x_k, g_k` (indices, not exponents); throughput `τ_t` and cost `D_t` built from house grid-side power + efficiency.
+- **G. L. Plett, *Battery Management Systems* (Vols. I–II), Artech House, 2015** + companion open lecture notes "Algorithms for Battery Management Systems" (CU Boulder) — *secondary (domain context, pointer only).*
+  - Cell aging fundamentals justifying a convex, depth-increasing degradation cost. *(Aging / life-modeling chapters — verify.)*
+- *Alternatives considered:* the battery cycle-aging-cost literature for electricity markets (rainflow-based marginal cycle costing). Deferred per the textbook-first policy — paper-specific and harder to verify; R1.2 takes only the textbook abstraction (a convex PWL cost). Rainflow itself is out of scope (`formulation.md` §R1.2).
 
 ---
 

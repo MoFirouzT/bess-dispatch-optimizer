@@ -46,7 +46,7 @@ Entry shape: **term — definition.** *Why here:* relevance to this project. *Go
 
 **LP relaxation** — the MILP with integrality dropped. *Why here:* its tightness governs branch-and-bound speed. *Gotcha:* a loose big-M weakens the relaxation; prefer indicator constraints / SOS, and let the power cap *be* the big-M.
 
-**SOS2 (Special Ordered Set type 2)** — at most two consecutive members non-zero; encodes piecewise-linear functions. *Why here:* the degradation cost (R1.2). *Gotcha:* breakpoint count trades accuracy against solve time.
+**SOS2 (Special Ordered Set type 2)** — at most two consecutive members non-zero; encodes piecewise-linear functions. *Why here:* the general tool for **non-convex** PWL. R1.2's degradation cost is *convex*, so it uses the simpler **epigraph form** (max of segment lines, pure LP) instead — SOS2 is documented as the non-convex path. *Gotcha:* HiGHS has no native SOS support, so a non-convex PWL would need a SOS-capable solver or a binary segment-selection encoding; for convex PWL, SOS2 is unnecessary anyway.
 
 **Recourse / two-stage stochastic program** — first-stage decisions made under uncertainty, second-stage decisions adapt after it resolves. *Why here:* the R2.3 layer. *Gotcha:* with a linear objective and a price-independent feasible set, the two-stage program **collapses to the mean** (VSS=0); value needs a risk-aware objective or genuine recourse.
 

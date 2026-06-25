@@ -7,9 +7,11 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ## Current phase
 
-**R1.2 — Piecewise-linear degradation cost.** Spec: [`docs/specs/R1.2-degradation.md`](specs/R1.2-degradation.md) — status **Draft (awaiting human review)**.
+**R1.2 — Piecewise-linear degradation cost.** Spec: [`docs/specs/R1.2-degradation.md`](specs/R1.2-degradation.md) — status **Implemented (local gate green)**.
 
-R1.1 is **committed** (deterministic core, gate green). R1.2 spec + formulation delta are drafted and **blocked on human review** before any tests/code (phase-gate workflow). The R1.2 formulation section in `formulation.md` is marked DRAFT.
+R1.1 is **committed**. R1.2 is code-complete and the gate passes locally: **15 tests pass** (4 R1.2 oracles + 3 R1.2 properties + full R1.1 regression + smoke), ruff/format/lint-imports clean. Not yet committed.
+
+**Key R1.2 decision (solver-driven):** HiGHS has **no SOS support** (`appsi_highs` raises `NotImplementedError` on SOS constraints). Since R1.2's degradation is *convex*, switched from λ-method+SOS2 to the **epigraph form** (`D_t ≥ a_k·τ_t + b_k` per segment) — exact for convex, pure LP, HiGHS-native, preserves all oracle values. SOS2 reframed as the non-convex tool (documented in formulation/glossary/references; needed only if a non-convex curve is added later, via a SOS-capable solver or binary encoding).
 
 ## Done
 
@@ -53,7 +55,13 @@ R1.1 is **committed** (deterministic core, gate green). R1.2 spec + formulation 
 
 ## Next (in order)
 
-1. **Human reviews + approves** the R1.2 spec + formulation delta. Key decisions to hand-check: degradation is a *cost subtracted from revenue* (no efficiency term in the cash flow, not in SoC balance); throughput is **storage-side, both directions** `τ_t = η_ch·p_ch·dt + p_dis/η_dis·dt` (a round trip of depth q costs `2·g(q)`); convex PWL via λ-method + SOS2 (SOS2 slack under convexity, kept — parallels `u_t`); breakpoints per-unit of `τ_max` (ADR-0009 consistency); disabled ⇒ exactly R1.1. Golden oracles: **15.0** (bites), **44.0** (cheap→full), **12.5** (η<1, pins storage-side), **40.0** (disabled→R1.1). Rainflow + calendar aging are the genuinely-deferred items; equivalent-full-cycle is a cheap variation, not built.
+1. **Commit R1.2** (working tree gate-green; user does commits). Suggested subject: `feat: piecewise-linear battery degradation cost in objective` (matches MASTER_PLAN §14 narrative). Files: `src/bess/assets/battery.py`, `src/bess/optimizer/core.py`, `tests/golden/test_golden_degradation.py`, `tests/property/test_degradation.py`, and the docs (`formulation.md`, `specs/R1.2`, `references.md`, `glossary.md`, `CLAUDE.md`, `STATE.md`).
+2. Begin **R1.3 — validation layer** (pre-flight infeasibility + physical sanity, structured errors), spec-first: governing reference → formulation delta (if any) → failing tests → implement. Do not start until R1.2 is committed.
+
+## R1.2 acceptance — recorded
+- Oracles: **15.0** (bites), **44.0** (cheap→full cycle), **10.0** (η<1, pins storage-side), **40.0** (disabled→R1.1). All exact within 1e-6.
+- Throughput is **storage-side, both directions** `τ_t = η_ch·p_ch·dt + p_dis/η_dis·dt`; `τ_max = min(power limit, SoC window e_max−e_min)`; breakpoints per-unit of `τ_max` (ADR-0009).
+- Deferred: per-period cost in `Schedule` → R2.4; rainflow + calendar aging → hard; EFC + direction-specific wear → unneeded.
 2. On approval: flip spec → Approved, mark the formulation R1.2 section non-draft, write the **failing** R1.2 golden + property tests first, then implement to green. Do not break the R1.1 gate.
 
 ## Known blockers / open questions

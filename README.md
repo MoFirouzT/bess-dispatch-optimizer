@@ -13,7 +13,7 @@ Release 1 (deterministic core) is implemented and gated by golden + property tes
 - **R1.1** — deterministic MILP dispatch core
 - **R1.2** — convex piecewise-linear degradation cost
 - **R1.3** — pre-flight feasibility checks
-- **R1.4** — walk-forward backtest with greedy / rolling / perfect-foresight baselines
+- **R1.4** — walk-forward backtest with greedy / rolling / perfect-foresight baselines, plus a live ENTSO-E day-ahead loader (BE/NL)
 
 Release 2 (forecasting, stochastic optimization, recourse, explainability) is planned — see [docs/architecture.md](docs/architecture.md).
 
@@ -40,3 +40,9 @@ uv run pytest                 # tests (golden + property gates)
 ruff check . && ruff format . # lint + format
 uv run lint-imports           # layering contract
 ```
+
+## Data
+
+The tests and CI use **synthetic** price series only — no real or third-party market data is committed (the ENTSO-E terms grant no public-redistribution right). Real Belgian/Dutch day-ahead prices are fetched at runtime via `bess.data.entsoe.fetch_day_ahead`, which wraps the [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/) and caches to `data/cache/` (gitignored).
+
+To run the live loader (and its token-gated integration test, skipped without a token), copy `.env.example` to `.env` and set `ENTSOE_API_TOKEN`. On a network with a TLS-intercepting proxy, uv's bundled Python also needs the trust roots exported to a CA bundle (`REQUESTS_CA_BUNDLE` / `SSL_CERT_FILE`); the steps are in `.env.example`. This is operator setup, not code, and CI never touches the live API.

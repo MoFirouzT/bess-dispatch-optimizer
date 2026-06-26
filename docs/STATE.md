@@ -7,9 +7,11 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ## Current phase
 
-**R1.4a — Backtest engine + baselines + sanity band.** Spec: [`docs/specs/R1.4a-backtest.md`](specs/R1.4a-backtest.md) — status **Implemented (gate green)**.
+**R1.4b — Productionized ENTSO-E day-ahead loader.** Spec: [`docs/specs/R1.4b-entsoe-loader.md`](specs/R1.4b-entsoe-loader.md) — status **Implemented (gate green)**; spec **Approved/frozen** (open questions resolved: entsoe-py, NL-2024-summer volatile slice, no committed data, `data/cache/` location).
 
-R1.1–R1.3 done. R1.4a complete, tests-first: **41 tests pass** (3 backtest golden oracles + 4 backtest properties + gate-D structural sanity band + loader/Series-windowing units + full R1.1–R1.3 regression), ruff/format clean, **lint-imports 4 contracts KEPT** (`backtest` offline-tool + `data` leaf added). Engine, all three baselines, fixtures loader, metrics — all done.
+R1.1–R1.4a done. R1.4b complete, tests-first: token-free golden parser + 4 unit tests on the fetch/cache/guard paths (fake client via monkeypatch) all green; **live integration test verified locally against real ENTSO-E** (token from `.env` + Keychain CA bundle) and skips cleanly without a token. Full suite **45 passed + 1 skipped (integration)**; ruff/format clean, **lint-imports 4 contracts KEPT** (`data` stays a leaf), docs linter clean. *(One pre-existing R1.2 property flake is failing independently — see Known blockers; deselected from the count above.)*
+
+**Prior — R1.4a** (Implemented, gate green): engine + greedy/rolling/perfect-foresight baselines + gate-D sanity band on a deterministic synthetic series, leakage-safe.
 
 **Data — no committed price data (copyright-clean).** Gate D runs on a **deterministic synthetic** in-memory series (`tests/golden/test_sanity_band.py`) ≈ €28k/MWh-yr, ordering + band hold. *History:* a real Energy-Charts CC BY 4.0 NL-2024 slice was used to validate the engine against real data (ceiling ≈ €27k/MWh-yr, rolling ≈ 99.7% of perfect foresight, greedy ≈ 56%), then **removed at the user's request** to keep the repo free of third-party data. Raw ENTSO-E is *not* committed either (its terms grant no public-redistribution right); ENTSO-E is the **runtime** source (R1.4b, fetched), and real-data band re-validation is an R1.4b token-gated **integration** test.
 
@@ -63,8 +65,14 @@ R1.4 was **split**: R1.4a (done) = engine + baselines + metrics + leakage + band
 
 ## Next (in order)
 
-1. **Human review of the R1.4b spec** ([`docs/specs/R1.4b-entsoe-loader.md`](specs/R1.4b-entsoe-loader.md)). Guardrail probe **done** — real ENTSO-E schema verified live (token from `.env`). Four open questions flagged: (1) entsoe-py dep vs hand-rolled parser; (2) volatile cross-year slice = NL 2024 summer (proposed) vs 2025; (3) commit a raw XML sample; (4) cache location. No formulation delta (engineering); references §R1.4b added (no new governing reference; ENTSO-E API guide as technical ref).
-2. On approval: add `entsoe-py` + `.env.example`, implement `bess.data.entsoe.fetch_day_ahead` (→ internal schema + parquet cache), commit a small real XML sample + a volatile slice, parametrize gate D over calm+volatile, add a skipped live-API integration test. Token-free CI throughout.
+1. **Address the pre-existing R1.2 degradation property flake** (see Known blockers) — it is an R1.2 gate, independent of R1.4b, and should be resolved before R1.5. Needs a human/formulation call (don't loosen the EPS to silence it).
+2. **R1.5** — live serving (FastAPI + circuit breaker + latency budget), per the R1.4b "out of scope" list. Draft `docs/specs/R1.5-*.md` from the master plan first; human review before implementation.
+
+### R1.4b — implemented (this session)
+- `entsoe-py` added; `bess.data.entsoe` exposes `fetch_day_ahead` (live BE/NL day-ahead → internal schema + parquet cache under gitignored `data/cache/`) and `parse_day_ahead_xml` (token-free A44 parse, reuses the same normalization). Shared schema check factored out of `fixtures.load_prices` → `fixtures.validate_price_series`, used by both loaders.
+- Tests: golden parser on a **synthetic** A44 XML (1-based positions, A03 carry-forward gap, `PT60M`, UTC); unit tests for tz→UTC normalization, cache round-trip (no 2nd API call), lowercase-zone, unsupported-zone, missing-token. Live integration (`@pytest.mark.integration`, `tests/integration/`) token-gated + skipped without `ENTSOE_API_TOKEN`; registered the `integration` marker + a `bs4.XMLParsedAsHTMLWarning` filter in `pyproject`.
+- `.env.example` added (token + Keychain CA-bundle steps); README gained a **Data** section.
+- **Band finding (resolved, formulation-faithful):** the real NL **summer-2024** ceiling annualizes to ≈ **€51.9k/MWh-yr**, *above* the synthetic gate D's absolute €50k red flag — but that absolute is calm-calibrated. Formulation §5's band is **derived from the slice's own daily spread** (`c·spread`); on real hourly data the perfect-foresight ceiling is ≈ **1.25×** that 1-cycle/day mean-spread heuristic across *both* seasons (calm 25.95k vs heur 20.89k; volatile 51.9k vs heur 40.47k). The integration test asserts each ceiling sits in `[0.8, 1.6]×` its own heuristic + a 2× absolute backstop, and that the volatile band shifts up (wider spread, higher ceiling). No formulation change — this is the §5 band applied correctly to a volatile slice.
 
 ### R1.4b environment findings (verified this session — bake into impl)
 - **Host correction:** ENTSO-E API is `https://web-api.tp.entsoe.eu/api` (**`tp`, not `tps`** — the old host is dead). `documentType=A44`, EIC `10YNL----------L` (NL) / `10YBE----------2` (BE), `periodStart/End` UTC `YYYYMMDDHHMM`, 400 req/min.
@@ -91,7 +99,7 @@ R1.4 was **split**: R1.4a (done) = engine + baselines + metrics + leakage + band
 
 ## Known blockers / open questions
 
-- No blockers — implementation gate open.
+- **R1.2 property flake (pre-existing, independent of R1.4b) — NEEDS A CALL.** `tests/property/test_degradation.py::test_degradation_never_pays` fails on a Hypothesis-found degenerate example (`prices=[0,0]`, top-segment `cost_eur≈3.3e-7`, `dt=0.25`): the with-degradation solve returns a phantom `+1.33e-6` objective vs `0.0` without, tripping `obj_with ≤ obj_without + EPS` (EPS=1e-6). Confirmed failing on clean `main` with R1.4b stashed → not caused by this phase. This is the same sub-tolerance class noted under "Notes" (degradation costs ~1e-7 sit below HiGHS's optimality/feasibility tolerance, so the reported objective carries ~1e-6 noise). **Do not loosen EPS to silence it** — needs a formulation/strategy call: e.g. floor the generated `cost_eur` magnitudes away from the solver tolerance, or relax the degenerate near-zero-cost inputs in the strategy (as was done earlier for the SoC anchor). Surfaced, not suppressed.
 - ~~Solver entry point~~ — resolved: `appsi_highs`.
 - Confirm `dt` (Δt) stays a per-solve argument (hourly for R1.1 oracles; 15-min native deferred to R1.4 data layer). — spec says yes; carry forward.
 - Default battery: 1 MW / 1 MWh (1-hour) to match the §5 sanity band; revisit if backtest targets a 2-hour asset.

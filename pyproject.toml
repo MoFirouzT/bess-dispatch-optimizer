@@ -12,6 +12,7 @@ dependencies = [
     "pydantic>=2.6",
     "pandas>=3.0.3",
     "pyarrow>=24.0.0",
+    "entsoe-py>=0.8.0",
 ]
 
 [dependency-groups]
@@ -44,6 +45,14 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+markers = [
+    "integration: live ENTSO-E API test (R1.4b) — skipped unless ENTSOE_API_TOKEN + network (+ CA bundle) are present; never runs in CI",
+]
+filterwarnings = [
+    # entsoe-py parses ENTSO-E XML with bs4's html.parser — its internal warning,
+    # not actionable on our side; silenced so the parser test output stays clean.
+    "ignore::bs4.XMLParsedAsHTMLWarning",
+]
 
 # --- layering (CLAUDE.md §5) — enforced via `uv run lint-imports` -------------
 # Authoritative rule: api → explain → stochastic → recourse → optimizer → validation → assets;

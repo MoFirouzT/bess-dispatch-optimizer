@@ -1,1 +1,42 @@
 # bess-dispatch-optimizer
+
+Optimal day-ahead dispatch for a grid-scale **battery energy storage system (BESS)** in the Belgian/Dutch power market. Given a day-ahead price curve and a battery's physical limits, it computes the charge/discharge schedule that maximizes arbitrage revenue net of cell degradation — as a deterministic mixed-integer linear program (MILP).
+
+## What problem this solves
+
+A battery earns money by **buying low and selling high**: charge when day-ahead electricity is cheap, discharge when it is expensive. The catch is that every cycle ages the cell, charging and discharging each lose energy (round-trip efficiency < 1), and the schedule must respect power, energy, and ramp limits. This project formulates that trade-off precisely and solves it to optimality, then measures how much of the theoretical maximum a realistic, no-look-ahead policy actually captures.
+
+## Status
+
+Release 1 (deterministic core) is implemented and gated by golden + property tests:
+
+- **R1.1** — deterministic MILP dispatch core
+- **R1.2** — convex piecewise-linear degradation cost
+- **R1.3** — pre-flight feasibility checks
+- **R1.4** — walk-forward backtest with greedy / rolling / perfect-foresight baselines
+
+Release 2 (forecasting, stochastic optimization, recourse, explainability) is planned — see [docs/architecture.md](docs/architecture.md).
+
+## How to read the docs
+
+Start with [docs/architecture.md](docs/architecture.md) for the map, then dive into the math.
+
+| Doc | What it is |
+|---|---|
+| [docs/formulation.md](docs/formulation.md) | **The math** — single source of truth for every constraint and objective term |
+| [docs/conventions.md](docs/conventions.md) | Locked conventions: units, sign/metering, time, naming |
+| [docs/glossary.md](docs/glossary.md) | Domain + optimization terms, each with a common-error note |
+| [docs/market_reference.md](docs/market_reference.md) | How the BE/NL day-ahead market actually works |
+| [docs/references.md](docs/references.md) | The governing textbook reference for each phase |
+| [docs/specs/](docs/specs/) | Per-phase work orders |
+
+Assumes some familiarity with linear/integer programming; battery and power-market terms are defined in the [glossary](docs/glossary.md).
+
+## Development
+
+```bash
+uv sync                       # environment + dependencies
+uv run pytest                 # tests (golden + property gates)
+ruff check . && ruff format . # lint + format
+uv run lint-imports           # layering contract
+```

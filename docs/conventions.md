@@ -2,6 +2,8 @@
 
 The stable rules of the codebase. Intentionally restrictive so every module composes cleanly. **Locked:** changing anything here requires an ADR (`docs/decisions/`).
 
+*Assumes: familiarity with the [formulation](formulation.md)'s symbols (`π / e / η / Δt`, grid-side power). This file fixes their units, signs, and names across the code.*
+
 ---
 
 ## 1. Time

@@ -2,7 +2,9 @@
 
 Domain reference for the BE and NL power markets: *what the market does*. This is a **knowledge artifact**, not a build spec — [`formulation.md`](formulation.md) and the phase specs define what the code actually models.
 
-> **Scope flags.** Only the **day-ahead** market is in build scope for Release 1–2. FCR, aFRR, imbalance, and intraday are **reference only** — kept here for correctness of reasoning, interview readiness, and possible future work. Build scope is marked per section.
+*Assumes: no prior power-market knowledge; terms are introduced as they appear (see also the [glossary](glossary.md)).*
+
+> **Scope flags.** Only the **day-ahead** market is in build scope for Release 1–2. FCR, aFRR, imbalance, and intraday are **reference only** — kept here for correctness of reasoning and possible future work. Build scope is marked per section.
 
 > **Verification notice.** Market mechanics evolve. Cross-check every rule and parameter against current EPEX SPOT, TenneT, and Elia publications before implementing or trusting it. Key sources are listed at the end. Knowledge here is current as of early 2026.
 
@@ -52,7 +54,7 @@ ENTSO-E Transparency Platform, `entsoe-py` method `query_day_ahead_prices`, area
 
 ## 4. FCR — Frequency Containment Reserve — **[REFERENCE ONLY]**
 
-Symmetric automatic primary reserve; responds to frequency deviation by droop, full activation at ±200 mHz within 30 s, sustained for **15 minutes** (this drives the SoC-headroom requirement). Procured daily via the cross-border platform (regelleistung.net), **4-hour blocks**, marginal (pay-as-cleared) pricing, EUR/MW/h, capacity-only (no energy revenue). Modelling note: a reserved `p_fcr` MW requires `p_fcr × 0.25 MWh` of SoC headroom on both sides. **Symmetry:** up = down per block. *Interview-relevant; not built.*
+Symmetric automatic primary reserve; responds to frequency deviation by droop, full activation at ±200 mHz within 30 s, sustained for **15 minutes** (this drives the SoC-headroom requirement). Procured daily via the cross-border platform (regelleistung.net), **4-hour blocks**, marginal (pay-as-cleared) pricing, EUR/MW/h, capacity-only (no energy revenue). Modelling note: a reserved `p_fcr` MW requires `p_fcr × 0.25 MWh` of SoC headroom on both sides. **Symmetry:** up = down per block. *Not built.*
 
 ---
 
@@ -95,7 +97,7 @@ In a single-pass perfect-foresight solve this ordering is invisible. In the **ro
 | TenneT Open Data | NL imbalance, settlement | Open portal |
 | EPEX SPOT | DA/intraday reference, methodology | Public + licensed |
 
-**Reproducibility:** commit a small real fixture slice so the test suite runs without a token; document the token process for full backtests. Check redistribution terms before committing data.
+**Reproducibility:** the test suite runs on **synthetic** fixtures so CI needs no token and the repo carries no third-party data (raw ENTSO-E grants no public-redistribution right). Real prices are fetched from ENTSO-E at runtime / in token-gated integration tests only — see [conventions.md](conventions.md) and the R1.4b spec.
 
 ---
 

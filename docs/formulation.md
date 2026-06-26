@@ -5,6 +5,8 @@ Specs, the README, and ADRs **point here**; they never restate equations.
 Each phase appends a section; nothing is duplicated elsewhere.
 Each section names its **governing reference** (see [references.md](references.md)) and summarizes only the theory the project implements; **house notation here and in [conventions.md](conventions.md) takes precedence** for shared quantities.
 
+*Assumes: linear/integer programming at the level of a first optimization course (LPs, MILPs, what a solver does). Battery and power-market terms are defined in the [glossary](glossary.md). Each section is self-contained; read the Conventions first.*
+
 GitHub renders the `$$…$$` LaTeX below.
 
 ---
@@ -25,6 +27,8 @@ $$e_t = e_{t-1} + \eta^{ch}\, p^{ch}_t\, \Delta t \;-\; \frac{p^{dis}_t}{\eta^{d
 The round-trip efficiency $\eta^{rt}=\eta^{ch}\eta^{dis}$ is **emergent**, not a separate term:
 delivering 1 MWh to the grid ultimately costs $1/\eta^{rt}$ MWh drawn from the grid, enforced entirely by the balance above.
 If an efficiency factor ever appears in the revenue expression, the formulation is wrong.
+
+![Grid-side metering: power variables are measured at the grid terminal; efficiency applies only on the way into and out of the cell (the SoC balance), never in the cash flow.](figures/metering.svg)
 
 ---
 
@@ -93,9 +97,9 @@ $$e_{T} = e^{\mathrm{tgt}}$$
 ### Modeling notes
 
 - **Mutual-exclusion binary $u_t$.**
-    With $\eta^{rt}<1$ and non-negative prices the LP relaxation already avoids simultaneous charge/discharge, so $u_t$ is usually slack — but it is *required* for correctness under negative prices (where burning energy via simultaneous charge+discharge could otherwise look profitable).
-    Keep it.
-    The big-M is the power cap itself ($\bar P^{ch}, \bar P^{dis}$), so no loose big-M is introduced.
+    The *LP relaxation* (the model with the integrality of $u_t$ dropped, which the solver visits inside branch-and-bound) already avoids simultaneous charge/discharge when $\eta^{rt}<1$ and prices are non-negative — losing energy on a pointless round trip is never profitable there — so $u_t$ is usually slack.
+    It is nonetheless *required* for correctness under **negative prices**, where buying *and* selling at once to burn energy could otherwise look profitable; the binary forbids that. Keep it.
+    On the *big-M*: constraint (3) is a big-M switch (a constraint whose right-hand side relaxes to a large constant when its binary is off). Here that constant is the power cap itself ($\bar P^{ch}, \bar P^{dis}$) — the tightest valid bound — so no loose big-M is introduced and the relaxation stays tight.
 - **Ramp.**
     Defined on net power for generality / grid-connection.
     Batteries ramp near-instantly, so $R$ is typically non-binding; disable by setting $R \ge \bar P^{ch} + \bar P^{dis}$.
@@ -135,9 +139,16 @@ Per-period **storage-side throughput** — the energy that actually passes throu
 
 $$\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t \qquad \in [0,\ \tau_{\max}]$$
 
-Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so exactly one term is non-zero. The per-period throughput is capped by **power** (only $\bar P\Delta t$ of energy can move in one period) *and* by the **usable SoC window** (you cannot push more through the cell in one period than it can take in or give up), so its maximum is
+Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so exactly one term is non-zero.
 
-$$\tau_{\max} = \min\!\Bigl(\ \max\!\bigl(\eta^{ch}\bar P^{ch}\Delta t,\ \tfrac{\bar P^{dis}\Delta t}{\eta^{dis}}\bigr),\ \ e_{\max}-e_{\min}\ \Bigr).$$
+Two physical limits cap the per-period throughput, and the binding one is whichever is smaller:
+
+- **Power** — only $\bar P\Delta t$ of energy can move through the inverter in one period of length $\Delta t$;
+- **Usable SoC window** — the cell cannot take in or give up more than $e_{\max}-e_{\min}$ in one step.
+
+So its maximum is the smaller of the two:
+
+$$\tau_{\max} = \min\!\Bigl(\ \underbrace{\max\!\bigl(\eta^{ch}\bar P^{ch}\Delta t,\ \tfrac{\bar P^{dis}\Delta t}{\eta^{dis}}\bigr)}_{\text{power limit}},\ \ \underbrace{e_{\max}-e_{\min}}_{\text{SoC window}}\ \Bigr).$$
 
 So the SoC *capacity* does enter — as the per-period *flow* limit $e_{\max}-e_{\min}$. (The SoC *level* across periods is still governed by balance (1) and bounds (2); those are unchanged.)
 
@@ -168,7 +179,9 @@ The configured curve passes through $(x_0,g_0),\dots,(x_K,g_K)$, starting at the
 ### Constraints (new, $\forall t\in\mathcal T$)
 
 Let $g(\cdot)$ be the convex PWL degradation cost, so the *ideal* term is $g(\tau_t)$ — but $g$ is not affine, so it cannot be written directly in an LP.
-The **epigraph form** replaces it with an auxiliary variable $D_t$ plus one linear lower-bound (cut) per segment, and relies on the objective to collapse $D_t$ back onto $g(\tau_t)$.
+
+The **epigraph form** sidesteps this. The *epigraph* of a function is the set of points lying *on or above* its graph, $\{(\tau, D) : D \ge g(\tau)\}$. Rather than computing $g(\tau_t)$, introduce an auxiliary variable $D_t$ constrained to sit in that region — one linear lower-bound (cut) per segment — then let the objective, which subtracts $D_t$, press it down onto the graph. The minimum feasible $D_t$ *is* $g(\tau_t)$, so the cost is reconstructed exactly with linear constraints only.
+
 For each segment $k=1,\dots,K$, the line through $(x_{k-1},g_{k-1})$ and $(x_k,g_k)$ is $\ell_k(\tau)=a_k\tau+b_k$ with
 
 $$a_k = \frac{g_k-g_{k-1}}{x_k-x_{k-1}}, \qquad b_k = g_{k-1}-a_k\,x_{k-1}.$$
@@ -176,6 +189,8 @@ $$a_k = \frac{g_k-g_{k-1}}{x_k-x_{k-1}}, \qquad b_k = g_{k-1}-a_k\,x_{k-1}.$$
 **(6) Epigraph cuts** (with $\tau_t = \eta^{ch} p^{ch}_t\Delta t + \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$, the throughput defined above):
 
 $$D_t \ge \ell_k(\tau_t) = a_k\,\tau_t + b_k \qquad \forall k=1,\dots,K.$$
+
+![A convex piecewise-linear cost is the upper envelope of its segment lines: each segment line, extended, stays below the curve, so the pointwise maximum of the lines traces the curve exactly. The minimized auxiliary variable Dₜ lands on that envelope.](figures/pwl-epigraph.svg)
 
 **Why this is exact — the $\max(-D)\Rightarrow\min D\Rightarrow\max_k\ell_k\Rightarrow g$ chain.**
 Three steps, each an equality at the optimum:
@@ -250,7 +265,7 @@ Power limits (3) with mutual exclusion (one direction per period) bound it by
 
 $$-\Delta^- \le a_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}.$$
 
-The extremes are attained one direction at a time, so mutual exclusion does not shrink the interval.
+The efficiency placement mirrors the SoC balance (1) — $a_t$ is the *cell-side* increment, so charging multiplies by $\eta^{ch}$ (only part of the grid-side power reaches the cell) while discharging divides by $\eta^{dis}$ (more must leave the cell than reaches the grid). The extremes are attained one direction at a time, so mutual exclusion does not shrink the interval.
 
 ### Terminal reachability
 
@@ -305,6 +320,8 @@ one **full-horizon** solve over the entire concatenated series with $e_0=e_{\tex
 ### Provable ordering (a correctness gate)
 
 $$0 \le V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star.$$
+
+![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The gap between rolling and ceiling is the cross-day arbitrage a deterministic agent cannot capture; the headline metric is rolling over ceiling.](figures/backtest-bounds.svg)
 
 - $V^{\mathrm{roll}}\le V^\star$: the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem — the ceiling can only do at least as well.
 - $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}$: the greedy schedule is feasible for each day's MILP (it too ends the day empty), and the per-day MILP is optimal over all such schedules.

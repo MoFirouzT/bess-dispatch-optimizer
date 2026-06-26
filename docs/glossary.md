@@ -1,6 +1,8 @@
 # Glossary / knowledge bank
 
-Entry shape: **term — definition.** *Why here:* relevance to this project. *Gotcha:* what an interviewer (or a bug) probes. Grown one section per build phase. The gotcha field is what makes this a living artifact rather than a dictionary.
+*Assumes: familiarity with linear/integer programming. Battery and market terms are defined here from scratch.*
+
+Entry shape: **term — definition.** *Why here:* relevance to this project. *Gotcha:* the common error or subtlety a bug (or a careless reading) trips on. Grown one section per build phase. The gotcha field is what makes this a living artifact rather than a dictionary.
 
 ---
 
@@ -16,7 +18,7 @@ Entry shape: **term — definition.** *Why here:* relevance to this project. *Go
 
 **FBMC (Flow-Based Market Coupling)** — the CORE-region method allocating cross-border capacity in the day-ahead clear. *Why here:* explains why BE and NL prices are tightly correlated. *Gotcha:* BE/NL co-movement means a "BE optimizer" and "NL optimizer" share most of their signal.
 
-**FCR / aFRR / mFRR** — frequency-response reserve products (primary/secondary/tertiary). *Why here:* reference only — out of build scope, in interview scope. *Gotcha:* FCR is **symmetric** (equal up/down) in 4-hour blocks with a 15-min sustain requirement (→ SoC headroom); aFRR is **asymmetric** with separate capacity and activation revenue. Mixing these up is a classic tell.
+**FCR / aFRR / mFRR** — frequency-response reserve products (primary/secondary/tertiary). *Why here:* reference only — out of build scope, kept for correctness of reasoning about the wider market. *Gotcha:* FCR is **symmetric** (equal up/down) in 4-hour blocks with a 15-min sustain requirement (→ SoC headroom); aFRR is **asymmetric** with separate capacity and activation revenue. Conflating the two is a common modeling error.
 
 **TSO / BRP** — Transmission System Operator (TenneT in NL, Elia in BE) / Balance Responsible Party. *Why here:* the BRP is who bears imbalance; the TSO publishes prices and procures reserves.
 

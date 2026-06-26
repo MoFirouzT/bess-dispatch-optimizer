@@ -5,7 +5,7 @@ description = "BESS day-ahead dispatch optimizer — deterministic MILP core (R1
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
-authors = [{ name = "MO FIROUZ" }]
+authors = [{ name = "MO FIROUZ", email = "mohammadhamedft@gmail.com" }]
 dependencies = [
     "pyomo>=6.7",
     "highspy>=1.7",        # HiGHS solver; backs Pyomo's appsi_highs interface
@@ -26,6 +26,9 @@ dev = [
     "import-linter>=2.0",
     "httpx>=0.28.1",
 ]
+# Plotting for the worked example (bess.viz / examples/). Not installed by default
+# or in CI; the figure smoke test skips when matplotlib is absent.
+examples = ["matplotlib>=3.8"]
 
 [build-system]
 requires = ["hatchling"]

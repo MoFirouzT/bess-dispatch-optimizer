@@ -12,37 +12,17 @@ ordering, leakage-inflated magnitude, sign/efficiency errors. Validation against
 CI.
 """
 
-import numpy as np
-import pandas as pd
-
 from bess.assets.battery import BatterySpec
 from bess.backtest.engine import run_backtest
+from bess.data.fixtures import synthetic_day_ahead
 
 # §5 leakage red flag: a 1-hour asset cannot exceed the perfect-foresight ceiling
 # band; > ~€50k/MWh-yr means look-ahead leakage, not alpha.
 RED_FLAG_EUR_PER_MWH_YR = 50_000.0
 
 
-def _synthetic_prices(days: int = 90, seed: int = 42) -> pd.Series:
-    """Deterministic NL-like hourly day-ahead series (single dominant daily cycle)."""
-    rng = np.random.default_rng(seed)
-    shape = np.array(
-        [32, 30, 29, 28, 28, 30, 34, 40, 46, 50, 52, 50,
-         47, 45, 46, 50, 57, 66, 78, 90, 94, 84, 64, 44],
-        dtype=float,
-    )  # fmt: skip
-    idx = pd.date_range("2024-01-01", periods=days * 24, freq="1h", tz="UTC")
-    out = []
-    for _ in range(days):
-        p = shape + rng.normal(0, 11) + rng.normal(0, 4, 24)
-        if rng.random() < 0.10:  # occasional solar-driven midday dip
-            p[11:15] -= rng.uniform(25, 45)
-        out.append(p)
-    return pd.Series(np.concatenate(out), index=idx, name="price_eur_mwh")
-
-
 def test_structural_sanity_band_on_synthetic_series():
-    prices = _synthetic_prices()
+    prices = synthetic_day_ahead()
     spec = BatterySpec()  # 1 MWh / 1 MW, η=0.95
     rep = run_backtest(prices, spec, dt=1.0, window="1D")
 

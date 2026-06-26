@@ -65,8 +65,12 @@ def dispatch(
         sched = solve_fn(prices, spec, dt, time_limit=budget)
         elapsed = perf_counter() - t0
         if elapsed > budget:
-            # The solver returned an optimum but the operation blew the latency SLA
-            # (build + solve + load). Degrade to the fast greedy answer.
+            # ``time_limit`` bounds the solver itself, but model build + solution load
+            # are outside it, so the end-to-end operation can still overrun the SLA.
+            # The solver returned an optimum yet the wall clock blew the budget, so
+            # this post-hoc check degrades to the fast greedy answer. (The overshoot is
+            # detected after the fact, not pre-empted; build/load are not interruptible
+            # here. Bounding them harder is future work if it ever proves necessary.)
             raise TimeoutError(f"dispatch exceeded latency budget: {elapsed:.3f}s > {budget:.3f}s")
         return DispatchResult("optimal", sched, sched.objective, elapsed, sched.termination)
     except Exception as exc:

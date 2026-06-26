@@ -13,9 +13,36 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 PRICE_COL = "price_eur_mwh"
+
+
+def synthetic_day_ahead(days: int = 90, seed: int = 42) -> pd.Series:
+    """Deterministic, copyright-clean NL-like hourly day-ahead series.
+
+    A single dominant daily cycle (cheap nights, morning ramp, evening peak) with
+    day-to-day level noise and an occasional solar-driven midday dip. Shaped like a
+    calm month of Dutch day-ahead prices but **synthetic** — no real or third-party
+    market data is committed (conventions / the no-committed-data rule). Used by the
+    structural sanity gate (``tests/golden/test_sanity_band.py``) and the worked
+    example (``examples/worked_example.py``) so both share one source.
+    """
+    rng = np.random.default_rng(seed)
+    shape = np.array(
+        [32, 30, 29, 28, 28, 30, 34, 40, 46, 50, 52, 50,
+         47, 45, 46, 50, 57, 66, 78, 90, 94, 84, 64, 44],
+        dtype=float,
+    )  # fmt: skip
+    idx = pd.date_range("2024-01-01", periods=days * 24, freq="1h", tz="UTC")
+    out = []
+    for _ in range(days):
+        p = shape + rng.normal(0, 11) + rng.normal(0, 4, 24)
+        if rng.random() < 0.10:  # occasional solar-driven midday dip
+            p[11:15] -= rng.uniform(25, 45)
+        out.append(p)
+    return pd.Series(np.concatenate(out), index=idx, name=PRICE_COL)
 
 
 def validate_price_series(s: pd.Series, *, source: str = "price series") -> pd.Series:

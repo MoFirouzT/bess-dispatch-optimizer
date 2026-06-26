@@ -11,7 +11,9 @@ ENV UV_COMPILE_BYTECODE=1 \
     BESS_LATENCY_BUDGET_S=2.0
 
 # Install runtime deps only (no dev group); build the package from src.
-COPY pyproject.toml uv.lock README.md ./
+# LICENSE is required at build time: pyproject's `license = { file = "LICENSE" }`
+# makes hatchling read it during metadata validation, so the COPY must include it.
+COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src ./src
 RUN uv sync --frozen --no-dev
 

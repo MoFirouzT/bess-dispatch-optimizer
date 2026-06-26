@@ -1,5 +1,7 @@
 # bess-dispatch-optimizer
 
+[![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
+
 Optimal day-ahead dispatch for a grid-scale **battery energy storage system (BESS)** in the Belgian/Dutch power market. Given a day-ahead price curve and a battery's physical limits, it computes the charge/discharge schedule that maximizes arbitrage revenue net of cell degradation — as a deterministic mixed-integer linear program (MILP).
 
 ## What problem this solves
@@ -17,6 +19,32 @@ Release 1 (deterministic core) is **complete**, gated by golden + property tests
 - **R1.5** — FastAPI dispatch service with a graceful-degradation circuit breaker (greedy fallback on solver timeout), Dockerized
 
 Release 2 (forecasting, stochastic optimization, recourse, explainability) is planned — see [docs/architecture.md](docs/architecture.md).
+
+## Example results
+
+A worked example on a **synthetic** 90-day Dutch-style day-ahead series (1 MWh / 1 MW asset, η = 0.95), reproducible with [`examples/worked_example.py`](examples/worked_example.py):
+
+| Baseline | Revenue | Share of ceiling |
+|---|---|---|
+| Greedy floor (percentile rule) | €3,472 | 50% |
+| Rolling deployable (per-day optimal) | €6,860 | **98.4%** |
+| Perfect-foresight ceiling | €6,972 | 100% |
+
+The rolling, no-look-ahead policy captures **98.4%** of the perfect-foresight ceiling on this series. The residual gap is the cross-day (overnight) arbitrage a deterministic agent provably cannot reach, which is the opportunity Release 2 targets. The annualized ceiling is ≈ €28k per MWh-installed per year, inside the structural sanity band (gate D).
+
+![Optimal dispatch on the widest-spread day: charge through the cheap overnight hours, discharge into the evening price peak, return to empty by end of day.](docs/figures/example-dispatch-day.svg)
+
+![Greedy floor vs. rolling deployable value vs. perfect-foresight ceiling over the 90-day series.](docs/figures/example-baselines.svg)
+
+Solve time scales benignly with horizon (one binary plus a few continuous variables per period); [`examples/benchmark_scaling.py`](examples/benchmark_scaling.py) reports it (numbers are from a local run, so treat them as relative):
+
+| Horizon | Periods | Median solve |
+|---|---|---|
+| 1 day | 24 | ~9 ms |
+| 1 week | 168 | ~29 ms |
+| 1 month | 720 | ~120 ms |
+
+The plotting dependency is optional: `uv sync --group examples` installs it.
 
 ## How to read the docs
 

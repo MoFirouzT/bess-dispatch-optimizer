@@ -8,12 +8,13 @@ A battery earns money by **buying low and selling high**: charge when day-ahead 
 
 ## Status
 
-Release 1 (deterministic core) is implemented and gated by golden + property tests:
+Release 1 (deterministic core) is **complete**, gated by golden + property tests:
 
 - **R1.1** — deterministic MILP dispatch core
 - **R1.2** — convex piecewise-linear degradation cost
 - **R1.3** — pre-flight feasibility checks
 - **R1.4** — walk-forward backtest with greedy / rolling / perfect-foresight baselines, plus a live ENTSO-E day-ahead loader (BE/NL)
+- **R1.5** — FastAPI dispatch service with a graceful-degradation circuit breaker (greedy fallback on solver timeout), Dockerized
 
 Release 2 (forecasting, stochastic optimization, recourse, explainability) is planned — see [docs/architecture.md](docs/architecture.md).
 
@@ -40,6 +41,15 @@ uv run pytest                 # tests (golden + property gates)
 ruff check . && ruff format . # lint + format
 uv run lint-imports           # layering contract
 ```
+
+## Serving
+
+```bash
+uv run uvicorn bess.api.app:app          # POST /dispatch, GET /health
+docker build -t bess-dispatch . && docker run -p 8000:8000 bess-dispatch
+```
+
+`POST /dispatch` takes a price curve, a step, and a battery spec, and returns the optimal schedule. If the solver misses the latency budget (`BESS_LATENCY_BUDGET_S`, default 2.0 s), the circuit breaker serves the greedy schedule instead (`mode: "fallback_greedy"`) rather than failing the request; invalid input returns a structured 422.
 
 ## Data
 

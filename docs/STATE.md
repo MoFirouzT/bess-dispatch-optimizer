@@ -7,11 +7,13 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ## Current phase
 
-**R1.4b — Productionized ENTSO-E day-ahead loader.** Spec: [`docs/specs/R1.4b-entsoe-loader.md`](specs/R1.4b-entsoe-loader.md) — status **Implemented (gate green)**; spec **Approved/frozen** (open questions resolved: entsoe-py, NL-2024-summer volatile slice, no committed data, `data/cache/` location).
+**R1.5 — Production wrapper + graceful-degradation circuit breaker.** Spec: [`docs/specs/R1.5-serving.md`](specs/R1.5-serving.md) — status **Implemented (gate green)**; spec **Approved/frozen** (3 open questions resolved: `time_limit`+`Schedule.termination`, 2.0 s budget, CI Docker build+smoke). **Completes Release 1.**
 
-R1.1–R1.4a done. R1.4b complete, tests-first: token-free golden parser + 4 unit tests on the fetch/cache/guard paths (fake client via monkeypatch) all green; **live integration test verified locally against real ENTSO-E** (token from `.env` + Keychain CA bundle) and skips cleanly without a token. Full suite **45 passed + 1 skipped (integration)**; ruff/format clean, **lint-imports 4 contracts KEPT** (`data` stays a leaf), docs linter clean. *(One pre-existing R1.2 property flake is failing independently — see Known blockers; deselected from the count above.)*
+FastAPI service (`POST /dispatch`, `GET /health`) over `solve()` with the circuit breaker (`bess.api.service.dispatch`): invalid input → 422 structured pre-flight issues; valid input where the solver misses the latency budget / fails → 200 greedy fallback, logged. Dockerized (uv-based image; CI builds it and smokes `/health`). Verified the real `uvicorn bess.api.app:app` entrypoint locally (`/health` ok, `/dispatch` → objective 40). No formulation delta. Two ADRs **Accepted** ([0010](decisions/0010-greedy-heuristic-in-optimizer.md) relocate `greedy_window` → `bess.optimizer.heuristics`; [0011](decisions/0011-circuit-breaker-semantics.md) breaker semantics).
 
-**Prior — R1.4a** (Implemented, gate green): engine + greedy/rolling/perfect-foresight baselines + gate-D sanity band on a deterministic synthetic series, leakage-safe.
+Full suite **57 passed + 1 skipped (integration)** across multiple random Hypothesis seeds, nothing deselected; ruff/format/lint-imports (4 KEPT)/docs-lint all clean; **live ENTSO-E integration re-verified** under the tighter solver tolerances. Docker image build is CI-only (no local daemon).
+
+**Prior:** R1.1–R1.3 (core, degradation, validation); R1.4a (backtest + baselines + sanity band); R1.4b (ENTSO-E loader, token-gated live integration).
 
 **Data — no committed price data (copyright-clean).** Gate D runs on a **deterministic synthetic** in-memory series (`tests/golden/test_sanity_band.py`) ≈ €28k/MWh-yr, ordering + band hold. *History:* a real Energy-Charts CC BY 4.0 NL-2024 slice was used to validate the engine against real data (ceiling ≈ €27k/MWh-yr, rolling ≈ 99.7% of perfect foresight, greedy ≈ 56%), then **removed at the user's request** to keep the repo free of third-party data. Raw ENTSO-E is *not* committed either (its terms grant no public-redistribution right); ENTSO-E is the **runtime** source (R1.4b, fetched), and real-data band re-validation is an R1.4b token-gated **integration** test.
 
@@ -65,8 +67,22 @@ R1.4 was **split**: R1.4a (done) = engine + baselines + metrics + leakage + band
 
 ## Next (in order)
 
-1. **Address the pre-existing R1.2 degradation property flake** (see Known blockers) — it is an R1.2 gate, independent of R1.4b, and should be resolved before R1.5. Needs a human/formulation call (don't loosen the EPS to silence it).
-2. **R1.5** — live serving (FastAPI + circuit breaker + latency budget), per the R1.4b "out of scope" list. Draft `docs/specs/R1.5-*.md` from the master plan first; human review before implementation.
+1. **Release 1 is complete (R1.5 implemented, gate green).** Next is **Release 2** (forecasting → scenarios → stochastic/recourse → explainability). Start with **R2.1** (probabilistic price forecaster); draft `docs/specs/R2.1-*.md` from the master plan, human review before implementation. New theory ⇒ pick a governing reference (`references.md`) and a `formulation.md` delta.
+
+### R1.5 — implemented (this session)
+- `bess.api`: `models` (Pydantic request/response, reuses `BatterySpec`), `service.dispatch` (the breaker, pure + injectable `solve_fn`/`greedy_fn`), `app` (FastAPI, `POST /dispatch` + `GET /health`, `PreflightError` → 422 handler). Operational settings (`BESS_LATENCY_BUDGET_S` default 2.0, greedy pcts) env-overridable; model params stay in the request body (conventions §5).
+- `bess.optimizer.core.solve` gained `time_limit` + `Schedule.termination`; `greedy_window` moved to `bess.optimizer.heuristics` (ADR-0010), re-exported from `backtest.baselines`.
+- `Dockerfile` (uv, `uvicorn bess.api.app:app`) + `.dockerignore`; CI gained a `docker` job (build + `/health` smoke). Image build is CI-only (no local daemon); the uvicorn entrypoint was verified locally.
+- Tests-first: golden HTTP oracles (optimal=40, empty→422, health) via `TestClient`; service unit tests (optimal / forced fallback / wall-clock overshoot / invalid→PreflightError / never-raises / floor); a Hypothesis property (feasible in both modes + `V_greedy ≤ V*`). Starlette TestClient warning filtered.
+
+### R1.2 degradation "never pays" — second fix (cross-solve optimality gap)
+- After the presolve clamp (golden oracle 5, below), a **new** Hypothesis example surfaced (`prices=[-1,0,-1e-5]`, `soc=0.75` endpoints, `cost_eur=[0,0,0.5]`): `obj_with` (2/7 exactly) exceeded `obj_without` (2/7 − 2.5e-6) — here the *without* solve was the one left slightly suboptimal by HiGHS's default gap. Distinct from the presolve case (tolerance didn't help that one; here it does).
+- **Fix:** `solve()` now sets tight HiGHS tolerances (`mip_rel_gap`/`mip_abs_gap`/`primal`/`dual` = 1e-9, `_HIGHS_TOLERANCES`), so each solve reaches the true optimum and cross-solve comparisons are sound at 1e-6. This **strengthens** accuracy; no test tolerance loosened, EPS untouched. Verified across multiple random seeds + live ENTSO-E.
+
+### R1.2 degradation phantom-objective fix (this session)
+- **Was:** `test_degradation_never_pays` failed on a Hypothesis-found degenerate case (`prices=[0,0]`, top-segment `cost_eur≈1e-6/3`, `dt=0.25`). Optimum is idle ⇒ 0, but HiGHS **presolve** returned `D_t = -6.67e-7` (the top segment's line back-extrapolated below 0 at `τ=0`), inflating the objective to `+1.33e-6` and breaking `obj_with ≤ obj_without + EPS`. Confirmed pre-existing on clean `main` (independent of R1.4b).
+- **Root cause (diagnosed, not guessed):** presolve artifact at sub-tolerance cost coefficients — disabling presolve *or* a meaningful cost floor both make `D_t = 0` exactly; tightening `primal/dual_feasibility_tolerance` to 1e-10 does **not** help (rules out feasibility slop).
+- **Fix (code, not test — EPS untouched):** `solve()` now enforces the formulation's `D_t ≥ 0` invariant (§R1.2 line ~210: convex PWL through the origin) after `load_from`: clamp a sub-tolerance negative `D_t` to 0, but **raise** if `D_t < -1e-5` (a material negative = real invariant break, surfaced not hidden). No formulation change (invariant already stated); regression locked by **golden oracle 5** (`test_golden_degradation.py`).
 
 ### R1.4b — implemented (this session)
 - `entsoe-py` added; `bess.data.entsoe` exposes `fetch_day_ahead` (live BE/NL day-ahead → internal schema + parquet cache under gitignored `data/cache/`) and `parse_day_ahead_xml` (token-free A44 parse, reuses the same normalization). Shared schema check factored out of `fixtures.load_prices` → `fixtures.validate_price_series`, used by both loaders.
@@ -99,7 +115,7 @@ R1.4 was **split**: R1.4a (done) = engine + baselines + metrics + leakage + band
 
 ## Known blockers / open questions
 
-- **R1.2 property flake (pre-existing, independent of R1.4b) — NEEDS A CALL.** `tests/property/test_degradation.py::test_degradation_never_pays` fails on a Hypothesis-found degenerate example (`prices=[0,0]`, top-segment `cost_eur≈3.3e-7`, `dt=0.25`): the with-degradation solve returns a phantom `+1.33e-6` objective vs `0.0` without, tripping `obj_with ≤ obj_without + EPS` (EPS=1e-6). Confirmed failing on clean `main` with R1.4b stashed → not caused by this phase. This is the same sub-tolerance class noted under "Notes" (degradation costs ~1e-7 sit below HiGHS's optimality/feasibility tolerance, so the reported objective carries ~1e-6 noise). **Do not loosen EPS to silence it** — needs a formulation/strategy call: e.g. floor the generated `cost_eur` magnitudes away from the solver tolerance, or relax the degenerate near-zero-cost inputs in the strategy (as was done earlier for the SoC anchor). Surfaced, not suppressed.
+- No blockers — R1.4b gate open/green; full suite 47 passed + 1 skipped (integration) with nothing deselected.
 - ~~Solver entry point~~ — resolved: `appsi_highs`.
 - Confirm `dt` (Δt) stays a per-solve argument (hourly for R1.1 oracles; 15-min native deferred to R1.4 data layer). — spec says yes; carry forward.
 - Default battery: 1 MW / 1 MWh (1-hour) to match the §5 sanity band; revisit if backtest targets a 2-hour asset.

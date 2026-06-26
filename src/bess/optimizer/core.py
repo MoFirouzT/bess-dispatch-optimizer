@@ -17,6 +17,15 @@ from pyomo.opt import TerminationCondition
 from bess.assets.battery import Battery, BatterySpec
 from bess.validation.preflight import check
 
+# Tight HiGHS tolerances so each solve reaches the true optimum to ~1e-9, keeping
+# cross-solve objective comparisons (R1.2 "degradation never pays") sound at 1e-6.
+_HIGHS_TOLERANCES = {
+    "mip_rel_gap": 1e-9,
+    "mip_abs_gap": 1e-9,
+    "primal_feasibility_tolerance": 1e-9,
+    "dual_feasibility_tolerance": 1e-9,
+}
+
 
 @dataclass
 class Schedule:
@@ -25,7 +34,8 @@ class Schedule:
     p_charge: list[float]  # grid-side MW per period
     p_discharge: list[float]  # grid-side MW per period
     soc: list[float]  # MWh, end of each period
-    objective: float  # EUR (solver-reported)
+    objective: float  # EUR (objective expression at the solution)
+    termination: str = "optimal"  # solver termination condition for this schedule
 
 
 def build_model(
@@ -50,6 +60,8 @@ def solve(
     battery: BatterySpec,
     dt: float = 1.0,
     solver: str = "appsi_highs",
+    *,
+    time_limit: float | None = None,
 ) -> Schedule:
     """Solve the deterministic dispatch and return the optimal schedule.
 
@@ -57,12 +69,26 @@ def solve(
     infeasibility surfaces as a structured ``PreflightError`` before the solver is
     touched. The optimality guard below remains for the residual class (e.g.
     ramp-coupled infeasibility) that pre-flight cannot prove.
+
+    ``time_limit`` (seconds) bounds the solver's run; if it expires without a proven
+    optimum the termination is non-optimal and this raises ``RuntimeError`` (the
+    R1.5 circuit breaker catches that and serves the greedy fallback).
     """
     check(prices, battery, dt)
     model = build_model(prices, battery, dt)
     # load_solutions=False so a residual (e.g. ramp-coupled) infeasibility returns
     # a termination condition to guard on, rather than raising on solution load.
     opt = pyo.SolverFactory(solver)
+    # Solve to a tight optimum. HiGHS's defaults (~1e-6/1e-7 gap & feasibility) can
+    # leave each solve a few ×1e-6 short of the true optimum; when two near-identical
+    # solves are compared (e.g. with- vs without-degradation), those independent gaps
+    # need not cancel and can break invariants like "degradation never pays" at the
+    # 1e-6 scale. Tightening makes each solve accurate enough that the comparison is
+    # sound. This *strengthens* accuracy; it does not loosen any test tolerance.
+    for _key, _val in _HIGHS_TOLERANCES.items():
+        opt.options[_key] = _val
+    if time_limit is not None:
+        opt.config.time_limit = time_limit
     results = opt.solve(model, load_solutions=False)
 
     # Fail loud if not optimal — pre-flight (check, above) handles the predictable
@@ -72,10 +98,29 @@ def solve(
         raise RuntimeError(f"solve did not reach optimality: termination_condition={tc}")
     model.solutions.load_from(results)
 
+    # Enforce D_t >= 0 (R1.2): the degradation cost is a convex PWL through the
+    # origin, so it is non-negative at every solution. HiGHS presolve can return a
+    # sub-tolerance *negative* D_t for near-zero cost curves (the top segment's line
+    # back-extrapolated below 0 at tau=0); left unclamped, that slack inflates the
+    # objective above the no-degradation value. Clamp the numerical noise here; a
+    # materially negative D_t means the convex-PWL invariant is genuinely broken, so
+    # surface it rather than hide it.
+    if hasattr(model, "degradation_cost"):
+        for t in model.T:
+            d = pyo.value(model.degradation_cost[t])
+            if d < 0.0:
+                if d < -1e-5:
+                    raise RuntimeError(
+                        f"degradation_cost[{t}]={d!r} is materially negative — "
+                        "convex-PWL non-negativity (formulation §R1.2) violated"
+                    )
+                model.degradation_cost[t].set_value(0.0)
+
     idx = sorted(model.T)
     return Schedule(
         p_charge=[pyo.value(model.p_charge[t]) for t in idx],
         p_discharge=[pyo.value(model.p_discharge[t]) for t in idx],
         soc=[pyo.value(model.soc[t]) for t in idx],
         objective=pyo.value(model.revenue),
+        termination="optimal",  # guard above guarantees optimality at this point
     )

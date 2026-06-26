@@ -1,0 +1,18 @@
+# Keep the serving image lean: only pyproject/uv.lock/README/src are COPYed, but
+# guard against accidental context bloat and secret leakage.
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.hypothesis
+.mypy_cache
+tests
+docs
+planning
+data
+.env
+ca.pem
+*.parquet

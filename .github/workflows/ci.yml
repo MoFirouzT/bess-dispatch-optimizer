@@ -34,3 +34,22 @@ jobs:
 
       - name: Tests (pytest + solver smoke)
         run: uv run pytest
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build serving image
+        run: docker build -t bess-dispatch:ci .
+
+      - name: Smoke /health (graceful-degradation service comes up)
+        run: |
+          docker run -d --name bess -p 8000:8000 bess-dispatch:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health | grep -q '"status":"ok"'; then
+              echo "health ok"; curl -fsS http://localhost:8000/health; exit 0
+            fi
+            sleep 2
+          done
+          echo "health check failed"; docker logs bess; exit 1

@@ -67,3 +67,25 @@ def test_oracle_4_disabled_matches_r11():
     assert_list_close(s.p_charge, [1.0, 0.0, 0.0])
     assert_list_close(s.p_discharge, [0.0, 1.0, 0.0])
     assert_list_close(s.soc, [1.0, 0.0, 0.0])
+
+
+def test_oracle_5_no_phantom_objective_from_sub_tolerance_cost():
+    """Regression: a near-zero degradation curve must not yield a phantom positive.
+
+    Hypothesis-found degenerate case (test_degradation_never_pays): flat prices, a
+    cost curve whose only non-zero increment is ~1e-7. The optimum is idle ⇒ exactly
+    0. HiGHS presolve used to return D_t = -6.67e-7 (the top segment's line at τ=0),
+    inflating the objective to +1.33e-6 > the no-degradation value. solve() now clamps
+    that sub-tolerance D_t < 0 (convex PWL is non-negative through the origin), so the
+    objective is 0 and never exceeds the degradation-disabled solve."""
+    deg = DegradationSpec(
+        throughput_pu=[0.0, 1 / 3, 2 / 3, 1.0], cost_eur=[0.0, 0.0, 0.0, 1e-6 / 3]
+    )
+    spec = BatterySpec(
+        eta_charge=1.0, eta_discharge=1.0, soc_initial=0.0, soc_terminal=0.0, degradation=deg
+    )
+    s = solve([0.0, 0.0], spec, dt=0.25)
+    s_off = solve([0.0, 0.0], spec.model_copy(update={"degradation": None}), dt=0.25)
+
+    assert s.objective == pytest.approx(0.0, abs=TOL)
+    assert s.objective <= s_off.objective + TOL  # degradation never pays

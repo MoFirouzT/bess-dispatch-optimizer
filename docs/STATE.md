@@ -7,9 +7,9 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ## Current phase
 
-**R1.2 — Piecewise-linear degradation cost.** Spec: [`docs/specs/R1.2-degradation.md`](specs/R1.2-degradation.md) — status **Implemented (local gate green)**.
+**R1.3 — Pre-flight validation layer.** Spec: [`docs/specs/R1.3-validation.md`](specs/R1.3-validation.md) — status **Implemented (local gate green)**.
 
-R1.1 is **committed**. R1.2 is code-complete and the gate passes locally: **15 tests pass** (4 R1.2 oracles + 3 R1.2 properties + full R1.1 regression + smoke), ruff/format/lint-imports clean. Not yet committed.
+R1.1 + R1.2 done. R1.3 implemented this session, tests-first, gate green: **29 tests pass** (8 R1.3 golden issue-list oracles + 6 R1.3 properties + full R1.1/R1.2 regression + smoke), ruff/format/lint-imports clean (`validation` now in the import chain, both contracts KEPT). Spec + formulation delta (§R1.3, derived-only) + references entry were human-approved; all three open questions confirmed as proposed.
 
 **Key R1.2 decision (solver-driven):** HiGHS has **no SOS support** (`appsi_highs` raises `NotImplementedError` on SOS constraints). Since R1.2's degradation is *convex*, switched from λ-method+SOS2 to the **epigraph form** (`D_t ≥ a_k·τ_t + b_k` per segment) — exact for convex, pure LP, HiGHS-native, preserves all oracle values. SOS2 reframed as the non-convex tool (documented in formulation/glossary/references; needed only if a non-convex curve is added later, via a SOS-capable solver or binary encoding).
 
@@ -28,7 +28,7 @@ R1.1 is **committed**. R1.2 is code-complete and the gate passes locally: **15 t
   - `BatterySpec` config locked to **Pydantic v2** (dropped "or dataclass" — startup validation has real value, matches conventions §5).
   - "1 MWh / 1 MW" glossed as energy/power rating = 1-hour (1C) asset, in formulation worked example + spec.
   - Oracle 3 `η` made explicit (`η^ch=η^dis=0.95`); oracle 3 check re-presented around the breakeven `1/η^rt ≈ 1.108` spread.
-  - Removed the "discrepancy with master plan" note from the spec; corrected the stale "≈36.97" in the (Tier-0) master plan to **35.125**. Committed docs no longer reference the gitignored plan.
+  - Removed the "discrepancy with master plan" note from the spec; corrected the stale "≈36.97" in the (Tier-0) master plan to **35.125**. Public docs no longer reference the gitignored plan.
   - Added tolerance rationale (why `1e-6`, not zero) to the spec.
 - **Scaffold + env (step 1, this session).**
   - Full `src/bess/` layer tree (13 packages with docstrings) + `tests/{golden,property,unit}/`.
@@ -55,14 +55,18 @@ R1.1 is **committed**. R1.2 is code-complete and the gate passes locally: **15 t
 
 ## Next (in order)
 
-1. **Commit R1.2** (working tree gate-green; user does commits). Suggested subject: `feat: piecewise-linear battery degradation cost in objective` (matches MASTER_PLAN §14 narrative). Files: `src/bess/assets/battery.py`, `src/bess/optimizer/core.py`, `tests/golden/test_golden_degradation.py`, `tests/property/test_degradation.py`, and the docs (`formulation.md`, `specs/R1.2`, `references.md`, `glossary.md`, `CLAUDE.md`, `STATE.md`).
-2. Begin **R1.3 — validation layer** (pre-flight infeasibility + physical sanity, structured errors), spec-first: governing reference → formulation delta (if any) → failing tests → implement. Do not start until R1.2 is committed.
+1. Begin **R1.4 — backtest engine + baselines + sanity band** (walk-forward on real ENTSO-E BE/NL day-ahead prices; greedy floor + perfect-foresight ceiling; leakage assertion; result inside the §5 plausibility band), spec-first per `CLAUDE.md` §3: governing reference → formulation delta (if any) → failing tests → implement. **Guardrail:** do not invent the ENTSO-E schema — fetch + print a real sample first, commit a small fixture slice so the suite runs tokenless.
+
+### R1.3 design (implemented)
+- Pre-flight is **pure** over `(prices, spec, dt)`; **accumulates all issues** (no fail-fast); does **not** re-validate the spec (Pydantic already did). `solve()` auto-runs `check()` as its first line (fail-closed).
+- Catches: empty horizon, non-finite price (w/ index in `field`), non-positive/non-finite `dt`, and **terminal-SoC reachability** `−T·Δ⁻ ≤ Δ ≤ T·Δ⁺` (Δ⁺=η_ch·P̄_ch·dt, Δ⁻=P̄_dis·dt/η_dis), the only solve-time-only check (T from len(prices)).
+- Ramp-free reachability is necessary-and-sufficient; with ramp it stays **necessary** (sound filter) — ramp-coupled infeasibility left to the solver guard. `solve()` now uses `load_solutions=False` so that residual class returns a termination condition instead of raising on solution load.
+- The other §9 nightmares are explicitly *out of scope* for pre-flight (direction → golden/property gates; market rules → R1.4; degradation life → R1.2 monotonicity).
 
 ## R1.2 acceptance — recorded
 - Oracles: **15.0** (bites), **44.0** (cheap→full cycle), **10.0** (η<1, pins storage-side), **40.0** (disabled→R1.1). All exact within 1e-6.
 - Throughput is **storage-side, both directions** `τ_t = η_ch·p_ch·dt + p_dis/η_dis·dt`; `τ_max = min(power limit, SoC window e_max−e_min)`; breakpoints per-unit of `τ_max` (ADR-0009).
 - Deferred: per-period cost in `Schedule` → R2.4; rainflow + calendar aging → hard; EFC + direction-specific wear → unneeded.
-2. On approval: flip spec → Approved, mark the formulation R1.2 section non-draft, write the **failing** R1.2 golden + property tests first, then implement to green. Do not break the R1.1 gate.
 
 ## Known blockers / open questions
 

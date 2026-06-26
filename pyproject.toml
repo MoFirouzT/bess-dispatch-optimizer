@@ -44,9 +44,9 @@ testpaths = ["tests"]
 addopts = "-ra"
 
 # --- layering (CLAUDE.md §5) — enforced via `uv run lint-imports` -------------
-# Authoritative rule: api → explain → stochastic → recourse → optimizer → assets;
+# Authoritative rule: api → explain → stochastic → recourse → optimizer → validation → assets;
 # forecaster / scenarios feed stochastic; optimizer must NOT import api.
-# Modules not listed (validation, backtest, data, viz) are intentionally left
+# Modules not listed (backtest, data, viz) are intentionally left
 # unconstrained until their phases pin down a real dependency.
 [tool.importlinter]
 root_package = "bess"
@@ -61,6 +61,7 @@ layers = [
     "stochastic",
     "recourse",
     "optimizer",
+    "validation",
     "assets",
 ]
 

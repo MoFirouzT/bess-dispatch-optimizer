@@ -167,19 +167,35 @@ The configured curve passes through $(x_0,g_0),\dots,(x_K,g_K)$, starting at the
 
 ### Constraints (new, $\forall t\in\mathcal T$)
 
-Because the cost is **convex**, it equals the upper envelope of its segment lines, so it is encoded by the **epigraph form**: bound $D_t$ below by every segment's affine extension, and let the (cost-minimizing) objective pull it down onto that envelope. No λ-weights, binaries, or special-ordered sets are needed — a convex PWL cost is an LP object.
-
-For each segment $k=1,\dots,K$, the line through $(x_{k-1},g_{k-1})$ and $(x_k,g_k)$ has
+Let $g(\cdot)$ be the convex PWL degradation cost, so the *ideal* term is $g(\tau_t)$ — but $g$ is not affine, so it cannot be written directly in an LP.
+The **epigraph form** replaces it with an auxiliary variable $D_t$ plus one linear lower-bound (cut) per segment, and relies on the objective to collapse $D_t$ back onto $g(\tau_t)$.
+For each segment $k=1,\dots,K$, the line through $(x_{k-1},g_{k-1})$ and $(x_k,g_k)$ is $\ell_k(\tau)=a_k\tau+b_k$ with
 
 $$a_k = \frac{g_k-g_{k-1}}{x_k-x_{k-1}}, \qquad b_k = g_{k-1}-a_k\,x_{k-1}.$$
 
 **(6) Epigraph cuts** (with $\tau_t = \eta^{ch} p^{ch}_t\Delta t + \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$, the throughput defined above):
 
-$$D_t \ge a_k\,\tau_t + b_k \qquad \forall k=1,\dots,K.$$
+$$D_t \ge \ell_k(\tau_t) = a_k\,\tau_t + b_k \qquad \forall k=1,\dots,K.$$
 
-Since the objective subtracts $D_t$, maximizing drives it down to $\max_k(a_k\tau_t+b_k)$, which — because the $a_k$ are non-decreasing (convexity) — is exactly the PWL cost at $\tau_t$. Non-negativity $D_t\ge0$ holds automatically (the first segment passes through the origin: $b_1=0$, $a_1\ge0$) and is kept as the variable's domain.
+**Why this is exact — the $\max(-D)\Rightarrow\min D\Rightarrow\max_k\ell_k\Rightarrow g$ chain.**
+Three steps, each an equality at the optimum:
 
-*Landing exactly on a breakpoint.* If $\tau_t=x_k$, the two adjacent segment cuts are both tight and agree at $g_k$, so $D_t=g_k$ exactly — breakpoints are not special cases.
+1. **Maximizing $-D_t$ minimizes $D_t$.**
+    $D_t$ enters the model *only* through its own cuts (6) and the objective term $-D_t$ — nothing else couples it (the cost is separable across periods, and $D_t$ does not appear in the SoC balance or power limits).
+    So for any fixed dispatch $\tau_t$, the surrounding $\max$ pushes each $D_t$ to the *smallest* value its cuts allow; there is no incentive to leave it above its lower bound.
+2. **The smallest feasible $D_t$ is the pointwise max of the cuts.**
+    Constraints (6) say $D_t \ge \ell_k(\tau_t)$ for *every* $k$ simultaneously, i.e. $D_t \ge \max_k \ell_k(\tau_t)$.
+    Combined with step 1 (drive $D_t$ down), the binding cut is the *largest* one and
+    $$D_t^\star = \max_{k=1,\dots,K}\ \ell_k(\tau_t).$$
+3. **That max equals the PWL cost, because $g$ is convex.**
+    A convex PWL function is the **upper envelope of its own segment lines**: its slopes $a_k$ are non-decreasing in $k$ (the convexity validator enforces exactly this), so on each interval $\tau\in[x_{k-1},x_k]$ the steepest-so-far line $\ell_k$ is the maximal one, and $\max_k\ell_k(\tau)=g(\tau)$ pointwise.
+    Hence $D_t^\star=g(\tau_t)$ — the optimizer reconstructs the exact convex PWL cost with no λ-weights, binaries, or special-ordered sets.
+
+This is *why* convexity is required: if the slopes were not monotone, $\max_k\ell_k$ would lie **above** $g$ between breakpoints (it would over-penalize), and the epigraph trick would no longer reproduce $g$ — that non-convex case is what SOS2 is for (see modeling notes).
+Non-negativity $D_t\ge0$ holds automatically (the first segment passes through the origin: $b_1=0$, $a_1\ge0$, so $\ell_1\ge0$ for $\tau_t\ge0$) and is kept as the variable's domain.
+
+*Landing exactly on a breakpoint.*
+If $\tau_t=x_k$, the two adjacent segment cuts $\ell_k,\ell_{k+1}$ are both tight and agree at $g_k$, so $D_t=g_k$ exactly — breakpoints are not special cases.
 
 ### Modified objective
 
@@ -214,7 +230,52 @@ Both pieces equal $15$ at $q=0.5$, so the maximum is the kink $q^\star=0.5$ → 
 
 ---
 
+## R1.3 — Pre-flight feasibility (derived; no new model)
+
+*Governing reference:*
+none — engineering phase, **no new theory**.
+The conditions below are algebraic corollaries of the R1.1 model
+(Williams, already governing).
+See [references.md § R1.3](references.md#r13--pre-flight-validation).
+
+This section adds **no constraints, variables, or objective terms**.
+It records the closed-form feasibility test the validation layer
+([specs/R1.3-validation.md](specs/R1.3-validation.md)) evaluates *before* the solver.
+If the code and this derivation ever disagree, this governs.
+
+### Per-period SoC increment bounds
+
+From balance (1), each step changes SoC by $\,a_t \equiv e_t - e_{t-1} = \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$.
+Power limits (3) with mutual exclusion (one direction per period) bound it by
+
+$$-\Delta^- \le a_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}.$$
+
+The extremes are attained one direction at a time, so mutual exclusion does not shrink the interval.
+
+### Terminal reachability
+
+With $e_0$ given and the terminal condition (5) $e_T = e^{\mathrm{tgt}}$, write $\Delta \equiv e^{\mathrm{tgt}} - e_0$.
+Summing the increment
+bounds over the $T$ periods, and noting the endpoint box bounds $e_0, e^{\mathrm{tgt}} \in [e_{\min}, e_{\max}]$ hold by construction, a feasible
+trajectory through (1)–(3),(5) exists **iff**
+
+$$-\,T\,\Delta^- \;\le\; \Delta \;\le\; T\,\Delta^+ \qquad\text{(ramp-free).}$$
+
+*Sufficiency:*
+charge (or discharge) at the per-period extreme until $e^{\mathrm{tgt}}$ is hit, then idle — a monotone path that never leaves
+$[e_{\min}, e_{\max}]$ because both endpoints lie inside it.
+*Necessity:* the net change cannot exceed the summed per-period bounds.
+Violating the upper bound is unreachable-by-charging; the lower, unreachable-by-discharging.
+
+### Ramp interaction
+
+Adding ramp (4) only *further* restricts the admissible $a_t$ sequence, so the inequality above remains **necessary** (a violation is still infeasible) but is **no longer sufficient**: a tight $R$ can make a nominally reachable target infeasible.
+Pre-flight therefore tests the ramp-free condition only — a sound fast filter — and leaves ramp-coupled infeasibility to the solver's optimality check.
+
+---
+
 ## Changelog
 
 - **R1.1** — deterministic core.
 - **R1.2** — convex PWL degradation cost appended to the objective (epigraph form; SOS2 is the non-convex tool, not used here / unsupported by HiGHS); R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 when no breakpoints are configured.
+- **R1.3** — pre-flight feasibility *corollaries* of R1.1 (per-period increment bounds → terminal reachability); **no model change**. Ramp-free condition is necessary-and-sufficient; with ramp it stays necessary (sound filter), solver remains final arbiter.

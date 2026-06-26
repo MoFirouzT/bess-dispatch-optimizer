@@ -36,6 +36,14 @@ Each entry lists the source first, then — as sub-bullets — exactly what the 
 
 ---
 
+## R1.3 — Pre-flight validation
+
+- **No new governing reference — engineering phase.** R1.3 introduces no new theory. The pre-flight feasibility test (per-period SoC-increment bounds → terminal reachability) is an **algebraic corollary** of the R1.1 model, so **Williams** (§R1.1, above) remains the governing authority; the derivation lives in [formulation.md § R1.3](formulation.md#r13--pre-flight-feasibility-derived-no-new-model).
+  - Reachability of a box-bounded single-integrator under bounded input is elementary; no controllability / reachable-set text is invoked. Were a ramp-aware (coupled) reachable-set check ever built, a control reference (e.g. an MPC / reachable-sets text — see the R2.3 MPC candidate) would be adopted then and recorded here.
+  - *Structured-error design* (typed `IssueCode` + accumulated `ValidationIssue`s) is a software-engineering choice, not a theory question — no reference needed.
+
+---
+
 ## Planned (not yet adopted)
 
 Chosen when the phase starts, then reconciled and recorded here. Candidates only — **not yet governing**:

@@ -15,6 +15,7 @@ import pyomo.environ as pyo
 from pyomo.opt import TerminationCondition
 
 from bess.assets.battery import Battery, BatterySpec
+from bess.validation.preflight import check
 
 
 @dataclass
@@ -50,14 +51,26 @@ def solve(
     dt: float = 1.0,
     solver: str = "appsi_highs",
 ) -> Schedule:
-    """Solve the deterministic dispatch and return the optimal schedule."""
-    model = build_model(prices, battery, dt)
-    results = pyo.SolverFactory(solver).solve(model)
+    """Solve the deterministic dispatch and return the optimal schedule.
 
-    # Fail loud if not optimal (structured infeasibility handling is R1.3).
+    Runs pre-flight validation first (R1.3): predictable bad input / provable
+    infeasibility surfaces as a structured ``PreflightError`` before the solver is
+    touched. The optimality guard below remains for the residual class (e.g.
+    ramp-coupled infeasibility) that pre-flight cannot prove.
+    """
+    check(prices, battery, dt)
+    model = build_model(prices, battery, dt)
+    # load_solutions=False so a residual (e.g. ramp-coupled) infeasibility returns
+    # a termination condition to guard on, rather than raising on solution load.
+    opt = pyo.SolverFactory(solver)
+    results = opt.solve(model, load_solutions=False)
+
+    # Fail loud if not optimal — pre-flight (check, above) handles the predictable
+    # class; this guards the residual class it cannot prove.
     tc = results.solver.termination_condition
     if tc != TerminationCondition.optimal:
         raise RuntimeError(f"solve did not reach optimality: termination_condition={tc}")
+    model.solutions.load_from(results)
 
     idx = sorted(model.T)
     return Schedule(

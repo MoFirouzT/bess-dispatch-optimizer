@@ -54,7 +54,11 @@ def problem_deg(draw):
         )
     )
     capacity = draw(st.floats(min_value=0.5, max_value=5.0))
-    anchor = draw(st.floats(min_value=0.0, max_value=1.0))  # per-unit; initial == terminal
+    # per-unit; initial == terminal. Exact-empty (0.0) or >= 1e-3: a sub-tolerance
+    # SoC target like 1e-6 sits below the solver's feasibility tolerance, letting it
+    # "satisfy" the terminal via a phantom micro-discharge whose degradation cost
+    # exceeds its revenue -> a spurious tiny-negative objective. Not a real input.
+    anchor = draw(st.one_of(st.just(0.0), st.floats(min_value=1e-3, max_value=1.0)))
     spec = BatterySpec(
         capacity=capacity,
         soc_min=0.0,

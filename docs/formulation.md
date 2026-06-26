@@ -274,8 +274,53 @@ Pre-flight therefore tests the ramp-free condition only — a sound fast filter 
 
 ---
 
+## R1.4 — Backtest semantics (derived; no new model)
+
+*Governing reference:*
+
+- López de Prado, *Advances in Financial Machine Learning*: walk-forward evaluation + look-ahead/leakage discipline (the *only* new methodology this part adds);
+- Sioshansi et al. / Kirschen & Strbac: domain framing.
+See [references.md § R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band).
+
+This section adds **no constraints, variables, or objective terms**.
+It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey — all built from the *existing* R1.1/R1.2 optimizer.
+If code and this section disagree, this governs.
+
+### The information set (gate closure)
+
+The whole day-ahead block for delivery day $d$ is committed at a single gate (≈12:00 CET on $d-1$).
+So at decision time the agent knows **all** of day $d$'s prices, but **none** of day $d+1$'s.
+Write $\Pi_d$ for the price vector of day $d$.
+The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d-1$, and on **nothing from $d'>d$** — this is the leakage boundary (gate C).
+
+### Three revenue quantities
+
+Let $V(\boldsymbol\pi;\,e_0,e^{\mathrm{tgt}})$ be the optimal objective of the R1.1/R1.2 MILP on price vector $\boldsymbol\pi$ with the given SoC endpoints, over a horizon that starts and ends empty unless stated.
+
+- **Perfect-foresight ceiling** $V^\star$ —
+one **full-horizon** solve over the entire concatenated series with $e_0=e_{\text{end}}=0$ and SoC free to carry **across** day boundaries. This is the theoretical maximum; nothing can exceed it.
+- **Rolling deployable value** $V^{\mathrm{roll}}=\sum_d V(\Pi_d;\,0,0)$ — **per-day** solves, each starting and ending empty. In a *deterministic* day-ahead setting the agent has no information about $\Pi_{d+1}$ at the day-$d$ gate, so it has no basis to carry SoC overnight; per-day independence (terminal SoC $=0$) is the honest myopic model. Each day's solve is still **intraday-optimal**.
+- **Greedy floor** $V^{\mathrm{greedy}}$ — a percentile rule (charge below the day's 20th price-percentile, discharge above the 80th), defined fully in the spec. A feasible but suboptimal policy; it ignores the round-trip-efficiency breakeven, so it can even trade at a loss.
+
+### Provable ordering (a correctness gate)
+
+$$0 \le V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star.$$
+
+- $V^{\mathrm{roll}}\le V^\star$: the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem — the ceiling can only do at least as well.
+- $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}$: the greedy schedule is feasible for each day's MILP (it too ends the day empty), and the per-day MILP is optimal over all such schedules.
+- $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed (greedy can lose money); the floor on the *optimal* quantities is idle $\Rightarrow 0$.
+
+The gap $V^\star-V^{\mathrm{roll}}$ is exactly the **cross-day (overnight) arbitrage value** a deterministic agent provably cannot capture — the opportunity the R2 forecaster/recourse layer targets. The headline metric is $V^{\mathrm{roll}}/V^\star$ (% of perfect foresight captured).
+
+### Sanity band (gate D)
+
+The annualized ceiling per MWh-installed must sit inside a band **derived from the fixture's own price statistics** (not hard-coded): $V^\star_{\text{annual}}/E_{\text{usable}} \approx c\cdot\overline{\text{spread}}_{\text{daily}}$, with $c=\eta^{rt}\,E_{\text{usable}}\,(\text{cycles/day})\cdot 365$ recomputed from the spec. A result above the ceiling band is a leakage red flag, not alpha.
+
+---
+
 ## Changelog
 
 - **R1.1** — deterministic core.
 - **R1.2** — convex PWL degradation cost appended to the objective (epigraph form; SOS2 is the non-convex tool, not used here / unsupported by HiGHS); R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 when no breakpoints are configured.
 - **R1.3** — pre-flight feasibility *corollaries* of R1.1 (per-period increment bounds → terminal reachability); **no model change**. Ramp-free condition is necessary-and-sufficient; with ramp it stays necessary (sound filter), solver remains final arbiter.
+- **R1.4** — backtest *semantics* over the existing optimizer (perfect-foresight ceiling, rolling per-day deployable value, greedy floor; provable ordering $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$; leakage information set; sanity band); **no model change**.

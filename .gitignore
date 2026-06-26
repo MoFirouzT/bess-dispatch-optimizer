@@ -147,6 +147,9 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# Local price-data cache (R1.4b) — real ENTSO-E data stays local, never committed
+data/cache/
+
 # Environments
 .env
 .envrc

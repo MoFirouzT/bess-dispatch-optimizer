@@ -44,6 +44,27 @@ Each entry lists the source first, then — as sub-bullets — exactly what the 
 
 ---
 
+## R1.4 — Backtest (walk-forward, baselines, sanity band)
+
+- **M. López de Prado, *Advances in Financial Machine Learning*, Wiley, 2018** — *governing reference* (the new methodology: walk-forward evaluation + look-ahead/leakage discipline).
+  - Walk-forward, never a random split on a time series; train/decide only on information available at decision time → the rolling backtest and the **leakage assertion** (gate C). *(Chapters on backtesting / cross-validation in finance — verify exact ch.)*
+  - **Considered but out of scope:** purged $k$-fold CV and the embargo. These guard against *label* leakage when training a supervised estimator; R1.4 has no trained model (the optimizer is deterministic), so only the bare walk-forward + decision-time-information principle is used. Purging/embargo become relevant in R2.1 when a forecaster is fit. *(Verify.)*
+  - Notation reconciliation: house style governs. The "information set at decision time" maps to the per-day price block $\Pi_d$ committed at gate closure (glossary: *gate closure*); no finance-specific notation is imported.
+- **R. Sioshansi, P. Denholm, T. Jenkin et al., storage-arbitrage-value studies (e.g. *Energy Economics*, 2009)** — *secondary (domain context, pointer only).*
+  - The perfect-foresight-ceiling vs. realistic-value framing for electricity storage → the ceiling/floor interpretation and the §5 plausibility band. *(Verify exact paper/year before relying.)*
+- **D. S. Kirschen & G. Strbac, *Fundamentals of Power System Economics*, 2nd ed., Wiley, 2018** — *secondary (already governing-secondary for R1.1).* Day-ahead market mechanics behind the gate-closure information set.
+- *Alternatives considered:* generic ML cross-validation texts (random k-fold) — **rejected**: a random split leaks the future on time-series data, the exact failure mode gate C guards against.
+
+---
+
+## R1.4b — ENTSO-E data loader
+
+- **No new governing reference — engineering (data acquisition).** No new theory; R1.4's walk-forward/leakage methodology (López de Prado) still governs how the fetched data is used.
+- **ENTSO-E Transparency Platform — RESTful API user guide** (`transparency.entsoe.eu`, *Static content → web API*) — *technical reference (not theory).* The authority for the request/response contract: host `web-api.tp.entsoe.eu/api`, `documentType=A44`, EIC domain codes, the `Publication_MarketDocument`/`TimeSeries`/`Period`/`Point` shape, and the A03 curve carry-forward. **Verified live** against an NL 2024 sample this session (R1.4b spec records the confirmed shape).
+- **`EnergieID/entsoe-py`** — the Python client wrapping the above (EIC mapping, XML parsing, A03 expansion, 15/60-min). Implementation tool, pinned in the spec.
+
+---
+
 ## Planned (not yet adopted)
 
 Chosen when the phase starts, then reconciled and recorded here. Candidates only — **not yet governing**:

@@ -7,9 +7,13 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ## Current phase
 
-**R1.3 — Pre-flight validation layer.** Spec: [`docs/specs/R1.3-validation.md`](specs/R1.3-validation.md) — status **Implemented (local gate green)**.
+**R1.4a — Backtest engine + baselines + sanity band.** Spec: [`docs/specs/R1.4a-backtest.md`](specs/R1.4a-backtest.md) — status **Implemented (gate green)**.
 
-R1.1 + R1.2 done. R1.3 implemented this session, tests-first, gate green: **29 tests pass** (8 R1.3 golden issue-list oracles + 6 R1.3 properties + full R1.1/R1.2 regression + smoke), ruff/format/lint-imports clean (`validation` now in the import chain, both contracts KEPT). Spec + formulation delta (§R1.3, derived-only) + references entry were human-approved; all three open questions confirmed as proposed.
+R1.1–R1.3 done. R1.4a complete, tests-first: **41 tests pass** (3 backtest golden oracles + 4 backtest properties + gate-D structural sanity band + loader/Series-windowing units + full R1.1–R1.3 regression), ruff/format clean, **lint-imports 4 contracts KEPT** (`backtest` offline-tool + `data` leaf added). Engine, all three baselines, fixtures loader, metrics — all done.
+
+**Data — no committed price data (copyright-clean).** Gate D runs on a **deterministic synthetic** in-memory series (`tests/golden/test_sanity_band.py`) ≈ €28k/MWh-yr, ordering + band hold. *History:* a real Energy-Charts CC BY 4.0 NL-2024 slice was used to validate the engine against real data (ceiling ≈ €27k/MWh-yr, rolling ≈ 99.7% of perfect foresight, greedy ≈ 56%), then **removed at the user's request** to keep the repo free of third-party data. Raw ENTSO-E is *not* committed either (its terms grant no public-redistribution right); ENTSO-E is the **runtime** source (R1.4b, fetched), and real-data band re-validation is an R1.4b token-gated **integration** test.
+
+R1.4 was **split**: R1.4a (done) = engine + baselines + metrics + leakage + band; **R1.4b** = productionized `bess.data` ENTSO-E loader + multi-year + integration band re-validation.
 
 **Key R1.2 decision (solver-driven):** HiGHS has **no SOS support** (`appsi_highs` raises `NotImplementedError` on SOS constraints). Since R1.2's degradation is *convex*, switched from λ-method+SOS2 to the **epigraph form** (`D_t ≥ a_k·τ_t + b_k` per segment) — exact for convex, pure LP, HiGHS-native, preserves all oracle values. SOS2 reframed as the non-convex tool (documented in formulation/glossary/references; needed only if a non-convex curve is added later, via a SOS-capable solver or binary encoding).
 
@@ -55,7 +59,20 @@ R1.1 + R1.2 done. R1.3 implemented this session, tests-first, gate green: **29 t
 
 ## Next (in order)
 
-1. Begin **R1.4 — backtest engine + baselines + sanity band** (walk-forward on real ENTSO-E BE/NL day-ahead prices; greedy floor + perfect-foresight ceiling; leakage assertion; result inside the §5 plausibility band), spec-first per `CLAUDE.md` §3: governing reference → formulation delta (if any) → failing tests → implement. **Guardrail:** do not invent the ENTSO-E schema — fetch + print a real sample first, commit a small fixture slice so the suite runs tokenless.
+1. **Human review of the R1.4b spec** ([`docs/specs/R1.4b-entsoe-loader.md`](specs/R1.4b-entsoe-loader.md)). Guardrail probe **done** — real ENTSO-E schema verified live (token from `.env`). Four open questions flagged: (1) entsoe-py dep vs hand-rolled parser; (2) volatile cross-year slice = NL 2024 summer (proposed) vs 2025; (3) commit a raw XML sample; (4) cache location. No formulation delta (engineering); references §R1.4b added (no new governing reference; ENTSO-E API guide as technical ref).
+2. On approval: add `entsoe-py` + `.env.example`, implement `bess.data.entsoe.fetch_day_ahead` (→ internal schema + parquet cache), commit a small real XML sample + a volatile slice, parametrize gate D over calm+volatile, add a skipped live-API integration test. Token-free CI throughout.
+
+### R1.4b environment findings (verified this session — bake into impl)
+- **Host correction:** ENTSO-E API is `https://web-api.tp.entsoe.eu/api` (**`tp`, not `tps`** — the old host is dead). `documentType=A44`, EIC `10YNL----------L` (NL) / `10YBE----------2` (BE), `periodStart/End` UTC `YYYYMMDDHHMM`, 400 req/min.
+- **Schema:** `Publication_MarketDocument` → `TimeSeries` (one per day) → `Period` (resolution `PT60M`/`PT15M`) → `Point` (1-based `position`, `price.amount`), EUR/MWH, UTC. **A03 curve quirk:** missing `position` ⇒ carry the previous price forward (entsoe-py handles).
+- **TLS/CA:** corporate MITM proxy → curl trusts it (Keychain) but uv-Python does **not**. Fix verified: export Keychain roots to `ca.pem`, set `REQUESTS_CA_BUNDLE`/`SSL_CERT_FILE`. Operator setup, not code. CI unaffected (no live API).
+- **Feed sanity:** probed ENTSO-E NL prices matched published EPEX/ENTSO-E values (and the since-removed Energy-Charts slice) exactly ⇒ the parser targets the right series.
+- **Licensing (binding):** commit **no** real price data — raw ENTSO-E grants no public-redistribution right; CC BY 4.0 third-party data was also removed per user preference. Committed test data is synthetic; ENTSO-E is fetched at runtime / in integration tests only.
+
+### R1.4a key modeling decision (implemented)
+- Three quantities over the *existing* optimizer: **ceiling** = full-horizon solve (overnight SoC free); **rolling** = per-day solves, each `e0=e_tgt=0` (deterministic agent has no next-day info at the gate ⇒ honest myopic model, intraday-optimal); **greedy** = 20/80 percentile rule (floor, can trade at a loss).
+- Provable, gate-able ordering `0 ≤ V_greedy ≤ V_roll ≤ V*`; gap `V*−V_roll` = overnight arbitrage the deterministic agent can't capture → motivates R2. Headline metric `V_roll/V*`.
+- No new math (formulation §R1.4 is derived-only). Leakage = decision for day `d` uses only `Π_d` + carried SoC. Sanity band derived from the fixture's own `mean_daily_spread`, not hard-coded.
 
 ### R1.3 design (implemented)
 - Pre-flight is **pure** over `(prices, spec, dt)`; **accumulates all issues** (no fail-fast); does **not** re-validate the spec (Pydantic already did). `solve()` auto-runs `check()` as its first line (fail-closed).
@@ -79,3 +96,4 @@ R1.1 + R1.2 done. R1.3 implemented this session, tests-first, gate green: **29 t
 ## Notes
 
 - Golden oracle 2 objective is **35.125** — the canonical grid-side value. The spec derivation governs.
+- **R1.2 degradation property strategy hardened:** `problem_deg()` SoC anchor is now `{0.0} ∪ [1e-3, 1.0]` (was `[0, 1]`). A sub-tolerance target like `1e-6` sits below HiGHS's feasibility tolerance, so the solver could "satisfy" the terminal via a phantom micro-discharge whose degradation cost exceeded its revenue → spurious tiny-negative objective (tripped the `objective ≥ -EPS` floor). Not a formulation bug — degenerate input; invariant unchanged.

@@ -10,6 +10,8 @@ dependencies = [
     "pyomo>=6.7",
     "highspy>=1.7",        # HiGHS solver; backs Pyomo's appsi_highs interface
     "pydantic>=2.6",
+    "pandas>=3.0.3",
+    "pyarrow>=24.0.0",
 ]
 
 [dependency-groups]
@@ -46,8 +48,10 @@ addopts = "-ra"
 # --- layering (CLAUDE.md §5) — enforced via `uv run lint-imports` -------------
 # Authoritative rule: api → explain → stochastic → recourse → optimizer → validation → assets;
 # forecaster / scenarios feed stochastic; optimizer must NOT import api.
-# Modules not listed (backtest, data, viz) are intentionally left
-# unconstrained until their phases pin down a real dependency.
+# backtest is an offline tool consuming optimizer/validation/assets/data — it must
+# not widen the serving chain (no api/explain/stochastic/recourse). data is a leaf
+# (loaders + fixtures; imports nothing else in bess). Modules not listed (viz) are
+# intentionally left unconstrained until their phases pin down a real dependency.
 [tool.importlinter]
 root_package = "bess"
 
@@ -73,4 +77,34 @@ layers = [
     "stochastic",
     "scenarios",
     "forecaster",
+]
+
+[[tool.importlinter.contracts]]
+name = "backtest is an offline tool (must not import the serving chain)"
+type = "forbidden"
+source_modules = ["bess.backtest"]
+forbidden_modules = [
+    "bess.api",
+    "bess.explain",
+    "bess.stochastic",
+    "bess.recourse",
+    "bess.scenarios",
+    "bess.forecaster",
+]
+
+[[tool.importlinter.contracts]]
+name = "data is a leaf (imports nothing else in bess)"
+type = "forbidden"
+source_modules = ["bess.data"]
+forbidden_modules = [
+    "bess.api",
+    "bess.explain",
+    "bess.stochastic",
+    "bess.recourse",
+    "bess.scenarios",
+    "bess.forecaster",
+    "bess.optimizer",
+    "bess.validation",
+    "bess.assets",
+    "bess.backtest",
 ]

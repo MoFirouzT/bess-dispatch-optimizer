@@ -52,3 +52,42 @@ def test_health_reports_solver():
     data = r.json()
     assert data["status"] == "ok"
     assert data["solver_available"] is True
+
+
+def _schedule_feasible(schedule: dict, spec: dict, dt: float, eps: float = 1e-6) -> bool:
+    """The served schedule satisfies power caps, mutual exclusion, SoC bounds, exact
+    continuity, and ends empty — checked straight off the HTTP response body."""
+    e_min = spec["soc_min"] * spec["capacity"]
+    pc, pdis, soc = schedule["p_charge_mw"], schedule["p_discharge_mw"], schedule["soc_mwh"]
+    prev = e_min
+    for t in range(len(pc)):
+        if not (-eps <= pc[t] <= spec["p_charge_max"] + eps):
+            return False
+        if not (-eps <= pdis[t] <= spec["p_discharge_max"] + eps):
+            return False
+        if pc[t] > eps and pdis[t] > eps:
+            return False
+        if not (e_min - eps <= soc[t] <= spec["capacity"] + eps):
+            return False
+        expected = prev + spec["eta_charge"] * pc[t] * dt - pdis[t] / spec["eta_discharge"] * dt
+        if abs(soc[t] - expected) > eps:
+            return False
+        prev = soc[t]
+    return abs(prev - e_min) <= eps
+
+
+def test_breaker_trips_via_http_returns_feasible_fallback(monkeypatch):
+    """Master-plan R1.5 gate: under stress the breaker trips and the API still returns
+    a constraint-satisfying schedule. Force a tiny latency budget so the wall-clock
+    guard degrades to greedy, exercised end-to-end through the FastAPI app."""
+    from bess.api import app as app_module
+
+    monkeypatch.setattr(app_module.settings, "latency_budget_seconds", 1e-9)
+    body = {"prices_eur_mwh": [10.0, 50.0, 20.0], "dt_hours": 1.0, "battery": SPEC}
+    r = client.post("/dispatch", json=body)
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["mode"] == "fallback_greedy"
+    assert data["solver_termination"] == "fallback"
+    assert _schedule_feasible(data["schedule"], SPEC, 1.0)

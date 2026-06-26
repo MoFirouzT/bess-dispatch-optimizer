@@ -56,3 +56,13 @@ docker build -t bess-dispatch . && docker run -p 8000:8000 bess-dispatch
 The tests and CI use **synthetic** price series only — no real or third-party market data is committed (the ENTSO-E terms grant no public-redistribution right). Real Belgian/Dutch day-ahead prices are fetched at runtime via `bess.data.entsoe.fetch_day_ahead`, which wraps the [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/) and caches to `data/cache/` (gitignored).
 
 To run the live loader (and its token-gated integration test, skipped without a token), copy `.env.example` to `.env` and set `ENTSOE_API_TOKEN`. On a network with a TLS-intercepting proxy, uv's bundled Python also needs the trust roots exported to a CA bundle (`REQUESTS_CA_BUNDLE` / `SSL_CERT_FILE`); the steps are in `.env.example`. This is operator setup, not code, and CI never touches the live API.
+
+## Known limitations and future work
+
+Release 1 is a deterministic, single-asset, day-ahead dispatch engine. Its scope boundaries are deliberate:
+
+- **Prices are taken as known.** The optimizer assumes the day-ahead curve is given; it does not forecast prices or model their uncertainty. Probabilistic forecasting and a two-stage stochastic / recourse layer are Release 2, which is where the cross-day arbitrage gap measured by the backtest (`V* − V_roll`) is meant to be captured.
+- **Day-ahead arbitrage only.** Intraday, imbalance, and ancillary-service markets (FCR / aFRR) are out of scope; the asset trades a single energy market.
+- **No grid-connection / congestion constraint.** Dispatch is not capped at a connection-point limit. Adding a congestion or curtailment cap is the natural next physical constraint and is relevant to Dutch (TenneT) grid conditions; it is named future work, not yet built.
+- **Convex degradation only.** The degradation cost is a convex piecewise-linear curve (R1.2); rainflow cycle-counting and calendar aging are not modelled.
+- **Single asset, single node.** No portfolio of assets and no network model.

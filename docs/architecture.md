@@ -58,7 +58,7 @@ The headline invariant is `optimizer ⊥ api` (the optimizer never depends on th
 The doc set is layered by stability and purpose (the full rule is in [CLAUDE.md](../CLAUDE.md) §2):
 
 - **Tier 1 — public face:** [README](../README.md), this file. Stable, minimal, project-only.
-- **Tier 2 — canonical references:** [formulation.md](formulation.md) (the math), [glossary.md](glossary.md), [references.md](references.md), [decisions/](decisions/) (ADRs — the *why* behind locked choices).
+- **Tier 2 — canonical references:** [formulation.md](formulation.md) (the math), [glossary.md](glossary.md), [references.md](references.md), [decisions/](decisions/) (ADRs: the *why* behind locked choices).
 - **Tier 3 — per-phase work orders:** [specs/](specs/). One per phase: scope, interfaces, and the golden/property test contract.
 - **Tier 0 — `planning/`:** gitignored, never committed. The master plan lives here.
 

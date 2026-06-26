@@ -52,13 +52,13 @@ ENTSO-E Transparency Platform, `entsoe-py` method `query_day_ahead_prices`, area
 
 ---
 
-## 4. FCR — Frequency Containment Reserve — **[REFERENCE ONLY]**
+## 4. FCR (Frequency Containment Reserve) — **[REFERENCE ONLY]**
 
 Symmetric automatic primary reserve; responds to frequency deviation by droop, full activation at ±200 mHz within 30 s, sustained for **15 minutes** (this drives the SoC-headroom requirement). Procured daily via the cross-border platform (regelleistung.net), **4-hour blocks**, marginal (pay-as-cleared) pricing, EUR/MW/h, capacity-only (no energy revenue). Modelling note: a reserved `p_fcr` MW requires `p_fcr × 0.25 MWh` of SoC headroom on both sides. **Symmetry:** up = down per block. *Not built.*
 
 ---
 
-## 5. aFRR — automatic Frequency Restoration Reserve — **[REFERENCE ONLY]**
+## 5. aFRR (automatic Frequency Restoration Reserve) — **[REFERENCE ONLY]**
 
 TSO-dispatched secondary reserve, AGC setpoint at 4-second resolution, full activation within 5 minutes. Procured **up (POS)** and **down (NEG)** separately (asymmetric allowed), D-1 capacity auction in 15-min products, plus **energy** payment for activated MWh cleared marginally via **PICASSO**. Two revenue streams (capacity + activation). Activation prices can be negative (down-activation in oversupply). Modelling would require an activation-fraction model calibrated from TSO data. *Not built.*
 
@@ -66,7 +66,7 @@ TSO-dispatched secondary reserve, AGC setpoint at 4-second resolution, full acti
 
 ## 6. Imbalance settlement — **[REFERENCE ONLY]**
 
-Real-time settlement of deviations per 15-min ISP at the TSO-published imbalance price. A BESS can take a **passive** imbalance position (deliberately over/under-deliver vs. its day-ahead schedule when the imbalance price is favourable) — effectively a form of trading. Imbalance prices are highly volatile and heavy-tailed (scarcity spikes to regulatory ceilings). **BE vs NL differ:** NL uses a single-price-per-ISP system with corrections; BE uses a single imbalance price with an additional incentivising **alpha** component during large system imbalance — verify both against current TenneT/Elia rules. This is the market the recourse layer (R2.3) could eventually settle against; it is *not* the day-ahead arbitrage the core models. *Not built in Release 1–2.*
+Real-time settlement of deviations per 15-min ISP at the TSO-published imbalance price. A BESS can take a **passive** imbalance position (deliberately over/under-deliver vs. its day-ahead schedule when the imbalance price is favourable), effectively a form of trading. Imbalance prices are highly volatile and heavy-tailed (scarcity spikes to regulatory ceilings). **BE vs NL differ:** NL uses a single-price-per-ISP system with corrections; BE uses a single imbalance price with an additional incentivising **alpha** component during large system imbalance; verify both against current TenneT/Elia rules. This is the market the recourse layer (R2.3) could eventually settle against; it is *not* the day-ahead arbitrage the core models. *Not built in Release 1–2.*
 
 ---
 

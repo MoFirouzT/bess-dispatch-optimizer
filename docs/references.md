@@ -1,14 +1,16 @@
 # References — the governing reference per part
 
+*Assumes: you've read the `formulation.md` section each reference governs. This file records the source and scope per part, not the theory itself.*
+
 How this project handles theory (the rule lives in `CLAUDE.md` §1):
 
 - Each part picks **one governing reference** — educational, textbook preferred (lecture notes fine). It is the **notation and scope authority** for the *new* theory that part introduces.
 - **House conventions take precedence for shared quantities.** Grid-side power, per-unit SoC, the symbols `π / e / η / Δt`, and unit-suffixed names are fixed by `docs/conventions.md` and the `docs/formulation.md` preamble. The governing reference rules only the genuinely new concepts a part adds; its notation is **reconciled to house style**, with any mapping noted.
-- The `formulation.md` section is a **brief, self-contained summary** — only what the project implements, plus gate-critical nuance, plus an explicit out-of-scope list — pinned to the reference's chapter/section.
+- The `formulation.md` section is a **brief, self-contained summary**: only what the project implements, plus gate-critical nuance, plus an explicit out-of-scope list, pinned to the reference's chapter/section.
 - **Secondary references** are allowed but strictly subordinate: pointers for context only, never competing notation.
 - **Verify before relying.** Cite edition + chapter/section; do not quote from memory. Editions below are recalled and **must be checked against the source**; chapter pointers are descriptive until verified.
 
-Each entry lists the source first, then — as sub-bullets — exactly what the project draws from it and where. This file grows one entry per part as phases are built (like `glossary.md`).
+Each entry lists the source first, then (as sub-bullets) exactly what the project draws from it and where. This file grows one entry per part as phases are built (like `glossary.md`).
 
 ---
 
@@ -28,7 +30,7 @@ Each entry lists the source first, then — as sub-bullets — exactly what the 
 
 - **H. P. Williams, *Model Building in Mathematical Programming*, 5th ed., Wiley, 2013** — *governing reference* (separable / piecewise-linear programming).
   - Convex PWL cost as the upper envelope of its segment lines → the **epigraph cuts** (6) and the cost `D_t`. *(Section on separable / piecewise-linear programming — verify exact ch.)*
-  - SOS2 (special ordered set of type 2) — the method for **non-convex** PWL; documented but *not used* in R1.2 (it's convex) and unsupported by HiGHS. *(Section on special ordered sets — verify.)*
+  - SOS2 (special ordered set of type 2) — the method for **non-convex** PWL; documented but *not used* in R1.2 (it's convex) and unsupported by HiGHS. *(Section on special ordered sets; verify.)*
   - Notation reconciliation: house style wins. Breakpoints written with **subscript** indices `φ_k, x_k, g_k` (indices, not exponents); throughput `τ_t` and cost `D_t` built from house grid-side power + efficiency.
 - **G. L. Plett, *Battery Management Systems* (Vols. I–II), Artech House, 2015** + companion open lecture notes "Algorithms for Battery Management Systems" (CU Boulder) — *secondary (domain context, pointer only).*
   - Cell aging fundamentals justifying a convex, depth-increasing degradation cost. *(Aging / life-modeling chapters — verify.)*
@@ -60,7 +62,7 @@ Each entry lists the source first, then — as sub-bullets — exactly what the 
 ## R1.4b — ENTSO-E data loader
 
 - **No new governing reference — engineering (data acquisition).** No new theory; R1.4's walk-forward/leakage methodology (López de Prado) still governs how the fetched data is used.
-- **ENTSO-E Transparency Platform — RESTful API user guide** (`transparency.entsoe.eu`, *Static content → web API*) — *technical reference (not theory).* The authority for the request/response contract: host `web-api.tp.entsoe.eu/api`, `documentType=A44`, EIC domain codes, the `Publication_MarketDocument`/`TimeSeries`/`Period`/`Point` shape, and the A03 curve carry-forward. **Verified live** against an NL 2024 sample this session (R1.4b spec records the confirmed shape).
+- **ENTSO-E Transparency Platform RESTful API user guide** (`transparency.entsoe.eu`, *Static content → web API*) — *technical reference (not theory).* The authority for the request/response contract: host `web-api.tp.entsoe.eu/api`, `documentType=A44`, EIC domain codes, the `Publication_MarketDocument`/`TimeSeries`/`Period`/`Point` shape, and the A03 curve carry-forward. **Verified live** against an NL 2024 sample this session (R1.4b spec records the confirmed shape).
 - **`EnergieID/entsoe-py`** — the Python client wrapping the above (EIC mapping, XML parsing, A03 expansion, 15/60-min). Implementation tool, pinned in the spec.
 
 ---

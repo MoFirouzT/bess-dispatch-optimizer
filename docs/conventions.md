@@ -88,10 +88,27 @@ If an efficiency factor ever appears in a revenue/objective expression, the code
 
 ---
 
-## 7. Documentation meta-rules (carried over, they work)
+## 7. Writing charter (documentation quality)
 
-1. Files stay under ~600 lines; split if longer (agents read whole files).
-2. Stable contracts (this file, `formulation.md`) are kept separate from phase/milestone content.
-3. Decisions go in `docs/decisions/` (ADRs — *why*); module/spec docs describe *what*.
-4. Cross-reference instead of repeating: one source of truth per fact.
-5. Anti-patterns are explicit — say what *not* to do, agents follow that well.
+The rules that keep the docs clear and consistent. The four marked **✓ lint** are enforced by `scripts/lint_docs.py` in CI; the rest are review judgment. Math and theory discipline live in [`CLAUDE.md`](../CLAUDE.md) §1; doc-tier governance in §2. This section is about the *writing*. A line that must break a per-line check (quote a banned word, show the dash format) can end with a `<!-- lint-ok -->` comment, used sparingly.
+
+**Structure**
+1. **One source of truth; point, don't restate.** Equations live only in `formulation.md`; specs, README, and ADRs link to a section anchor. Decisions go in `docs/decisions/` (ADRs — *why*); spec/module docs describe *what*.
+2. **Every `formulation.md` section follows the fixed skeleton:** governing-reference line → sets/parameters/variables tables → objective → constraints → *modeling notes* → **a worked numeric example tied to a golden oracle.** The worked example is mandatory — it is how a stuck reader self-debugs by recomputing.
+3. **Justify, don't assert.** Each non-obvious step earns its *why*; theory claims are pinned to the governing reference's verified chapter, never cited from memory.
+4. **Lead with the correctness trap.** State the failure mode before the mechanics (the grid-side-metering rule is the model).
+
+**Audience**
+5. **✓ lint: every doc opens with a purpose line and an `*Assumes:*` reader line.** Say what prior knowledge you expect, so a reader self-selects. (Enforced on the canonical Tier-1/2 docs.)
+6. **No cold jargon.** Define or link any term/symbol at first use — `big-M`, `LP relaxation`, `epigraph`, `aFRR` get a `glossary.md` / `conventions.md` link the first time they appear.
+7. **If it's spatial, draw it.** A flow, an envelope, a set of nested bounds → one small SVG (`docs/figures/`) beats a dense paragraph.
+
+**Prose mechanics**
+8. **✓ lint: never stack em dashes.** At most one per sentence, and (enforced) at most one per Markdown line. Reach for a colon, semicolon, period, or parentheses, and vary the device. The glossary's term-definition format and the references' source-role format each spend that single dash deliberately, so the rest of the line uses other punctuation.
+9. **✓ lint: one load-bearing claim per sentence; files stay under ~600 lines.** Push qualifiers into the *next* sentence rather than nesting three asides. Split a file that outgrows the cap (agents read whole files).
+10. **No filler or tics.** Skip "it's worth noting" / "in essence", don't reach for a rule-of-three list every time, don't hedge. Plain words over flourish.
+
+**Governance & upkeep**
+11. **✓ lint: no career or self-positioning language in committed files.** The specific banned words live in [`CLAUDE.md`](../CLAUDE.md) §2 (one source of truth); strategy stays Tier 0.
+12. **Reader confusion is data.** When someone trips on a passage, capture the fix as a glossary `*Gotcha:*` or an FAQ entry — not a one-off reply.
+13. **Anti-patterns are explicit** — say what *not* to do; agents and readers both follow that well.

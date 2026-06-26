@@ -21,6 +21,8 @@ Strategy stays private; everything committed describes the project, not how to w
 
 **Governing rule:** strategy / positioning / career / interview content lives ONLY in Tier 0. If you are about to write "resume", "hiring", "interview", "anti-candidate", or similar into a committed file, stop and leave it out.
 
+**Writing quality:** all committed docs follow the writing charter in `docs/conventions.md` §7 (structure, audience, prose mechanics, governance). Four rules are enforced by `scripts/lint_docs.py` in CI — no stacked em dashes, an `*Assumes:*` reader line on canonical docs, the ~600-line cap, and no career/interview words. Read §7 before writing or editing docs.
+
 ## 3. Phase workflow (spec-first)
 
 1. Human picks the phase. You draft or refresh `docs/specs/<phase>.md` from `docs/specs/_TEMPLATE.md` + the master plan, plus the `formulation.md` delta.
@@ -44,6 +46,7 @@ Strategy stays private; everything committed describes the project, not how to w
 - lint + format: `ruff check .` · `ruff format .`
 - tests: `uv run pytest` · coverage: `uv run pytest --cov=bess`
 - layers: `uv run lint-imports`
+- docs: `uv run python scripts/lint_docs.py` (writing charter — `conventions.md` §7)
 
 ## 7. Guardrails (known failure modes)
 

@@ -97,9 +97,9 @@ $$e_{T} = e^{\mathrm{tgt}}$$
 ### Modeling notes
 
 - **Mutual-exclusion binary $u_t$.**
-    The *LP relaxation* (the model with the integrality of $u_t$ dropped, which the solver visits inside branch-and-bound) already avoids simultaneous charge/discharge when $\eta^{rt}<1$ and prices are non-negative — losing energy on a pointless round trip is never profitable there — so $u_t$ is usually slack.
+    The *LP relaxation* (the model with the integrality of $u_t$ dropped, which the solver visits inside branch-and-bound) already avoids simultaneous charge/discharge when $\eta^{rt}<1$ and prices are non-negative (losing energy on a pointless round trip is never profitable there), so $u_t$ is usually slack.
     It is nonetheless *required* for correctness under **negative prices**, where buying *and* selling at once to burn energy could otherwise look profitable; the binary forbids that. Keep it.
-    On the *big-M*: constraint (3) is a big-M switch (a constraint whose right-hand side relaxes to a large constant when its binary is off). Here that constant is the power cap itself ($\bar P^{ch}, \bar P^{dis}$) — the tightest valid bound — so no loose big-M is introduced and the relaxation stays tight.
+    On the *big-M*: constraint (3) is a big-M switch (a constraint whose right-hand side relaxes to a large constant when its binary is off). Here that constant is the power cap itself ($\bar P^{ch}, \bar P^{dis}$), the tightest valid bound, so no loose big-M is introduced and the relaxation stays tight.
 - **Ramp.**
     Defined on net power for generality / grid-connection.
     Batteries ramp near-instantly, so $R$ is typically non-binding; disable by setting $R \ge \bar P^{ch} + \bar P^{dis}$.
@@ -180,7 +180,7 @@ The configured curve passes through $(x_0,g_0),\dots,(x_K,g_K)$, starting at the
 
 Let $g(\cdot)$ be the convex PWL degradation cost, so the *ideal* term is $g(\tau_t)$ — but $g$ is not affine, so it cannot be written directly in an LP.
 
-The **epigraph form** sidesteps this. The *epigraph* of a function is the set of points lying *on or above* its graph, $\{(\tau, D) : D \ge g(\tau)\}$. Rather than computing $g(\tau_t)$, introduce an auxiliary variable $D_t$ constrained to sit in that region — one linear lower-bound (cut) per segment — then let the objective, which subtracts $D_t$, press it down onto the graph. The minimum feasible $D_t$ *is* $g(\tau_t)$, so the cost is reconstructed exactly with linear constraints only.
+The **epigraph form** sidesteps this. The *epigraph* of a function is the set of points lying *on or above* its graph, $\{(\tau, D) : D \ge g(\tau)\}$. Rather than computing $g(\tau_t)$, introduce an auxiliary variable $D_t$ constrained to sit in that region by one linear lower-bound (cut) per segment. Then let the objective, which subtracts $D_t$, press it down onto the graph. The minimum feasible $D_t$ *is* $g(\tau_t)$, so the cost is reconstructed exactly with linear constraints only.
 
 For each segment $k=1,\dots,K$, the line through $(x_{k-1},g_{k-1})$ and $(x_k,g_k)$ is $\ell_k(\tau)=a_k\tau+b_k$ with
 
@@ -285,7 +285,7 @@ Violating the upper bound is unreachable-by-charging; the lower, unreachable-by-
 ### Ramp interaction
 
 Adding ramp (4) only *further* restricts the admissible $a_t$ sequence, so the inequality above remains **necessary** (a violation is still infeasible) but is **no longer sufficient**: a tight $R$ can make a nominally reachable target infeasible.
-Pre-flight therefore tests the ramp-free condition only — a sound fast filter — and leaves ramp-coupled infeasibility to the solver's optimality check.
+Pre-flight therefore tests the ramp-free condition only (a sound fast filter) and leaves ramp-coupled infeasibility to the solver's optimality check.
 
 ---
 

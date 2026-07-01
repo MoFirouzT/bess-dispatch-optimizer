@@ -335,9 +335,30 @@ The annualized ceiling per MWh-installed must sit inside a band **derived from t
 
 ---
 
+## R2.1 — Probabilistic price forecast (conformal intervals; no optimizer change)
+
+*Governing reference: Angelopoulos & Bates, *A Gentle Introduction to Conformal Prediction* (see [`references.md`](references.md) § R2.1). This section summarizes only the coverage guarantee the forecaster relies on; it adds **no constraint, variable, or objective term** to the dispatch MILP above.*
+
+R2.1 replaces a point price $\pi_t$ with an **interval** $[\ell_t, u_t]$ carrying a distribution-free coverage guarantee, the uncertainty input the R2.2+ stochastic layer samples. Let a base regressor be fit on a *proper-training* split and a disjoint *calibration* split $\mathcal C$ (of size $n$) held out, with target miscoverage $\alpha$ (so $\text{confidence} = 1-\alpha$).
+
+**Split conformal.** With calibration residuals $R_i = |y_i - \hat\mu(x_i)|$ for $i\in\mathcal C$, let $\hat q$ be the $\lceil(1-\alpha)(n+1)\rceil/n$ empirical quantile of $\{R_i\}$. The interval $\hat\mu(x)\pm\hat q$ then satisfies the **marginal coverage** bound
+
+$$ \mathbb P\big(y \in [\hat\mu(x)-\hat q,\ \hat\mu(x)+\hat q]\big) \ \ge\ 1-\alpha $$
+
+for exchangeable data, in finite samples, *independent of the model's accuracy* — the property the coverage gate checks empirically. Width is **constant** in $x$.
+
+**CQR (the default; [ADR-0014](decisions/0014-cqr-over-split-conformal.md)).** Replace the point model with lower/upper quantile regressors $\hat q_{\alpha/2}, \hat q_{1-\alpha/2}$; conformalize on $\mathcal C$ with the signed score $E_i = \max\{\hat q_{\alpha/2}(x_i)-y_i,\ y_i-\hat q_{1-\alpha/2}(x_i)\}$ and its $(1-\alpha)$ quantile $\hat q$, giving $[\hat q_{\alpha/2}(x)-\hat q,\ \hat q_{1-\alpha/2}(x)+\hat q]$. Same marginal guarantee; width is now **input-adaptive**, which matters because day-ahead prices are heteroscedastic (volatile peaks, calm nights).
+
+**Gate (statistical, not a hand-solved oracle).** Empirical coverage under the R1.4 walk-forward must land in $1-\alpha \pm 0.05$ (nominal $0.9 \Rightarrow [0.85, 0.95]$); intervals obey $\ell_t \le \hat\mu_t \le u_t$; features are strictly pre-gate-closure (no leakage). **Exchangeability** is the load-bearing assumption — a price-distribution shift breaks it, which is exactly what the R2.1b drift monitor and the 7-day rolling recalibration exist to manage.
+
+**Considered but out of scope:** conditional (per-$x$) coverage guarantees (conformal gives only marginal); cross-conformal / jackknife+ (heavier, not needed at this data scale); adaptive conformal for distribution shift (ACI) — noted for R2.1b, not built here.
+
+---
+
 ## Changelog
 
 - **R1.1** — deterministic core.
 - **R1.2** — convex PWL degradation cost appended to the objective (epigraph form; SOS2 is the non-convex tool, not used here / unsupported by HiGHS); R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 when no breakpoints are configured.
 - **R1.3** — pre-flight feasibility *corollaries* of R1.1 (per-period increment bounds → terminal reachability); **no model change**. Ramp-free condition is necessary-and-sufficient; with ramp it stays necessary (sound filter), solver remains final arbiter.
 - **R1.4** — backtest *semantics* over the existing optimizer (perfect-foresight ceiling, rolling per-day deployable value, greedy floor; provable ordering $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$; leakage information set; sanity band); **no model change**.
+- **R2.1** — probabilistic price *forecast* (split/CQR conformal intervals with a distribution-free marginal-coverage guarantee); the uncertainty input to the R2 stochastic layer. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.

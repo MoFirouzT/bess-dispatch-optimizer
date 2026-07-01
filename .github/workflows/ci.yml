@@ -35,6 +35,23 @@ jobs:
       - name: Tests (pytest + solver smoke)
         run: uv run pytest
 
+  forecast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Sync dependencies (with forecast group)
+        run: uv sync --frozen --group forecast
+
+      - name: Forecaster gates (leakage + walk-forward coverage)
+        run: uv run --group forecast pytest tests/property/test_forecaster_features.py tests/unit/test_forecaster_model.py -q
+
   docker:
     runs-on: ubuntu-latest
     steps:

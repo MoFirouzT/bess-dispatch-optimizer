@@ -68,6 +68,10 @@ Entry shape: **term — definition.** *Why here:* relevance to this project. *Go
 
 **Conformal prediction** — wraps any model to produce intervals with distribution-free coverage. *Why here:* the forecaster outputs price *intervals*, not points (via MAPIE). *Gotcha:* coverage holds under exchangeability; recalibrate on a rolling window as the price distribution drifts.
 
+**Split conformal vs. CQR** — two conformal constructions: split conformal adds a constant-width band around a point model; conformalized quantile regression (CQR) conformalizes lower/upper quantile models for *input-adaptive* width. *Why here:* R2.1 defaults to CQR ([ADR-0014](decisions/0014-cqr-over-split-conformal.md)) because day-ahead prices are heteroscedastic. *Gotcha:* both guarantee only *marginal* coverage, never conditional; MAPIE 1.x CQR needs three prefit quantile models, not one.
+
+**Prediction interval** — a range `[lower, upper]` expected to contain the realized value at a nominal rate. *Why here:* the forecaster's output and the input the R2 stochastic layer samples. *Gotcha:* an interval is honest only if *empirical* coverage matches nominal out-of-sample; a 90% interval covering 99% is as miscalibrated as one covering 70%.
+
 **Coverage** — fraction of true values falling inside the predicted interval. *Why here:* the forecaster's acceptance gate. *Gotcha:* nominal 90% must be *empirically* ~90% out-of-sample, or the intervals are miscalibrated.
 
 **Walk-forward (expanding window) validation** — train on the past, test on the strictly-later future, roll forward. *Why here:* the only valid backtest scheme for time series. *Gotcha:* a random train/test split leaks the future; transfers directly from financial-ML discipline.

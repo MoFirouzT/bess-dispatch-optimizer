@@ -56,5 +56,6 @@ The other options and why they were rejected.
 | 0011 | [Circuit-breaker semantics for the dispatch endpoint](0011-circuit-breaker-semantics.md) | Accepted |
 | 0012 | [A separate ingestion circuit breaker from the solver circuit breaker](0012-separate-ingestion-breaker.md) | Accepted |
 | 0013 | [One shared degradation vocabulary across the two circuit breakers](0013-shared-degradation-vocabulary.md) | Accepted |
+| 0014 | [CQR over split conformal as the forecaster default](0014-cqr-over-split-conformal.md) | Accepted |
 
 Write each as its own file when the decision is locked. Keep this index in sync.

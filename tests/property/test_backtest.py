@@ -12,6 +12,15 @@ from bess.assets.battery import BatterySpec
 from bess.backtest.engine import run_backtest
 
 EPS = 1e-6
+# Cross-solve revenue comparisons (V_greedy ≤ V_roll ≤ V*) compare *two independent
+# MILP solves*, each carrying HiGHS's ~1e-6 optimality noise, so the ordering must be
+# checked above that floor. When the two solves reach the same optimum (e.g. a rolling
+# policy that happens to match perfect foresight), V_roll can exceed V* by exactly the
+# solver tolerance; EPS = 1e-6 sits right on that floor and loses to float rounding
+# (`32.025 + 1e-6` rounds below `32.025001`). A real ordering violation is orders of
+# magnitude larger, so 1e-4 preserves the property while absorbing solver noise. The
+# tighter EPS still governs within-schedule invariants (SoC continuity, power caps).
+EPS_ORDER = 1e-4
 
 
 @st.composite
@@ -68,8 +77,8 @@ def test_provable_ordering(case):
     """0 <= V_greedy <= V_roll <= V*  (the core gate of this phase)."""
     prices, spec, dt, w = case
     rep = run_backtest(prices, spec, dt=dt, window=w)
-    assert rep.greedy.revenue_eur <= rep.rolling.revenue_eur + EPS
-    assert rep.rolling.revenue_eur <= rep.perfect_foresight.revenue_eur + EPS
+    assert rep.greedy.revenue_eur <= rep.rolling.revenue_eur + EPS_ORDER
+    assert rep.rolling.revenue_eur <= rep.perfect_foresight.revenue_eur + EPS_ORDER
     # The *optimal* quantities are floored at idle (0); greedy may be negative.
     assert rep.rolling.revenue_eur >= -EPS
 

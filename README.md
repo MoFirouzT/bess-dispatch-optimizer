@@ -19,7 +19,11 @@ Release 1 (deterministic core) is **complete**, gated by golden + property tests
 - **R1.5** — FastAPI dispatch service with a graceful-degradation circuit breaker (greedy fallback on solver timeout), Dockerized
 - **R1.5b** — anomaly-aware ingestion guard: a *second* circuit breaker on the data feed, classifying each fetch outage / anomalous-but-present / healthy before it can reach the solver
 
-Release 2 (forecasting, stochastic optimization, recourse, explainability) is planned — see [docs/architecture.md](docs/architecture.md).
+Release 2 is now under way:
+
+- **R2.1** — probabilistic price forecaster: LightGBM quantile models wrapped in conformal prediction (MAPIE) for calibrated day-ahead price *intervals*, gated by empirical coverage under walk-forward
+
+The remaining Release 2 layers (scenarios, stochastic optimization, recourse, explainability) are planned — see [docs/architecture.md](docs/architecture.md).
 
 ## Example results
 
@@ -70,6 +74,8 @@ uv run pytest                 # tests (golden + property gates)
 ruff check . && ruff format . # lint + format
 uv run lint-imports           # layering contract
 ```
+
+The probabilistic forecaster (R2.1) is an optional dependency group: `uv sync --group forecast`, then `uv run --group forecast pytest tests/unit/test_forecaster_model.py`. On macOS LightGBM needs the OpenMP runtime (`brew install libomp`); Linux CI links `libgomp`, so this is local operator setup only.
 
 ## Serving
 

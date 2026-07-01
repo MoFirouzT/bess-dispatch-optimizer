@@ -29,6 +29,15 @@ dev = [
 # Plotting for the worked example (bess.viz / examples/). Not installed by default
 # or in CI; the figure smoke test skips when matplotlib is absent.
 examples = ["matplotlib>=3.8"]
+# Probabilistic forecaster (bess.forecaster, R2.1). Heavy ML stack kept out of the
+# core install and the R1 CI job; a dedicated CI step installs this group and runs
+# the coverage gate. Forecaster tests skip when the stack is absent.
+forecast = [
+    "lightgbm>=4.3",
+    "mapie>=1.0",
+    "scikit-learn>=1.4",
+    "holidays>=0.50",
+]
 
 [build-system]
 requires = ["hatchling"]

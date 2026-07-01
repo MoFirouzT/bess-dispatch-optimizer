@@ -67,11 +67,26 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.1 — Probabilistic forecaster (conformal intervals)
+
+*Selected at R2.1 draft ([spec](specs/R2.1-forecaster.md)); reconciled/verified before implementation.*
+
+- **A. Angelopoulos & S. Bates, *A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification*** (tutorial) — *governing reference* (the new theory: conformal prediction).
+  - Split/inductive conformal and **distribution-free marginal coverage** under exchangeability → the coverage gate (empirical ≈ nominal under walk-forward). *(Verify the sections on split conformal + CQR.)*
+  - Conformalized quantile regression (CQR) → hour-adaptive interval width over LightGBM quantile models. *(Verify.)*
+  - Notation reconciliation: house style wins. Target/price stays `π_t` (€/MWh, grid-side) on the UTC series; conformal `α` maps to `confidence_level = 1 − α`.
+- **R. Hyndman & G. Athanasopoulos, *Forecasting: Principles and Practice*** (OTexts, free) — *secondary (methodology, pointer only).* Calendar/lag feature construction and honest time-series evaluation. *(Verify chapter.)*
+- **Hastie, Tibshirani & Friedman, *Elements of Statistical Learning*** (free) — *secondary (the base learner, pointer only).* Gradient-boosted trees. *(Verify chapter.)*
+- **M. López de Prado, *Advances in Financial ML*** (R1.4 governing) still governs the *evaluation*: walk-forward, and now **purging/embargo** since a model is fit (the R1.4 entry flagged this becomes live at R2.1).
+- *Alternatives considered:* bare quantile regression (no finite-sample coverage guarantee), kept as the CQR base learner rather than the deliverable; bootstrap/Gaussian residual intervals — distribution-assuming, rejected for distribution-free conformal.
+- **MAPIE** (`scikit-learn-contrib/MAPIE`, 1.x) — implementation tool for the conformal wrappers (`SplitConformalRegressor`, `ConformalizedQuantileRegressor`); pin the major version (API changed at 1.0).
+
+---
+
 ## Planned (not yet adopted)
 
 Chosen when the phase starts, then reconciled and recorded here. Candidates only — **not yet governing**:
 
-- **R2.1 forecasting / conformal:** R. Hyndman & G. Athanasopoulos, *Forecasting: Principles and Practice* (free, OTexts); A. Angelopoulos & S. Bates, *A Gentle Introduction to Conformal Prediction…* (tutorial); Hastie, Tibshirani & Friedman, *Elements of Statistical Learning* (free) for gradient boosting.
 - **R2.2–2.3 stochastic / scenarios / robust:** Birge & Louveaux, *Introduction to Stochastic Programming*; Shapiro, Dentcheva & Ruszczyński, *Lectures on Stochastic Programming* (free); King & Wallace, *Modeling with Stochastic Programming*; Ben-Tal, El Ghaoui & Nemirovski, *Robust Optimization*.
 - **R2.3 recourse / MPC:** Rawlings, Mayne & Diehl, *Model Predictive Control: Theory, Computation, and Design* (free).
 - **R2.4 decomposition (Benders):** Conejo, Castillo, Mínguez & García-Bertrand, *Decomposition Techniques in Mathematical Programming*.

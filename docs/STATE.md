@@ -7,6 +7,8 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ## Current phase
 
+**R2.1b — Rolling forecast-drift monitor.** Spec: [`docs/specs/R2.1b-drift-monitor.md`](specs/R2.1b-drift-monitor.md) — status **Approved/frozen**; **implemented, gate green.** Watches the R2.1 forecaster and classifies degradation as **regime shift** (inputs moved, PSI high, a seasonal-naive baseline degrades too) vs. **model staleness** (forecaster worse than seasonal-naive; retrain), staleness-first ([ADR-0015](decisions/0015-drift-staleness-before-regime.md)). `bess.forecaster.drift` (pure numpy/pandas — `psi`, `seasonal_naive_forecast`, `classify_drift`, `DriftMonitor`; runs without the forecast group). Gate: `tests/property/test_forecaster_drift.py` (PSI sanity, precedence, and the headline **regime-vs-staleness discrimination** on injected synthetic episodes). Honestly framed as a **behavioral** gate, not an un-fakeable oracle (the synthetic patterns are designed). No formulation delta (engineering/monitoring phase); no new dep or CI step (pure, runs in the main job). Glossary PSI/regime-vs-staleness un-stubbed; references R2.1b note added.
+
 **R2.1 — Probabilistic price forecaster (conformal intervals).** Spec: [`docs/specs/R2.1-forecaster.md`](specs/R2.1-forecaster.md) — status **Approved/frozen**; **environment + API de-risked, implementation not yet started.** First Release-2 module: LightGBM quantile learners wrapped in conformal prediction (MAPIE 1.x) → calibrated day-ahead price *intervals*, gated by empirical coverage ≈ nominal under walk-forward. Governing reference in [`references.md`](references.md): Angelopoulos & Bates (conformal); Hyndman & ESL secondary; López de Prado still governs evaluation (walk-forward + purging/embargo). Five open questions **resolved at review** (my recommendations, approved): CQR default ([ADR-0014](decisions/0014-cqr-over-split-conformal.md)), weather deferred, conformal summary → a brief `formulation.md` §R2.1, deps behind a `forecast` group, coverage tolerance `0.9 ± 0.05`.
 
 **De-risked this session (the spec-first verification):**
@@ -21,7 +23,7 @@ Holds: current phase · what's done · what's next · known blockers.
 - CI: new `forecast` job (`uv sync --frozen --group forecast` → runs the forecaster gates); the main job skips the model tests (group absent). import-linter still 4 KEPT (`forecaster` imports only `bess.data` + external libs).
 - Docs: README Status + Development (libomp operator setup); glossary split-vs-CQR + prediction-interval entries.
 
-**Release 1 complete (R1.1–R1.5b); R2.1 complete.** Next: R2.2 (scenario generation + reduction) — samples from R2.1's intervals; unspecced. R2.1b (drift monitor) also still open.
+**Release 1 complete (R1.1–R1.5b); R2.1 + R2.1b complete.** Next: R2.2 (scenario generation + reduction) — samples from R2.1's intervals; unspecced.
 
 ---
 

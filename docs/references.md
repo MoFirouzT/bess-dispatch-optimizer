@@ -83,6 +83,13 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.1b — Forecast-drift monitor
+
+- **No new governing reference — engineering / monitoring phase.** R2.1b introduces no new modelling theory; the R2.1 conformal reference (Angelopoulos & Bates) still governs the forecaster and López de Prado governs the walk-forward evaluation.
+- **Population Stability Index (PSI)** — a standard population-stability metric from applied credit-scoring / model-monitoring practice (binned distribution divergence; the ≥0.2 "significant shift" convention). Cited as a standard statistic, not a governing textbook. The regime-shift-vs-staleness *framing* (staleness = worse-than-a-seasonal-naive baseline) is the project's design, recorded in [ADR-0015](decisions/0015-drift-staleness-before-regime.md).
+
+---
+
 ## Planned (not yet adopted)
 
 Chosen when the phase starts, then reconciled and recorded here. Candidates only — **not yet governing**:

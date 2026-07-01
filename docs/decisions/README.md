@@ -57,5 +57,6 @@ The other options and why they were rejected.
 | 0012 | [A separate ingestion circuit breaker from the solver circuit breaker](0012-separate-ingestion-breaker.md) | Accepted |
 | 0013 | [One shared degradation vocabulary across the two circuit breakers](0013-shared-degradation-vocabulary.md) | Accepted |
 | 0014 | [CQR over split conformal as the forecaster default](0014-cqr-over-split-conformal.md) | Accepted |
+| 0015 | [Drift classification checks staleness before regime shift](0015-drift-staleness-before-regime.md) | Accepted |
 
 Write each as its own file when the decision is locked. Keep this index in sync.

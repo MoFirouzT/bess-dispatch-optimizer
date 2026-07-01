@@ -22,6 +22,7 @@ Release 1 (deterministic core) is **complete**, gated by golden + property tests
 Release 2 is now under way:
 
 - **R2.1** — probabilistic price forecaster: LightGBM quantile models wrapped in conformal prediction (MAPIE) for calibrated day-ahead price *intervals*, gated by empirical coverage under walk-forward
+- **R2.1b** — rolling drift monitor: separates a *regime shift* (market changed; a naive baseline degrades too) from *model staleness* (the model decayed relative to a seasonal-naive), so the flag is actionable
 
 The remaining Release 2 layers (scenarios, stochastic optimization, recourse, explainability) are planned — see [docs/architecture.md](docs/architecture.md).
 

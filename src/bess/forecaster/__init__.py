@@ -9,14 +9,28 @@ imported lazily so importing this package never hard-fails without the group.
 
 from __future__ import annotations
 
+from bess.forecaster.drift import (
+    DriftMonitor,
+    DriftReport,
+    DriftStatus,
+    classify_drift,
+    psi,
+    seasonal_naive_forecast,
+)
 from bess.forecaster.features import DEFAULT_LAGS, align_target, make_features
 
 __all__ = [
     "DEFAULT_LAGS",
+    "DriftMonitor",
+    "DriftReport",
+    "DriftStatus",
     "IntervalForecast",
     "PriceForecaster",
     "align_target",
+    "classify_drift",
     "make_features",
+    "psi",
+    "seasonal_naive_forecast",
     "walk_forward_coverage",
 ]
 

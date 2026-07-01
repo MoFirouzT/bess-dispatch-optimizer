@@ -52,5 +52,9 @@ The other options and why they were rejected.
 | 0007 | Stochastic value requires a risk-aware objective and/or genuine recourse (avoid the VSS=0 trap) | Proposed |
 | 0008 | `uv` + `ruff` toolchain; import-linter enforces the dependency layering | Proposed |
 | 0009 | [SoC expressed per-unit in config, absolute MWh in the model](0009-soc-per-unit-in-config.md) | Accepted |
+| 0010 | [Relocate the greedy heuristic to `bess.optimizer` so serving can reuse it](0010-greedy-heuristic-in-optimizer.md) | Accepted |
+| 0011 | [Circuit-breaker semantics for the dispatch endpoint](0011-circuit-breaker-semantics.md) | Accepted |
+| 0012 | [A separate ingestion circuit breaker from the solver circuit breaker](0012-separate-ingestion-breaker.md) | Accepted |
+| 0013 | [One shared degradation vocabulary across the two circuit breakers](0013-shared-degradation-vocabulary.md) | Accepted |
 
 Write each as its own file when the decision is locked. Keep this index in sync.

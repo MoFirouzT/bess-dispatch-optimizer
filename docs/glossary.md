@@ -75,3 +75,21 @@ Entry shape: **term — definition.** *Why here:* relevance to this project. *Go
 **Look-ahead / leakage** — using information not available at decision time. *Why here:* the backtest's leakage assertion guards it. *Gotcha:* if the backtest beats perfect foresight, it's leakage, not alpha; hence the sanity band.
 
 **Perfect-foresight baseline** — the optimum given the realized prices. *Why here:* the ceiling; results are reported as "% of perfect foresight captured." *Gotcha:* it's an upper bound by construction: nothing can exceed it.
+
+---
+
+## Data reliability & MLOps
+
+**Ingestion circuit breaker** — a breaker wrapping the data *fetch* (as opposed to the solver breaker wrapping the *solve*), classifying each fetch and falling back to last-known-good on failure. *Why here:* R1.5b (`bess.data.ingestion_guard`); a wrong dispatch from silently-bad input data is as real a failure as a wrong formulation. *Gotcha:* it must stay a *separate* breaker from the solver one; a shared breaker firing on data corruption looks identical in the logs to a slow solver (ADR-0012).
+
+**Outage vs. anomalous-but-present** — the two data-failure classes: an outage is *no present data* (timeout, 5xx); an anomaly is *present but untrustworthy data* (stuck feed, gap, duplicate, out-of-band). *Why here:* the guard's core taxonomy. *Gotcha:* the anomaly is the *more* dangerous case, since a stale-but-present price flows silently into a live dispatch whereas an outage is obvious.
+
+**Stuck / frozen feed** — a feed repeating a bit-identical value long past when a real market would have moved. *Why here:* the guard's headline anomaly check. *Gotcha:* key on the *repetition*, not the value; zero and negative prices are legitimate in BE/NL, so flagging "€0.00" would misread a real solar-glut day as corruption.
+
+**EPEX SDAC price limits** — the harmonised clearing-price bounds of the single day-ahead coupling: min −600 €/MWh (from 2026-05-28), max 4000 €/MWh, escalatable in +1000 steps. *Why here:* the guard's out-of-band check is grounded in these, not a guessed range. *Gotcha:* it's a *market technical bound*, not the year-specific revenue sanity band; a value outside it cannot be a real clearing price.
+
+**Provenance composition** — combining the ingestion status and the solver mode into one overall trust label. *Why here:* R1.5b / ADR-0013; a solve that is optimal on stale fallback data is reported *degraded*, not healthy. *Gotcha:* if a consumer reads `mode="optimal"` alone it re-opens the silent-stale-dispatch hole; the composition exists to prevent that.
+
+**Population Stability Index (PSI)** — a divergence measure between a reference and a current distribution, used to flag drift. ◻️ *Why here:* the planned R2.1b forecast-drift monitor (not yet built). *Gotcha:* PSI tells you *that* a distribution moved, not *why*; the skill is separating a genuine regime shift from model staleness.
+
+**Regime shift vs. model staleness** — two causes of rising forecast error: the market genuinely changed (all series move together) vs. this model decayed (its error creeps up while a naive baseline's does not). ◻️ *Why here:* R2.1b is built to classify them, not emit an undifferentiated "drift detected." *Gotcha:* conflating them is the realistic failure; retraining fixes staleness but not a regime shift.

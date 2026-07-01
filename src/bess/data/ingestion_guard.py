@@ -225,3 +225,23 @@ def guarded_fetch(
     if status is FeedStatus.HEALTHY:
         return GuardResult(status=status, prices=series, reason=None, degraded=False)
     return _degraded(status, reason, last_known_good)
+
+
+def compose_provenance(feed_status: FeedStatus, solve_mode: str) -> str:
+    """Combine ingestion status and solver mode into one overall provenance label.
+
+    The shared degradation vocabulary of ADR-0013: a schedule solved on non-healthy
+    (e.g. stale fallback) data is degraded *regardless* of the solver mode, so a
+    consumer cannot read ``mode="optimal"`` and conclude the result is trustworthy.
+    Returns ``"healthy"`` only when the feed is healthy *and* the solver returned an
+    optimum. ``solve_mode`` is an opaque string (e.g. R1.5's ``"optimal"`` /
+    ``"fallback_greedy"``), so this stays in the ``data`` leaf with no upward import.
+    """
+    parts: list[str] = []
+    if feed_status is not FeedStatus.HEALTHY:
+        parts.append(f"data:{feed_status.value}")
+    if solve_mode != "optimal":
+        parts.append(f"solve:{solve_mode}")
+    if not parts:
+        return "healthy"
+    return "degraded (" + ", ".join(parts) + ")"

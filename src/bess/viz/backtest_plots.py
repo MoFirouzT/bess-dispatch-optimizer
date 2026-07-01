@@ -1,11 +1,13 @@
 """Reproducible plots for the worked example exported to ``docs/figures/``.
 
-Two figures, both built from objects the backtest already returns (no new math):
+Three figures, built from objects the pipeline already returns (no new math):
 
 - :func:`plot_dispatch_day` — one representative day: price, net grid power
   (discharge up / charge down), and the SoC trajectory it produces;
 - :func:`plot_baselines` — the three revenue quantities (greedy floor, rolling
-  deployable, perfect-foresight ceiling) with the headline % of perfect foresight.
+  deployable, perfect-foresight ceiling) with the headline % of perfect foresight;
+- :func:`plot_ingestion_guard` — the reliability hero (R1.5b): a corrupt feed the
+  guard rejected, beside the trustworthy last-known-good it dispatched on instead.
 
 ``matplotlib`` is an optional dependency (the ``examples`` group); importing this
 module without it raises a clear ``ImportError``. ``viz`` sits outside the serving
@@ -106,4 +108,72 @@ def plot_baselines(report: BacktestReport, *, title: str = "Backtest baselines")
         fontsize=9,
         color="#555",
     )
+    return fig
+
+
+def plot_ingestion_guard(
+    corrupted_prices: list[float],
+    fallback_prices: list[float],
+    corrupted_schedule: Schedule,
+    fallback_schedule: Schedule,
+    dt: float = 1.0,
+    *,
+    reason: str,
+    provenance: str,
+    fault_slice: tuple[int, int] | None = None,
+    title: str = "Ingestion guard — corrupt feed caught before dispatch",
+) -> Figure:
+    """Reliability hero (R1.5b): the corrupt feed the guard rejected, above the
+    trustworthy last-known-good it dispatched on instead.
+
+    Two stacked panels share the hour axis. Each shows net grid power (bars,
+    discharge up / charge down) over the price curve (line). The top panel is the
+    *rejected* feed (grey price, fault region shaded) — dispatching on it would run
+    on corrupt prices; the bottom is the guard's fallback (amber price). The overall
+    provenance caption makes the ADR-0013 composition explicit: a solve on stale
+    data is degraded, not healthy.
+    """
+    hours = list(range(len(corrupted_prices)))
+
+    fig, (ax_top, ax_bot) = plt.subplots(2, 1, figsize=(10, 7.5), sharex=True)
+
+    def _panel(ax, prices: list[float], schedule: Schedule, price_color: str, subtitle: str):
+        net = [d - c for c, d in zip(schedule.p_charge, schedule.p_discharge, strict=True)]
+        bar_colors = ["#2a9d8f" if v >= 0 else "#e76f51" for v in net]  # discharge / charge
+        ax.bar(hours, net, width=0.8, color=bar_colors, alpha=0.85)
+        ax.axhline(0, color="#888", linewidth=0.8)
+        ax.set_ylabel("net power\ndischarge ↑ / charge ↓ (MW)")
+        ax.set_title(subtitle, loc="left", fontsize=10)
+        ax_price = ax.twinx()
+        ax_price.plot(hours, prices, color=price_color, linewidth=2.0)
+        ax_price.set_ylabel("price (€/MWh)", color=price_color)
+        return ax_price
+
+    _panel(
+        ax_top, corrupted_prices, corrupted_schedule, "#999999",
+        f"① Feed delivered — REJECTED ({reason}): dispatch here would run on corrupt prices",
+    )  # fmt: skip
+    if fault_slice is not None:
+        a, b = fault_slice
+        ax_top.axvspan(a - 0.5, b - 0.5, color="#e76f51", alpha=0.15)
+        ymax = ax_top.get_ylim()[1]
+        ax_top.text(
+            (a + b) / 2 - 0.5, ymax * 0.82, "corrupt",
+            ha="center", color="#b00020", fontsize=8,
+        )  # fmt: skip
+
+    _panel(
+        ax_bot, fallback_prices, fallback_schedule, "#e9c46a",
+        "② Guard fell back to last-known-good: dispatch runs on trustworthy prices",
+    )  # fmt: skip
+    ax_bot.set_xlabel("hour of day (UTC)")
+    ax_bot.set_xticks(hours[::2])
+
+    fig.suptitle(title, fontsize=13, y=0.98)
+    fig.tight_layout(rect=(0, 0.05, 1, 0.96))
+    fig.text(
+        0.5, 0.015, f"overall provenance: {provenance}",
+        ha="center", fontsize=10,
+        color="#2a9d8f" if provenance == "healthy" else "#b00020",
+    )  # fmt: skip
     return fig

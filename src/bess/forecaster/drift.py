@@ -31,12 +31,16 @@ _logger = logging.getLogger(__name__)
 DEFAULT_SEASON = 168  # hours; weekly seasonal-naive captures weekday/weekend structure
 DEFAULT_PSI_WARN = 0.2  # conventional "significant distribution shift" threshold
 DEFAULT_STALENESS_RATIO = 1.3  # forecaster ≥30% worse than naive ⇒ model-specific decay
+DEFAULT_CONFIDENCE_LEVEL = 0.9  # nominal interval coverage inherited from the forecaster
+DEFAULT_COVERAGE_TOL = 0.10  # breach when empirical ≤ nominal − tol (wider than R2.1's ±0.05)
+DEFAULT_MIN_COVERAGE_SAMPLES = 100  # below this, coverage stays informational (small-window noise)
 
 
 class DriftStatus(StrEnum):
     HEALTHY = "healthy"
     REGIME_SHIFT = "regime_shift"
     STALENESS = "staleness"
+    MISCALIBRATION = "miscalibration"  # intervals under-cover: recalibrate, don't retrain
 
 
 @dataclass(frozen=True, eq=False)
@@ -87,12 +91,30 @@ def classify_drift(
     coverage: float | None = None,
     staleness_ratio: float = DEFAULT_STALENESS_RATIO,
     psi_warn: float = DEFAULT_PSI_WARN,
+    confidence_level: float = DEFAULT_CONFIDENCE_LEVEL,
+    coverage_tol: float = DEFAULT_COVERAGE_TOL,
+    n_coverage: int | None = None,
+    min_coverage_samples: int = DEFAULT_MIN_COVERAGE_SAMPLES,
 ) -> DriftReport:
-    """Classify a window from its metrics, staleness-first (ADR-0015)."""
+    """Classify a window from its metrics (ADR-0015 + ADR-0016).
+
+    Precedence: STALENESS (worse than naive) > REGIME_SHIFT (inputs moved) >
+    MISCALIBRATION (intervals under-cover) > HEALTHY. Staleness first so model-specific
+    decay wins; regime before miscalibration so a genuine input shift keeps its
+    attribution even though it also breaks coverage. Miscalibration is one-sided
+    (only *under*-coverage) and guarded by ``min_coverage_samples`` to avoid crying
+    wolf on small, noisy windows.
+    """
     if naive_mae > 0.0:
         ratio = forecaster_mae / naive_mae
     else:
         ratio = float("inf") if forecaster_mae > 0.0 else 1.0
+
+    coverage_breach = (
+        coverage is not None
+        and (n_coverage is None or n_coverage >= min_coverage_samples)
+        and coverage <= confidence_level - coverage_tol
+    )
 
     if ratio >= staleness_ratio:
         status = DriftStatus.STALENESS
@@ -100,6 +122,12 @@ def classify_drift(
     elif psi_value >= psi_warn:
         status = DriftStatus.REGIME_SHIFT
         reason = f"psi={psi_value:.2f}≥{psi_warn} (inputs shifted; model still ~naive)"
+    elif coverage_breach:
+        status = DriftStatus.MISCALIBRATION
+        reason = (
+            f"coverage={coverage:.2f}≤{confidence_level - coverage_tol:.2f} "
+            f"(intervals under-cover; inputs stable → recalibrate)"
+        )
     else:
         status = DriftStatus.HEALTHY
         reason = None
@@ -125,12 +153,18 @@ class DriftMonitor:
         psi_warn: float = DEFAULT_PSI_WARN,
         staleness_ratio: float = DEFAULT_STALENESS_RATIO,
         psi_bins: int = 10,
+        confidence_level: float = DEFAULT_CONFIDENCE_LEVEL,
+        coverage_tol: float = DEFAULT_COVERAGE_TOL,
+        min_coverage_samples: int = DEFAULT_MIN_COVERAGE_SAMPLES,
     ) -> None:
         self._reference = np.asarray(reference_prices, dtype=float)
         self._season = season
         self._psi_warn = psi_warn
         self._staleness_ratio = staleness_ratio
         self._psi_bins = psi_bins
+        self._confidence_level = confidence_level
+        self._coverage_tol = coverage_tol
+        self._min_coverage_samples = min_coverage_samples
 
     def naive_from_history(self, prices: pd.Series) -> pd.Series:
         """Seasonal-naive forecast at this monitor's season (a convenience for callers)."""
@@ -159,10 +193,12 @@ class DriftMonitor:
         psi_value = psi(self._reference, r, bins=self._psi_bins)
 
         coverage: float | None = None
+        n_coverage: int | None = None
         if lower is not None and upper is not None:
             lo = np.asarray(lower, dtype=float)[mask]
             hi = np.asarray(upper, dtype=float)[mask]
             coverage = float(np.mean((r >= lo) & (r <= hi)))
+            n_coverage = int(r.size)
 
         report = classify_drift(
             forecaster_mae=forecaster_mae,
@@ -171,9 +207,16 @@ class DriftMonitor:
             coverage=coverage,
             staleness_ratio=self._staleness_ratio,
             psi_warn=self._psi_warn,
+            confidence_level=self._confidence_level,
+            coverage_tol=self._coverage_tol,
+            n_coverage=n_coverage,
+            min_coverage_samples=self._min_coverage_samples,
         )
         if report.status is not DriftStatus.HEALTHY:
             _logger.warning(
-                "forecast drift: status=%s reason=%s", report.status.value, report.reason
+                "forecast drift: status=%s reason=%s coverage=%s",
+                report.status.value,
+                report.reason,
+                f"{report.coverage:.2f}" if report.coverage is not None else "n/a",
             )
         return report

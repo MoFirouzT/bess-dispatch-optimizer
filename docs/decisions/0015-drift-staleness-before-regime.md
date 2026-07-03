@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-07-01
-**Supersedes / Superseded by:** —
+**Supersedes / Superseded by:** amended by [ADR-0016](0016-drift-coverage-as-distinct-state.md) (precedence extended with a coverage-miscalibration state after regime)
 
 ## Context
 

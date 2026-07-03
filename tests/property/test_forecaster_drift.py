@@ -78,3 +78,78 @@ def test_monitor_reports_coverage_and_healthy_case():
 
     assert report.status is DriftStatus.HEALTHY
     assert report.coverage is not None and report.coverage > 0.9
+
+
+def test_monitor_flags_miscalibration_when_intervals_undercover():
+    # Headline for the coverage amendment: point model tracks (error_ratio ≈ 1) and
+    # inputs are stable (PSI low), but the intervals are far too tight so realized
+    # prices fall outside the band far more than (1 − confidence_level). That is
+    # neither staleness nor regime — it is a conformal-layer decay → MISCALIBRATION.
+    rng = np.random.default_rng(11)
+    reference = rng.normal(50.0, 10.0, 2000)
+    monitor = DriftMonitor(reference_prices=reference)
+
+    realized = rng.normal(50.0, 10.0, 400)  # same distribution ⇒ PSI low
+    point = realized + rng.normal(0.0, 8.0, 400)  # comparable to naive below
+    naive = realized + rng.normal(0.0, 8.0, 400)  # error_ratio ≈ 1 (not stale)
+
+    tight = monitor.assess(realized, point, naive, lower=point - 3.0, upper=point + 3.0)
+    assert tight.status is DriftStatus.MISCALIBRATION
+    assert tight.coverage is not None and tight.coverage < 0.8
+
+    # Mirror: identical point accuracy and inputs, correctly wide bands ⇒ HEALTHY.
+    wide = monitor.assess(realized, point, naive, lower=point - 25.0, upper=point + 25.0)
+    assert wide.status is DriftStatus.HEALTHY
+    assert tight.status is not wide.status
+
+
+def test_classify_coverage_breach_precedence_and_guards():
+    # A coverage breach with a tracking model and stable inputs ⇒ MISCALIBRATION.
+    miscal = classify_drift(
+        forecaster_mae=10.0,
+        naive_mae=10.0,
+        psi_value=0.05,
+        coverage=0.6,
+        n_coverage=200,
+    )
+    assert miscal.status is DriftStatus.MISCALIBRATION
+
+    # Small window ⇒ coverage stays informational, no flag.
+    small = classify_drift(
+        forecaster_mae=10.0,
+        naive_mae=10.0,
+        psi_value=0.05,
+        coverage=0.6,
+        n_coverage=50,
+    )
+    assert small.status is DriftStatus.HEALTHY
+    assert small.coverage == 0.6  # still reported
+
+    # Over-coverage (intervals too wide) never alarms.
+    wide = classify_drift(
+        forecaster_mae=10.0,
+        naive_mae=10.0,
+        psi_value=0.05,
+        coverage=0.99,
+        n_coverage=200,
+    )
+    assert wide.status is DriftStatus.HEALTHY
+
+    # Precedence: staleness > regime > miscalibration when signals co-fire.
+    stale = classify_drift(
+        forecaster_mae=20.0,
+        naive_mae=10.0,
+        psi_value=0.5,
+        coverage=0.4,
+        n_coverage=200,
+    )
+    assert stale.status is DriftStatus.STALENESS
+
+    regime = classify_drift(
+        forecaster_mae=10.0,
+        naive_mae=10.0,
+        psi_value=0.5,
+        coverage=0.4,
+        n_coverage=200,
+    )
+    assert regime.status is DriftStatus.REGIME_SHIFT

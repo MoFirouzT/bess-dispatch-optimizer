@@ -1,6 +1,6 @@
 # Glossary / knowledge bank
 
-*Assumes: familiarity with linear/integer programming. Battery and market terms are defined here from scratch.*
+*Assumes: nothing; this file defines the battery, market, and optimization terms used across the repo from scratch. Symbols and their units live in [Conventions](conventions.md).*
 
 Entry shape: **term:** definition. *Why here:* relevance to this project. *Gotcha:* the common error or subtlety a bug (or a careless reading) trips on. Grown one section per build phase. The gotcha field is what makes this a living artifact rather than a dictionary.
 

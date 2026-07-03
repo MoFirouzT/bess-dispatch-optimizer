@@ -2,7 +2,7 @@
 
 The stable rules of the codebase. Intentionally restrictive so every module composes cleanly. **Locked:** changing anything here requires an ADR (`docs/decisions/`).
 
-*Assumes: familiarity with the [formulation](formulation.md)'s symbols (`π / e / η / Δt`, grid-side power). This file fixes their units, signs, and names across the code.*
+*Assumes: the symbols introduced in the [formulation](formulation.md) (`π / e / η / Δt`, grid-side power); this file fixes their units, signs, and names across the code.*
 
 ---
 
@@ -99,7 +99,7 @@ The rules that keep the docs clear and consistent. The four marked **✓ lint** 
 4. **Lead with the correctness trap.** State the failure mode before the mechanics (the grid-side-metering rule is the model).
 
 **Audience**
-5. **✓ lint: every doc opens with a purpose line and an `*Assumes:*` reader line.** Say what prior knowledge you expect, so a reader self-selects. (Enforced on the canonical Tier-1/2 docs.)
+5. **✓ lint: every doc opens with a purpose line and an `*Assumes:*` line.** Name what the doc takes as given (prerequisite docs, house conventions, defined terms) and link there, so a reader knows where to start. Point to prerequisites; do not gate on the reader's background. (Enforced on the canonical Tier-1/2 docs.)
 6. **No cold jargon.** Define or link any term/symbol at first use; `big-M`, `LP relaxation`, `epigraph`, `aFRR` get a `glossary.md` / `conventions.md` link the first time they appear.
 7. **If it's spatial, draw it.** A flow, an envelope, a set of nested bounds → one small SVG (`docs/figures/`) beats a dense paragraph.
 

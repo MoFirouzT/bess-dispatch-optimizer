@@ -1,6 +1,8 @@
-# References, the governing reference per part
+# References
 
-*Assumes: you've read the `formulation.md` section each reference governs. This file records the source and scope per part, not the theory itself.*
+*The governing reference for each part of the project.*
+
+*Assumes: the [formulation](formulation.md) section each reference governs; this file records the source and scope per part, not the theory itself.*
 
 How this project handles theory (the rule lives in `CLAUDE.md` §1):
 

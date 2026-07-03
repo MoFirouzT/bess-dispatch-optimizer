@@ -1,11 +1,14 @@
-# Formulation, single source of truth for the math
+# BESS Dispatch Formulation
+
+*The single source of truth for the optimization math.*
 
 This file holds the canonical mathematics of the optimizer.
 Specs, the README, and ADRs **point here**; they never restate equations.
 Each phase appends a section; nothing is duplicated elsewhere.
 Each section names its **governing reference** (see [references.md](references.md)) and summarizes only the theory the project implements; **house notation here and in [conventions.md](conventions.md) takes precedence** for shared quantities.
 
-*Assumes: linear/integer programming at the level of a first optimization course (LPs, MILPs, what a solver does). Battery and power-market terms are defined in the [glossary](glossary.md). Each section is self-contained; read the Conventions first.*
+*Assumes: the house notation in [Conventions](conventions.md) (grid-side power, per-unit SoC, `π / e / η / Δt`).
+Battery and power-market terms are defined in the [glossary](glossary.md); each section is self-contained, so read Conventions first.*
 
 GitHub renders the `$$…$$` LaTeX below.
 
@@ -13,7 +16,7 @@ GitHub renders the `$$…$$` LaTeX below.
 
 ## Conventions
 
-**Metering convention, the correctness trap.**
+**Metering convention, the correctness trap:**
 All power variables are measured at the **grid / AC terminal** (the metering point).
 Efficiency therefore appears in the state-of-charge balance, and **never in the objective**:
 
@@ -26,7 +29,6 @@ $$e_t = e_{t-1} + \eta^{ch}\, p^{ch}_t\, \Delta t \;-\; \frac{p^{dis}_t}{\eta^{d
 
 The round-trip efficiency $\eta^{rt}=\eta^{ch}\eta^{dis}$ is **emergent**, not a separate term:
 delivering 1 MWh to the grid ultimately costs $1/\eta^{rt}$ MWh drawn from the grid, enforced entirely by the balance above.
-If an efficiency factor ever appears in the revenue expression, the formulation is wrong.
 
 ![Grid-side metering: power variables are measured at the grid terminal; efficiency applies only on the way into and out of the cell (the SoC balance), never in the cash flow.](figures/metering.svg)
 
@@ -34,11 +36,8 @@ If an efficiency factor ever appears in the revenue expression, the formulation 
 
 ## R1.1. Deterministic core
 
-*Governing reference:*
-Williams, *Model Building in Mathematical Programming*: MILP formulation (binary indicators, mutual exclusion, big-M);
-domain context Kirschen & Strbac.
-House notation (preamble / `conventions.md`) governs shared quantities.
-See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch).
+*Governing reference: Williams, *Model Building in Mathematical Programming*.
+See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch) for secondary sources and notation mapping.*
 
 ### Sets
 
@@ -50,7 +49,7 @@ See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch).
 | --- | --- | --- |
 | $\pi_t$ | day-ahead price in period $t$ (known) | €/MWh |
 | $\Delta t$ | period length | h |
-| $\eta^{ch}, \eta^{dis}$ | charge / discharge efficiency, $\in(0,1]$ |; |
+| $\eta^{ch}, \eta^{dis}$ | charge / discharge efficiency, $\in(0,1]$ | ; |
 | $\bar P^{ch}, \bar P^{dis}$ | max charge / discharge power | MW |
 | $e_{\min}, e_{\max}$ | usable SoC bounds | MWh |
 | $R$ | ramp limit on net power | MW per period |
@@ -97,17 +96,25 @@ $$e_{T} = e^{\mathrm{tgt}}$$
 ### Modeling notes
 
 - **Mutual-exclusion binary $u_t$.**
-    The *LP relaxation* (the model with the integrality of $u_t$ dropped, which the solver visits inside branch-and-bound) already avoids simultaneous charge/discharge when $\eta^{rt}<1$ and prices are non-negative (losing energy on a pointless round trip is never profitable there), so $u_t$ is usually slack.
-    It is nonetheless *required* for correctness under **negative prices**, where buying *and* selling at once to burn energy could otherwise look profitable; the binary forbids that. Keep it.
+    The *LP relaxation* (the model with the integrality of $u_t$ dropped, which the solver visits inside branch-and-bound) self-enforces mutual exclusion wherever prices are non-negative and $\eta^{rt}<1$: a pointless round trip only loses energy, so the relaxation leaves $u_t$ integral on its own.
+    The binary earns its keep under **negative prices**, a *recurring* BE/NL condition (renewable oversupply, not a rare edge case).
+    There, charging *and* discharging at once dissipates grid energy while holding SoC fixed, a paid round-trip loss that looks profitable when $\pi_t<0$; only the binary forbids it.
+    It actually binds where a negative price meets a saturated SoC (no room to simply store the cheap energy), so most sub-zero hours still relax cleanly, yet enough do not that $u_t$ is a first-class correctness requirement, never a nicety.
     On the *big-M*: constraint (3) is a big-M switch (a constraint whose right-hand side relaxes to a large constant when its binary is off). Here that constant is the power cap itself ($\bar P^{ch}, \bar P^{dis}$), the tightest valid bound, so no loose big-M is introduced and the relaxation stays tight.
 - **Ramp.**
     Defined on net power for generality / grid-connection.
     Batteries ramp near-instantly, so $R$ is typically non-binding; disable by setting $R \ge \bar P^{ch} + \bar P^{dis}$.
     Note that a tight $R$ constrains the charge→discharge *transition* (a flip from $-\bar P^{ch}$ to $+\bar P^{dis}$ is a swing of $\bar P^{ch}+\bar P^{dis}$), so keep $R$ disabled for the R1.1 oracles unless a transition profile is being tested explicitly.
 - **Physics fidelity (deliberately shallow).**
-    The cell model is kept LP/MILP-friendly on purpose: constant charge/discharge efficiency, no self-discharge, no temperature or SoC-dependent effects, and (in R1.2) a throughput *proxy* for wear rather than a fatigue model.
-    Two reasons govern this. First, on a day-ahead horizon the price-forecast error dwarfs the battery-model error, so extra cell fidelity buys second-order revenue against a first-order uncertainty; the R2 forecaster / stochastic layer is where accuracy actually pays. Second, the tempting refinements are non-convex: SoC-dependent efficiency is bilinear, and rainflow wear is path-dependent (both in the R1.2 out-of-scope list), so either would trade a fast, provably-optimal solve for a slow, locally-optimal one.
-    Cheap, convexity-preserving additions (a linear self-discharge decay in balance (1); a 2-to-3-segment PWL efficiency curve) are held back until a real asset demands them. This mirrors production dispatch practice, where the modeling budget is spent on market scope and uncertainty, not cell chemistry.
+    The cell model is kept LP/MILP-friendly on purpose:
+    constant charge/discharge efficiency, no self-discharge, no temperature or SoC-dependent effects, and (in R1.2) a throughput *proxy* for wear rather than a fatigue model.
+    Two reasons govern this.
+    First, on a day-ahead horizon the price-forecast error dwarfs the battery-model error, so extra cell fidelity buys second-order revenue against a first-order uncertainty;
+    the R2 forecaster / stochastic layer is where accuracy actually pays.
+    Second, the tempting refinements are non-convex:
+    SoC-dependent efficiency is bilinear, and rainflow wear is path-dependent (both in the R1.2 out-of-scope list), so either would trade a fast, provably-optimal solve for a slow, locally-optimal one.
+    Cheap, convexity-preserving additions (a linear self-discharge decay in balance (1); a 2-to-3-segment PWL efficiency curve) are held back until a real asset demands them.
+    This mirrors production dispatch practice, where the modeling budget is spent on market scope and uncertainty, not cell chemistry.
 - **Sense.**
     Pyomo minimizes by default;
     set the objective sense to maximize (or minimize the negated expression).
@@ -121,11 +128,7 @@ The full oracle set (including the lossy and no-trade cases) is the test contrac
 
 ## R1.2. Piecewise-linear degradation cost
 
-*Governing reference:*
-Williams, *Model Building in Mathematical Programming*: separable / piecewise-linear programming (convex PWL via the **epigraph form**; SOS2 noted as the non-convex tool);
-domain context Plett, *Battery Management Systems*.
-House notation governs shared quantities.
-See [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost).
+*Governing reference: Williams, *Model Building in Mathematical Programming* (separable / piecewise-linear programming: convex PWL via the **epigraph form**; SOS2 noted as the non-convex tool). See [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost) for secondary sources and notation mapping.*
 
 Extends R1.1 by appending a **degradation cost** to the objective.
 All R1.1 sets, parameters, decision variables, and constraints (1)–(5) are unchanged; in particular the **SoC balance and grid-side metering are untouched**.
@@ -251,11 +254,7 @@ Both pieces equal $15$ at $q=0.5$, so the maximum is the kink $q^\star=0.5$ → 
 
 ## R1.3. Pre-flight feasibility (derived; no new model)
 
-*Governing reference:*
-none; engineering phase, **no new theory**.
-The conditions below are algebraic corollaries of the R1.1 model
-(Williams, already governing).
-See [references.md § R1.3](references.md#r13--pre-flight-validation).
+*Governing reference: none; engineering phase, **no new theory**. The conditions below are algebraic corollaries of the R1.1 model (Williams, already governing). See [references.md § R1.3](references.md#r13--pre-flight-validation).*
 
 This section adds **no constraints, variables, or objective terms**.
 It records the closed-form feasibility test the validation layer
@@ -295,11 +294,7 @@ Pre-flight therefore tests the ramp-free condition only (a sound fast filter) an
 
 ## R1.4. Backtest semantics (derived; no new model)
 
-*Governing reference:*
-
-- López de Prado, *Advances in Financial Machine Learning*: walk-forward evaluation + look-ahead/leakage discipline (the *only* new methodology this part adds);
-- Sioshansi et al. / Kirschen & Strbac: domain framing.
-See [references.md § R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band).
+*Governing reference: López de Prado, *Advances in Financial Machine Learning* (walk-forward evaluation + look-ahead/leakage discipline, the only new methodology this part adds). See [references.md § R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band) for secondary sources and domain framing.*
 
 This section adds **no constraints, variables, or objective terms**.
 It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey; all built from the *existing* R1.1/R1.2 optimizer.

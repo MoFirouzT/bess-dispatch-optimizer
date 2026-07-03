@@ -38,7 +38,7 @@ Strategy stays private; everything committed describes the project, not how to w
 
 ## 5. Layering
 
-- import-linter contract enforced in CI: `api → explain → stochastic → recourse → optimizer → assets`; `forecaster` / `scenarios` feed `stochastic`; `optimizer` must NOT import `api`.
+- import-linter contract enforced in CI: `api → explain → stochastic → recourse → optimizer → validation → assets`; `forecaster` / `scenarios` feed `stochastic`; `optimizer` must NOT import `api`.
 
 ## 6. Commands
 

@@ -1,4 +1,4 @@
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<svg viewBox="0 0 760 232" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
   <defs>
     <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#0969da"/>
@@ -8,7 +8,7 @@
     </marker>
   </defs>
 
-  <rect x="4" y="4" width="752" height="292" rx="12" fill="#f6f8fa" stroke="#d0d7de"/>
+  <rect x="4" y="4" width="752" height="224" rx="12" fill="#f6f8fa" stroke="#d0d7de"/>
   <text x="380" y="40" text-anchor="middle" font-size="20" font-weight="700" fill="#1f2328">Grid-side metering</text>
 
   <!-- Grid box -->
@@ -23,13 +23,9 @@
 
   <!-- Charge arrow (grid -> cell) -->
   <line x1="224" y1="138" x2="536" y2="138" stroke="#0969da" stroke-width="2" marker-end="url(#arrowBlue)"/>
-  <text x="380" y="128" text-anchor="middle" font-size="13" fill="#0969da">charge:  draw pᶜʰ  →  ηᶜʰ·pᶜʰ reaches the cell</text>
+  <text x="380" y="130" text-anchor="middle" font-size="14" fill="#0969da">pᶜʰ → ηᶜʰ·pᶜʰ</text>
 
   <!-- Discharge arrow (cell -> grid) -->
   <line x1="536" y1="172" x2="224" y2="172" stroke="#bc4c00" stroke-width="2" marker-end="url(#arrowOrange)"/>
-  <text x="380" y="190" text-anchor="middle" font-size="13" fill="#bc4c00">discharge:  deliver pᵈⁱˢ  ←  pᵈⁱˢ/ηᵈⁱˢ withdrawn</text>
-
-  <!-- Caption -->
-  <text x="380" y="248" text-anchor="middle" font-size="13" fill="#1f2328">Cash flow uses grid-side pᶜʰ, pᵈⁱˢ only.</text>
-  <text x="380" y="270" text-anchor="middle" font-size="13" font-weight="600" fill="#1f2328">Efficiency lives in the SoC balance, never in the objective.</text>
+  <text x="380" y="190" text-anchor="middle" font-size="14" fill="#bc4c00">pᵈⁱˢ ← pᵈⁱˢ/ηᵈⁱˢ</text>
 </svg>

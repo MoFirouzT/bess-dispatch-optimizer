@@ -19,31 +19,26 @@ This project formulates that trade-off precisely and solves it to optimality, th
 
 ## The model
 
-The core is a MILP over $T$ dispatch periods. It maximizes grid-side arbitrage revenue minus a degradation cost $D_t$:
+The core is a MILP over $T$ dispatch periods.
+It maximizes grid-side arbitrage revenue minus a degradation cost $D_t$:
 
 $$\max \sum_{t} \Bigl[\, \pi_t\, \Delta t \,(p^{dis}_t - p^{ch}_t) \;-\; D_t \,\Bigr]$$
 
-subject to a state-of-charge balance in which round-trip efficiency lives (never in the objective), plus power, energy, and ramp limits and a binary that forbids simultaneous charge/discharge:
+subject to a state-of-charge balance (the one equation where round-trip efficiency enters), plus power, energy, and ramp limits and a binary that forbids simultaneous charge/discharge:
 
 $$e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$$
 
-The degradation cost is a **convex piecewise-linear** function of per-period throughput, encoded in **epigraph form**: one linear cut per segment $k$ bounds the auxiliary variable $D_t$ from below, and the objective presses it down onto the curve, so $D_t$ reconstructs the exact PWL cost with no special-ordered sets (HiGHS has none):
+The degradation cost is a **convex piecewise-linear** function of per-period throughput, encoded in **epigraph form**:
+one linear cut per segment $k$ bounds the auxiliary variable $D_t$ from below, and the objective presses it down onto the curve, so $D_t$ reconstructs the exact PWL cost with no special-ordered sets (HiGHS has none):
 
 $$D_t \ge a_k\, \tau_t + b_k \qquad k = 1,\dots,K$$
 
-The one non-obvious design choice: **all power variables are metered grid-side, so efficiency belongs only in the SoC balance, never in the revenue term.** Degradation is a cost subtracted from cash, not an efficiency factor, and it does not enter the balance. The full derivation, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md).
+The one non-obvious design choice is that **all power is metered grid-side**, so degradation is a cost subtracted from cash rather than an efficiency factor, and never touches the SoC balance.
+The full derivation, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md).
 
 ## Architecture at a glance
 
-The `bess` package is split into layers with a strict downward-only import direction, enforced in CI by import-linter:
-
-```text
-api → explain → stochastic → recourse → optimizer → validation → assets
-                   ▲
-    forecaster → scenarios ┘
-```
-
-The headline invariant is `optimizer ⊥ api`: the optimizer never depends on the serving layer. `data` (the ENTSO-E loader) and `backtest` (offline evaluation) sit deliberately outside this chain. See [docs/architecture.md](docs/architecture.md) for the full map.
+The `bess` package is split into layers with a strict downward-only import direction (`api` at the top, `assets` at the base), enforced in CI by import-linter. The headline invariant is `optimizer ⊥ api`: the deterministic core never depends on the serving layer, so it stays testable in isolation. The full layer map and dependency diagram are in [docs/architecture.md](docs/architecture.md).
 
 ## Status
 
@@ -144,10 +139,10 @@ Reproduce with `uv run --group examples python examples/ingestion_guard_demo.py`
 
 ## Known limitations and future work
 
-Release 1 is a deterministic, single-asset, day-ahead dispatch engine. Its scope boundaries are deliberate:
+The core is a deterministic, single-asset, day-ahead dispatch engine, and its scope boundaries are deliberate:
 
-- **Prices are taken as known.** The optimizer assumes the day-ahead curve is given; it does not forecast prices or model their uncertainty. Probabilistic forecasting and a two-stage stochastic / recourse layer are Release 2, which is where the cross-day arbitrage gap measured by the backtest (`V* − V_roll`) is meant to be captured.
+- **The optimizer takes prices as known.** It solves against a given day-ahead curve; it does not model price uncertainty. A probabilistic price forecaster with calibrated intervals already exists (R2.1), but feeding that uncertainty into the decision, via a two-stage stochastic / recourse layer, is the remaining Release 2 work, which is where the cross-day arbitrage gap measured by the backtest (`V* − V_roll`) is meant to be captured.
 - **Day-ahead arbitrage only.** Intraday, imbalance, and ancillary-service markets (FCR / aFRR) are out of scope; the asset trades a single energy market.
-- **No grid-connection / congestion constraint.** Dispatch is not capped at a connection-point limit. Adding a congestion or curtailment cap is the natural next physical constraint and is relevant to Dutch (TenneT) grid conditions; it is named future work, not yet built.
+- **No grid-connection / congestion constraint.** Dispatch is not capped at a connection-point limit. Adding a congestion or curtailment cap is the natural next physical constraint and is relevant to Dutch (TenneT) grid conditions.
 - **Convex degradation only.** The degradation cost is a convex piecewise-linear curve (R1.2); rainflow cycle-counting and calendar aging are not modelled.
 - **Single asset, single node.** No portfolio of assets and no network model.

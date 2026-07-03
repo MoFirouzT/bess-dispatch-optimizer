@@ -1,4 +1,6 @@
-# Market reference. Belgium & Netherlands
+# Market Reference
+
+*The Belgian and Dutch power markets.*
 
 Domain reference for the BE and NL power markets: *what the market does*. This is a **knowledge artifact**, not a build spec; [`formulation.md`](formulation.md) and the phase specs define what the code actually models.
 

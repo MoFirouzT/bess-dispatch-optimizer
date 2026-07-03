@@ -2,7 +2,7 @@
 
 How the project is organized, the module layering, the documentation tiers, and the order to read things in. For the math itself see [formulation.md](formulation.md); for the locked conventions (units, sign, time, naming) see [conventions.md](conventions.md).
 
-*Assumes: familiarity with Python packaging and MILP basics. Battery and power-market terms are defined in the [glossary](glossary.md).*
+*Assumes: the component vocabulary in the [glossary](glossary.md); this file maps the system's layers to the code's packages and points to [formulation](formulation.md) for the math.*
 
 ---
 
@@ -29,8 +29,8 @@ The `bess` package is split into layers with a strict import direction, enforced
 
 ```
 api → explain → stochastic → recourse → optimizer → validation → assets
-                   ▲
-    forecaster → scenarios ┘
+                       ▲
+forecaster → scenarios ┘
 ```
 
 | Layer | Responsibility |

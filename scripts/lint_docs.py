@@ -13,7 +13,7 @@ Checks (charter rule in parentheses):
 
 Scope: committed Markdown under ``docs/`` plus ``README.md``. The em-dash ban
 applies to every file, ``STATE.md`` (a session work log) and the spec template
-included; those two stay exempt only from the ``*Assumes:*`` reader check.
+included; those two stay exempt only from the ``*Assumes:*`` check.
 
 A line may suppress the per-line checks (em dashes, forbidden words) with a
 trailing ``<!-- lint-ok -->`` HTML comment, invisible when rendered. Use it
@@ -36,7 +36,7 @@ EM_DASH = "—"
 # All committed Markdown in scope.
 ALL_DOCS = sorted((ROOT / "docs").glob("**/*.md")) + [ROOT / "README.md"]
 
-# Canonical Tier-1/2 docs that must declare their assumed reader (rule 5).
+# Canonical Tier-1/2 docs that must declare what they take as given (rule 5).
 CANONICAL = [
     "docs/formulation.md",
     "docs/architecture.md",
@@ -90,7 +90,7 @@ def main() -> int:
                     "use a colon, semicolon, comma, period, or parentheses"
                 )
 
-    # rule 5: canonical docs declare their assumed reader
+    # rule 5: canonical docs declare what they take as given
     for name in CANONICAL:
         path = ROOT / name
         if not path.exists():

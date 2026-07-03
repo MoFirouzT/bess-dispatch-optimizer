@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-06-26
-**Supersedes / Superseded by:** —
+**Supersedes / Superseded by:** None
 
 ## Context
 
@@ -42,7 +42,7 @@ without patching globals.
 ## Consequences
 
 - Clients get a machine-readable 422 for their own errors and a served (if
-  suboptimal) schedule for solver stress — graceful degradation, not an outage.
+  suboptimal) schedule for solver stress; graceful degradation, not an outage.
 - The fallback is the R1.4 greedy baseline, which is **feasibility-preserving and
   ends empty**, so a served fallback schedule satisfies the same physical
   invariants as an optimal one. Enforced by the R1.5 feasibility property test
@@ -62,7 +62,7 @@ oracle (empty horizon must be 422, never a fallback) pin both directions.
 
 - **Always 200, greedy on any error.** Rejected: masks invalid input, emitting a
   dispatch for data that should be rejected.
-- **Always 5xx on solver failure.** Rejected: defeats the purpose of the phase —
+- **Always 5xx on solver failure.** Rejected: defeats the purpose of the phase:
   the system should keep dispatching under solver stress.
 - **Retry the solve with relaxed settings before falling back.** Deferred: warm
   starts and re-solve tuning are an R2.3 latency concern, out of scope here.

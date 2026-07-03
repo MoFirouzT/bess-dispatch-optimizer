@@ -4,13 +4,18 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Grid-scale batteries earn money by charging when power is cheap and discharging when it is dear, but every cycle ages the cell and volatile renewable-driven prices make the timing hard. This project computes the revenue-maximizing schedule for that trade-off.
+Grid-scale batteries earn money by charging when power is cheap and discharging when it is dear, but every cycle ages the cell and volatile renewable-driven prices make the timing hard.
+This project computes the revenue-maximizing schedule for that trade-off.
 
-Optimal day-ahead dispatch for a grid-scale **battery energy storage system (BESS)** in the Belgian/Dutch power market. Given a day-ahead price curve and a battery's physical limits, it computes the charge/discharge schedule that maximizes arbitrage revenue net of cell degradation, formulated as a deterministic mixed-integer linear program (MILP). Correctness is gated by golden oracles and Hypothesis property tests; the layered architecture, docs charter, and forecast calibration are all enforced in CI.
+Optimal day-ahead dispatch for a grid-scale **battery energy storage system (BESS)** in the Belgian/Dutch power market.
+Given a day-ahead price curve and a battery's physical limits, it computes the charge/discharge schedule that maximizes arbitrage revenue net of cell degradation, formulated as a deterministic mixed-integer linear program (MILP).
+Correctness is gated by golden oracles and Hypothesis property tests; the layered architecture, docs charter, and forecast calibration are all enforced in CI.
 
 ## What problem this solves
 
-A battery earns money by **buying low and selling high**: charge when day-ahead electricity is cheap, discharge when it is expensive. The catch is that every cycle ages the cell, charging and discharging each lose energy (round-trip efficiency < 1), and the schedule must respect power, energy, and ramp limits. This project formulates that trade-off precisely and solves it to optimality, then measures how much of the theoretical maximum a realistic, no-look-ahead policy actually captures.
+A battery earns money by **buying low and selling high**: charge when day-ahead electricity is cheap, discharge when it is expensive.
+The catch is that every cycle ages the cell, charging and discharging each lose energy (round-trip efficiency < 1), and the schedule must respect power, energy, and ramp limits.
+This project formulates that trade-off precisely and solves it to optimality, then measures how much of the theoretical maximum a realistic, no-look-ahead policy actually captures.
 
 ## The model
 
@@ -32,7 +37,7 @@ The one non-obvious design choice: **all power variables are metered grid-side, 
 
 The `bess` package is split into layers with a strict downward-only import direction, enforced in CI by import-linter:
 
-```
+```text
 api → explain → stochastic → recourse → optimizer → validation → assets
                    ▲
     forecaster → scenarios ┘
@@ -42,21 +47,21 @@ The headline invariant is `optimizer ⊥ api`: the optimizer never depends on th
 
 ## Status
 
-**Deterministic core and serving (Release 1) — complete**, gated by golden + property tests:
+**Deterministic core and serving (Release 1), complete**, gated by golden + property tests:
 
-- **R1.1** — deterministic MILP dispatch core
-- **R1.2** — convex piecewise-linear degradation cost
-- **R1.3** — pre-flight feasibility checks
-- **R1.4** — walk-forward backtest with greedy / rolling / perfect-foresight baselines, plus a live ENTSO-E day-ahead loader (BE/NL)
-- **R1.5** — FastAPI dispatch service with a graceful-degradation circuit breaker (greedy fallback on solver timeout), Dockerized
-- **R1.5b** — anomaly-aware ingestion guard: a *second* circuit breaker on the data feed, classifying each fetch outage / anomalous-but-present / healthy before it can reach the solver
+- **R1.1**: deterministic MILP dispatch core
+- **R1.2**: convex piecewise-linear degradation cost
+- **R1.3**: pre-flight feasibility checks
+- **R1.4**: walk-forward backtest with greedy / rolling / perfect-foresight baselines, plus a live ENTSO-E day-ahead loader (BE/NL)
+- **R1.5**: FastAPI dispatch service with a graceful-degradation circuit breaker (greedy fallback on solver timeout), Dockerized
+- **R1.5b**: anomaly-aware ingestion guard: a *second* circuit breaker on the data feed, classifying each fetch outage / anomalous-but-present / healthy before it can reach the solver
 
-**Forecasting and drift monitoring (Release 2) — under way:**
+**Forecasting and drift monitoring (Release 2), under way:**
 
-- **R2.1** — probabilistic price forecaster: LightGBM quantile models wrapped in conformal prediction (MAPIE) for calibrated day-ahead price *intervals*, gated by empirical coverage under walk-forward
-- **R2.1b** — rolling drift monitor: separates a *regime shift* (market changed; a naive baseline degrades too) from *model staleness* (the model decayed relative to a seasonal-naive), so the flag is actionable
+- **R2.1**: probabilistic price forecaster: LightGBM quantile models wrapped in conformal prediction (MAPIE) for calibrated day-ahead price *intervals*, gated by empirical coverage under walk-forward
+- **R2.1b**: rolling drift monitor: separates a *regime shift* (market changed; a naive baseline degrades too) from *model staleness* (the model decayed relative to a seasonal-naive), so the flag is actionable
 
-**Stochastic optimization (Release 2) — planned:** scenario generation, stochastic optimization, recourse, and explainability. See [docs/architecture.md](docs/architecture.md).
+**Stochastic optimization (Release 2), planned:** scenario generation, stochastic optimization, recourse, and explainability. See [docs/architecture.md](docs/architecture.md).
 
 ## Example results
 
@@ -65,7 +70,7 @@ The headline invariant is `optimizer ⊥ api`: the optimizer never depends on th
 The numbers below come from a worked example on a **synthetic** 90-day Dutch-style day-ahead series (1 MWh / 1 MW asset, η = 0.95), reproducible with [`examples/worked_example.py`](examples/worked_example.py):
 
 | Baseline | Revenue | Share of ceiling |
-|---|---|---|
+| --- | --- | --- |
 | Greedy floor (percentile rule) | €3,472 | 50% |
 | Rolling deployable (per-day optimal) | €6,860 | **98.4%** |
 | Perfect-foresight ceiling | €6,972 | 100% |
@@ -79,7 +84,7 @@ The annualized ceiling is ≈ €28k per MWh-installed per year, inside the stru
 Solve time scales benignly with horizon (one binary plus a few continuous variables per period); [`examples/benchmark_scaling.py`](examples/benchmark_scaling.py) reports it (numbers are from a local run, so treat them as relative):
 
 | Horizon | Periods | Median solve |
-|---|---|---|
+| --- | --- | --- |
 | 1 day | 24 | ~9 ms |
 | 1 week | 168 | ~29 ms |
 | 1 month | 720 | ~120 ms |
@@ -91,8 +96,8 @@ The plotting dependency is optional: `uv sync --group examples` installs it.
 Start with [docs/architecture.md](docs/architecture.md) for the map, then dive into the math.
 
 | Doc | What it is |
-|---|---|
-| [docs/formulation.md](docs/formulation.md) | **The math** — single source of truth for every constraint and objective term |
+| --- | --- |
+| [docs/formulation.md](docs/formulation.md) | **The math**: single source of truth for every constraint and objective term |
 | [docs/conventions.md](docs/conventions.md) | Locked conventions: units, sign/metering, time, naming |
 | [docs/glossary.md](docs/glossary.md) | Domain + optimization terms, each with a common-error note |
 | [docs/market_reference.md](docs/market_reference.md) | How the BE/NL day-ahead market actually works |
@@ -123,7 +128,7 @@ docker build -t bess-dispatch . && docker run -p 8000:8000 bess-dispatch
 
 ## Data
 
-The tests and CI use **synthetic** price series only — no real or third-party market data is committed (the ENTSO-E terms grant no public-redistribution right). Real Belgian/Dutch day-ahead prices are fetched at runtime via `bess.data.entsoe.fetch_day_ahead`, which wraps the [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/) and caches to `data/cache/` (gitignored).
+The tests and CI use **synthetic** price series only, no real or third-party market data is committed (the ENTSO-E terms grant no public-redistribution right). Real Belgian/Dutch day-ahead prices are fetched at runtime via `bess.data.entsoe.fetch_day_ahead`, which wraps the [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/) and caches to `data/cache/` (gitignored).
 
 To run the live loader (and its token-gated integration test, skipped without a token), copy `.env.example` to `.env` and set `ENTSOE_API_TOKEN`. On a network with a TLS-intercepting proxy, uv's bundled Python also needs the trust roots exported to a CA bundle (`REQUESTS_CA_BUNDLE` / `SSL_CERT_FILE`); the steps are in `.env.example`. This is operator setup, not code, and CI never touches the live API.
 

@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-This directory captures decisions that are expensive to reverse. Each ADR is one Markdown file with a numeric prefix. An ADR is the stable answer to "why is it like this?" — cheaper to write once than to keep re-deriving (and it stops an agent, or a future you, from quietly reverting a decision while "improving" the code).
+This directory captures decisions that are expensive to reverse. Each ADR is one Markdown file with a numeric prefix. An ADR is the stable answer to "why is it like this?"; cheaper to write once than to keep re-deriving (and it stops an agent, or a future you, from quietly reverting a decision while "improving" the code).
 
 ## How to propose a new ADR
 
@@ -39,11 +39,11 @@ How this decision could go wrong in practice, and the signal that would reveal i
 The other options and why they were rejected.
 ```
 
-## Index (starter — these are the foundational decisions to formalize; status `Proposed` until written)
+## Index (starter; these are the foundational decisions to formalize; status `Proposed` until written)
 
 | # | Title | Status |
 | --- | ------- | -------- |
-| 0001 | Pyomo for modelling (not linopy or CVXPY) — chosen for the `mpi-sppy` two-stage / Benders path | Proposed |
+| 0001 | Pyomo for modelling (not linopy or CVXPY); chosen for the `mpi-sppy` two-stage / Benders path | Proposed |
 | 0002 | HiGHS as the default solver; Gurobi (academic licence) as an optional faster backend | Proposed |
 | 0003 | Grid-side metering: efficiency in the SoC balance, never in the objective | Proposed |
 | 0004 | Two-release structure; deterministic core ships before the stochastic layer | Proposed |

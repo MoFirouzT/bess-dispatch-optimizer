@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-06-26
-**Supersedes / Superseded by:** —
+**Supersedes / Superseded by:** None
 
 ## Context
 
@@ -12,7 +12,7 @@ greedy heuristic (`greedy_window` + its `_trajectory`/`_liquidate` helpers)
 currently lives in `bess.backtest.baselines`.
 
 `backtest` is, by an import-linter contract, an **offline tool** that must not
-import the serving chain — and symmetrically, the serving chain should not depend
+import the serving chain; and symmetrically, the serving chain should not depend
 on an offline analysis harness to handle a live request. The greedy rule itself
 is not a backtest concept; it is an alternative *dispatch strategy* over the same
 asset and horizon as `solve()`.

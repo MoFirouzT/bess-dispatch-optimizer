@@ -13,7 +13,7 @@ forecaster's product is *calibrated intervals* (its headline gate is empirical c
 ≈ nominal), and coverage decalibration is orthogonal to both existing signals: a model
 can hold `error_ratio ≈ 1` and low PSI while its 90% band silently covers 75%. That
 failure went undetected, and it propagates directly into R2.2, which samples scenarios
-from these intervals — a miscalibrated band yields a wrong scenario set and quietly
+from these intervals, a miscalibrated band yields a wrong scenario set and quietly
 corrupts the stochastic layer's risk handling.
 
 ## Decision
@@ -35,10 +35,10 @@ never alarm.
 - **Miscalibration is checked *after* regime, on purpose.** A genuine regime shift also
   breaks coverage; ordering regime first keeps the "market moved" attribution instead of
   mislabeling it a calibration problem. MISCALIBRATION is thus reserved for its clean
-  case: point model tracks, inputs are stable, but the intervals under-cover — i.e. the
+  case: point model tracks, inputs are stable, but the intervals under-cover, i.e. the
   conformal layer specifically decayed.
 - **It maps to a distinct remedy.** The three non-healthy states now correspond to three
-  actions — retrain (staleness), accept/adapt (regime), and **recalibrate** the conformal
+  actions; retrain (staleness), accept/adapt (regime), and **recalibrate** the conformal
   layer via the forecaster's existing `recalibrate()` (miscalibration). This preserves
   the retrain-vs-recalibrate actionability that motivated ADR-0015.
 - **Staleness still wins over everything**, unchanged from ADR-0015: a model worse than

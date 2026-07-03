@@ -1,4 +1,4 @@
-# Spec &lt;ID&gt; — &lt;Title&gt;
+# Spec &lt;ID&gt;: &lt;Title&gt;
 
 **Status:** Draft | Approved | Implemented
 **Release:** R&lt;n&gt;  **Depends on:** &lt;prior phase IDs, or none&gt;
@@ -7,13 +7,13 @@
 &lt;one sentence: what this phase delivers&gt;
 
 ## Formulation reference
-&lt;which section(s) of `docs/formulation.md` this implements, or "n/a — no new math"&gt;
+&lt;which section(s) of `docs/formulation.md` this implements, or "n/a, no new math"&gt;
 
 ## Parameters / configuration
 &lt;concrete values for this phase and where they are configured (config object, file, env)&gt;
 
 ## Interfaces
-&lt;function signatures, API request/response schema, data schema — whatever applies; omit if none&gt;
+&lt;function signatures, API request/response schema, data schema; whatever applies; omit if none&gt;
 
 ## Build tasks
 - [ ] &lt;task&gt;
@@ -29,7 +29,7 @@
 ## Acceptance gate (all must pass before the next phase)
 - [ ] &lt;condition&gt;
 
-## Out of scope (explicit — do not build here)
+## Out of scope (explicit; do not build here)
 - &lt;item&gt;
 
 ## Open questions

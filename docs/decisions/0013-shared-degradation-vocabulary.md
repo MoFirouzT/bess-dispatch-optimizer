@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-07-01
-**Supersedes / Superseded by:** —
+**Supersedes / Superseded by:** None
 
 ## Context
 
@@ -10,7 +10,7 @@ With two breakers in play (ADR-0012), a schedule can be produced along a chain t
 degraded at *either* stage: the ingestion guard may have fallen back to stale cached
 prices (`status="anomaly"`), and the solver may then return a proven optimum on that
 stale data (`mode="optimal"`). Reported independently, the two flags let a downstream
-consumer read `mode="optimal"` and conclude the result is fully healthy — the exact
+consumer read `mode="optimal"` and conclude the result is fully healthy, the exact
 silent-stale-dispatch hole the ingestion guard exists to close. A dispatch is only as
 trustworthy as the price it was computed from.
 
@@ -53,14 +53,14 @@ next to `mode` without new plumbing.
 If consumers ignore `GuardResult.status` and read only the solver `mode`, the shared
 vocabulary buys nothing and the silent-stale-dispatch hole reopens. Signal: the
 end-to-end composition test above; if it is ever weakened to assert on `mode` alone,
-the guarantee is gone. A second risk is over-plumbing — trying to thread provenance
-into the R1.5 endpoint that does not fetch — which the scope-honesty clause explicitly
+the guarantee is gone. A second risk is over-plumbing; trying to thread provenance
+into the R1.5 endpoint that does not fetch; which the scope-honesty clause explicitly
 forbids.
 
 ## Alternatives considered
 
 - **Each breaker logs independently, no shared status.** Rejected: reproduces the
-  silent-stale-dispatch hole — `optimal` on stale data reads as fully healthy.
+  silent-stale-dispatch hole; `optimal` on stale data reads as fully healthy.
 - **Merge both breakers into one status enum.** Rejected: that is ADR-0012 in reverse;
   the taxonomies are deliberately distinct, they only need to *compose*, not collapse.
 - **Push provenance into the R1.5 `/dispatch` response now.** Rejected/deferred: the

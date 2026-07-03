@@ -9,17 +9,17 @@
   <!-- Greedy bar (floor) -->
   <rect x="150" y="78" width="190" height="32" rx="4" fill="#bc4c00" fill-opacity="0.18" stroke="#bc4c00"/>
   <text x="142" y="99" text-anchor="end" font-size="12" fill="#1f2328">greedy</text>
-  <text x="345" y="99" font-size="12.5" fill="#bc4c00">V<tspan dy="-5" font-size="10">greedy</tspan><tspan dy="5"> — floor (can lose money)</tspan></text>
+  <text x="345" y="99" font-size="12.5" fill="#bc4c00">V<tspan dy="-5" font-size="10">greedy</tspan><tspan dy="5">: floor (can lose money)</tspan></text>
 
   <!-- Rolling bar (deployable) -->
   <rect x="150" y="126" width="370" height="32" rx="4" fill="#0969da" fill-opacity="0.18" stroke="#0969da"/>
   <text x="142" y="147" text-anchor="end" font-size="12" fill="#1f2328">rolling</text>
-  <text x="345" y="147" font-size="12.5" fill="#0969da">V<tspan dy="-5" font-size="10">roll</tspan><tspan dy="5"> — per-day deployable value</tspan></text>
+  <text x="345" y="147" font-size="12.5" fill="#0969da">V<tspan dy="-5" font-size="10">roll</tspan><tspan dy="5">: per-day deployable value</tspan></text>
 
   <!-- Ceiling bar -->
   <rect x="150" y="174" width="470" height="32" rx="4" fill="#1a7f37" fill-opacity="0.18" stroke="#1a7f37"/>
   <text x="142" y="195" text-anchor="end" font-size="12" fill="#1f2328">perfect foresight</text>
-  <text x="345" y="195" font-size="12.5" fill="#1a7f37">V★ — ceiling (theoretical max)</text>
+  <text x="345" y="195" font-size="12.5" fill="#1a7f37">V★, ceiling (theoretical max)</text>
 
   <!-- cross-day gap bracket between roll end (520) and ceiling end (620) -->
   <line x1="520" y1="120" x2="520" y2="66" stroke="#8c959f" stroke-dasharray="4 3"/>

@@ -51,5 +51,5 @@ at `season = 168 h` (weekly) so the benchmark itself respects weekday/weekend st
 - **A single blended score.** Rejected: collapsing two distinct causes into one number
   loses the retrain-vs-recalibrate distinction that is the entire point.
 - **Absolute error threshold, no baseline.** Rejected: an absolute MAE threshold cannot
-  separate "the world got harder" from "my model got worse" — only a *relative* (vs.
+  separate "the world got harder" from "my model got worse"; only a *relative* (vs.
   naive) comparison can.

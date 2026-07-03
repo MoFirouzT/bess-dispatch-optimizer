@@ -8,7 +8,7 @@
 `docs/conventions.md` §2 (a locked contract) states that state of charge is
 "MWh (absolute) in the model; per-unit only in config." When the R1.1 spec and
 `BatterySpec` were first written, the SoC fields (`soc_min`, `soc_initial`,
-`soc_terminal`) were given in absolute MWh — contradicting the convention. The
+`soc_terminal`) were given in absolute MWh; contradicting the convention. The
 inconsistency was invisible because the default asset is 1 MWh, where the
 per-unit fraction and the MWh value coincide numerically (`0.0`, `1.0`).
 
@@ -19,9 +19,9 @@ Two ways to resolve it: (a) make config per-unit, matching the convention; or
 
 Config SoC is **per-unit** (a fraction of `capacity`, in `[soc_min, 1.0]`),
 matching the locked convention. `capacity` stays MWh; power stays MW. The
-`Battery` asset converts at registration —
+`Battery` asset converts at registration:
 `e_min = soc_min · capacity`, `e_0 = soc_initial · capacity`,
-`e_tgt = soc_terminal · capacity`, `e_max = capacity` — and the model plus
+`e_tgt = soc_terminal · capacity`, `e_max = capacity`: and the model plus
 `Schedule.soc` remain in absolute MWh.
 
 ## Consequences
@@ -40,7 +40,7 @@ matching the locked convention. `capacity` stays MWh; power stays MW. The
 ## Failure mode
 
 Someone passes an absolute MWh value (e.g. `soc_initial = 2.0` for a 5 MWh
-asset) expecting "2 MWh" and silently gets rejected (`> 1.0`) — or, worse, a
+asset) expecting "2 MWh" and silently gets rejected (`> 1.0`); or, worse, a
 future field accepts a value in `[0, 1]` that was meant as MWh. Signal: a
 `ValidationError` at construction, or a backtest whose SoC trajectory is a
 fraction of what was intended. Mitigation: per-unit is documented in the field
@@ -48,7 +48,7 @@ descriptions, the spec parameter table, and conventions §2.
 
 ## Alternatives considered
 
-- **Absolute MWh in config (amend the convention).** Simpler — no conversion,
+- **Absolute MWh in config (amend the convention).** Simpler, no conversion,
   config matches the model directly. Rejected: it couples every SoC field to
   `capacity`, is error-prone across asset sizes, and would weaken a deliberate
   locked decision for marginal convenience. The roadmap (degradation in cycles,

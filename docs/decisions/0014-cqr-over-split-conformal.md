@@ -2,16 +2,16 @@
 
 **Status:** Accepted
 **Date:** 2026-07-01
-**Supersedes / Superseded by:** —
+**Supersedes / Superseded by:** None
 
 ## Context
 
 R2.1 outputs calibrated day-ahead price *intervals* (spec `docs/specs/R2.1-forecaster.md`).
 Two conformal constructions are available in MAPIE 1.x:
 
-- **Split conformal** — one point model plus a single conformity quantile, giving a
+- **Split conformal**: one point model plus a single conformity quantile, giving a
   **constant-width** interval added symmetrically around the point forecast.
-- **Conformalized quantile regression (CQR)** — lower/upper quantile models,
+- **Conformalized quantile regression (CQR)**: lower/upper quantile models,
   conformalized, giving an **input-adaptive** interval width.
 
 Both achieve the same *marginal* coverage guarantee. They differ in *conditional*
@@ -24,7 +24,7 @@ against.
 
 Day-ahead prices are strongly heteroscedastic: evening-peak and scarcity hours are
 far more volatile than overnight hours. A constant-width interval is therefore
-*conditionally* miscalibrated even when marginally correct — too wide at night, too
+*conditionally* miscalibrated even when marginally correct; too wide at night, too
 narrow at the peak. CQR widens where the market is uncertain and tightens where it is
 calm, which is the honest uncertainty signal the stochastic layer (R2.2+) should
 sample from.
@@ -41,13 +41,13 @@ upper(1−α/2), median]`** with `prefit=True`, then `.conformalize(X_cal, y_cal
   problem is small.
 - The coverage gate compares CQR against split conformal on the same walk-forward, so
   the adaptivity claim is measured, not asserted.
-- Marginal coverage is all conformal guarantees — CQR does not promise *conditional*
+- Marginal coverage is all conformal guarantees. CQR does not promise *conditional*
   coverage, only better-calibrated width in practice. Enforced by the coverage gate
   (empirical ∈ [0.85, 0.95] at nominal 0.9) plus the interval-ordering property test.
 
 ## Failure mode
 
-If the two quantile models cross (lower > upper before conformalization — MAPIE logs
+If the two quantile models cross (lower > upper before conformalization. MAPIE logs
 "ill-sorted"), the interval is degenerate. Signal: the interval-ordering property test
 (`lower ≤ point ≤ upper`) fails; CQR's correction and a monotone-in-confidence test
 guard it.

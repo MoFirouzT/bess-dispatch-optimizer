@@ -1,4 +1,4 @@
-# Formulation — single source of truth for the math
+# Formulation, single source of truth for the math
 
 This file holds the canonical mathematics of the optimizer.
 Specs, the README, and ADRs **point here**; they never restate equations.
@@ -13,7 +13,7 @@ GitHub renders the `$$…$$` LaTeX below.
 
 ## Conventions
 
-**Metering convention — the correctness trap.**
+**Metering convention, the correctness trap.**
 All power variables are measured at the **grid / AC terminal** (the metering point).
 Efficiency therefore appears in the state-of-charge balance, and **never in the objective**:
 
@@ -32,17 +32,17 @@ If an efficiency factor ever appears in the revenue expression, the formulation 
 
 ---
 
-## R1.1 — Deterministic core
+## R1.1. Deterministic core
 
 *Governing reference:*
-Williams, *Model Building in Mathematical Programming* — MILP formulation (binary indicators, mutual exclusion, big-M);
+Williams, *Model Building in Mathematical Programming*: MILP formulation (binary indicators, mutual exclusion, big-M);
 domain context Kirschen & Strbac.
 House notation (preamble / `conventions.md`) governs shared quantities.
 See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch).
 
 ### Sets
 
-- $t \in \mathcal{T} = \{1,\dots,T\}$ — dispatch periods. $\Delta t$ = period length in hours (1.0 hourly, 0.25 quarter-hourly).
+- $t \in \mathcal{T} = \{1,\dots,T\}$: dispatch periods. $\Delta t$ = period length in hours (1.0 hourly, 0.25 quarter-hourly).
 
 ### Parameters
 
@@ -50,7 +50,7 @@ See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch).
 | --- | --- | --- |
 | $\pi_t$ | day-ahead price in period $t$ (known) | €/MWh |
 | $\Delta t$ | period length | h |
-| $\eta^{ch}, \eta^{dis}$ | charge / discharge efficiency, $\in(0,1]$ | — |
+| $\eta^{ch}, \eta^{dis}$ | charge / discharge efficiency, $\in(0,1]$ |; |
 | $\bar P^{ch}, \bar P^{dis}$ | max charge / discharge power | MW |
 | $e_{\min}, e_{\max}$ | usable SoC bounds | MWh |
 | $R$ | ramp limit on net power | MW per period |
@@ -104,38 +104,42 @@ $$e_{T} = e^{\mathrm{tgt}}$$
     Defined on net power for generality / grid-connection.
     Batteries ramp near-instantly, so $R$ is typically non-binding; disable by setting $R \ge \bar P^{ch} + \bar P^{dis}$.
     Note that a tight $R$ constrains the charge→discharge *transition* (a flip from $-\bar P^{ch}$ to $+\bar P^{dis}$ is a swing of $\bar P^{ch}+\bar P^{dis}$), so keep $R$ disabled for the R1.1 oracles unless a transition profile is being tested explicitly.
+- **Physics fidelity (deliberately shallow).**
+    The cell model is kept LP/MILP-friendly on purpose: constant charge/discharge efficiency, no self-discharge, no temperature or SoC-dependent effects, and (in R1.2) a throughput *proxy* for wear rather than a fatigue model.
+    Two reasons govern this. First, on a day-ahead horizon the price-forecast error dwarfs the battery-model error, so extra cell fidelity buys second-order revenue against a first-order uncertainty; the R2 forecaster / stochastic layer is where accuracy actually pays. Second, the tempting refinements are non-convex: SoC-dependent efficiency is bilinear, and rainflow wear is path-dependent (both in the R1.2 out-of-scope list), so either would trade a fast, provably-optimal solve for a slow, locally-optimal one.
+    Cheap, convexity-preserving additions (a linear self-discharge decay in balance (1); a 2-to-3-segment PWL efficiency curve) are held back until a real asset demands them. This mirrors production dispatch practice, where the modeling budget is spent on market scope and uncertainty, not cell chemistry.
 - **Sense.**
     Pyomo minimizes by default;
     set the objective sense to maximize (or minimize the negated expression).
 
 ### Worked example (sanity, $\eta = 1$)
 
-$T=3$, $\pi=[10,50,20]$, $\Delta t=1$, a 1 MWh / 1 MW battery (energy capacity / power rating — a 1-hour, i.e. 1C, asset), $e_0=e^{\mathrm{tgt}}=0$, $R$ disabled → charge at $t_1$, discharge at $t_2$, idle at $t_3$; objective $=40$.
+$T=3$, $\pi=[10,50,20]$, $\Delta t=1$, a 1 MWh / 1 MW battery (energy capacity / power rating, a 1-hour, i.e. 1C, asset), $e_0=e^{\mathrm{tgt}}=0$, $R$ disabled → charge at $t_1$, discharge at $t_2$, idle at $t_3$; objective $=40$.
 The full oracle set (including the lossy and no-trade cases) is the test contract in [specs/R1.1-deterministic-core.md](specs/R1.1-deterministic-core.md).
 
 ---
 
-## R1.2 — Piecewise-linear degradation cost
+## R1.2. Piecewise-linear degradation cost
 
 *Governing reference:*
-Williams, *Model Building in Mathematical Programming* — separable / piecewise-linear programming (convex PWL via the **epigraph form**; SOS2 noted as the non-convex tool);
+Williams, *Model Building in Mathematical Programming*: separable / piecewise-linear programming (convex PWL via the **epigraph form**; SOS2 noted as the non-convex tool);
 domain context Plett, *Battery Management Systems*.
 House notation governs shared quantities.
 See [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost).
 
 Extends R1.1 by appending a **degradation cost** to the objective.
-All R1.1 sets, parameters, decision variables, and constraints (1)–(5) are unchanged — in particular the **SoC balance and grid-side metering are untouched**.
+All R1.1 sets, parameters, decision variables, and constraints (1)–(5) are unchanged; in particular the **SoC balance and grid-side metering are untouched**.
 Degradation is a **cost subtracted from revenue**; it is *not* an efficiency factor and does *not* enter the SoC balance.
 With no breakpoints configured the term is identically zero and the model reduces to R1.1 exactly.
 
 ### Rationale
 
-Deep cycles age a cell faster than shallow ones, so the marginal cost of throughput **increases with depth** — a convex, increasing function.
+Deep cycles age a cell faster than shallow ones, so the marginal cost of throughput **increases with depth**: a convex, increasing function.
 A flat €/MWh fee cannot capture this; a convex piecewise-linear (PWL) cost can, and it makes marginal deep cycling unprofitable once the price spread no longer covers the rising degradation slope.
 
 ### Degradation measure
 
-Per-period **storage-side throughput** — the energy that actually passes through the cell, counting **both directions** (charging into the cell and discharging out of it both age it):
+Per-period **storage-side throughput**: the energy that actually passes through the cell, counting **both directions** (charging into the cell and discharging out of it both age it):
 
 $$\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t \qquad \in [0,\ \tau_{\max}]$$
 
@@ -143,19 +147,19 @@ Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so 
 
 Two physical limits cap the per-period throughput, and the binding one is whichever is smaller:
 
-- **Power** — only $\bar P\Delta t$ of energy can move through the inverter in one period of length $\Delta t$;
-- **Usable SoC window** — the cell cannot take in or give up more than $e_{\max}-e_{\min}$ in one step.
+- **Power**: only $\bar P\Delta t$ of energy can move through the inverter in one period of length $\Delta t$;
+- **Usable SoC window**: the cell cannot take in or give up more than $e_{\max}-e_{\min}$ in one step.
 
 So its maximum is the smaller of the two:
 
 $$\tau_{\max} = \min\!\Bigl(\ \underbrace{\max\!\bigl(\eta^{ch}\bar P^{ch}\Delta t,\ \tfrac{\bar P^{dis}\Delta t}{\eta^{dis}}\bigr)}_{\text{power limit}},\ \ \underbrace{e_{\max}-e_{\min}}_{\text{SoC window}}\ \Bigr).$$
 
-So the SoC *capacity* does enter — as the per-period *flow* limit $e_{\max}-e_{\min}$. (The SoC *level* across periods is still governed by balance (1) and bounds (2); those are unchanged.)
+So the SoC *capacity* does enter, as the per-period *flow* limit $e_{\max}-e_{\min}$. (The SoC *level* across periods is still governed by balance (1) and bounds (2); those are unchanged.)
 
 This is a per-period throughput proxy for cycle depth.
 
-**Out of scope** — genuinely harder or different, deliberately deferred:
-**rainflow** cycle counting (path-dependent and non-convex — it does *not* reduce to a per-period cost) and **calendar aging**.
+**Out of scope**: genuinely harder or different, deliberately deferred:
+**rainflow** cycle counting (path-dependent and non-convex; it does *not* reduce to a per-period cost) and **calendar aging**.
 A coarser "equivalent-full-cycle" normalization is a cheap future variation, not a barrier; it is simply not built here.
 
 ### Parameters (new)
@@ -166,7 +170,7 @@ The degradation cost is a piecewise-linear (PWL) function of throughput, specifi
 | --- | --- | --- |
 | $\phi_k$ | $k$-th throughput breakpoint, **per-unit of $\tau_{\max}$**: $0=\phi_0<\phi_1<\dots<\phi_K=1$ (size- and $\Delta t$-independent, consistent with [ADR-0009](decisions/0009-soc-per-unit-in-config.md)) | p.u. |
 | $x_k$ | the same breakpoint in absolute energy, $x_k=\phi_k\,\tau_{\max}$ | MWh |
-| $g_k$ | degradation cost when throughput equals $x_k$: $0=g_0\le g_1\le\dots\le g_K$, and **convex** — the segment slopes $\dfrac{g_k-g_{k-1}}{x_k-x_{k-1}}$ are non-decreasing in $k$ | € |
+| $g_k$ | degradation cost when throughput equals $x_k$: $0=g_0\le g_1\le\dots\le g_K$, and **convex**: the segment slopes $\dfrac{g_k-g_{k-1}}{x_k-x_{k-1}}$ are non-decreasing in $k$ | € |
 
 The configured curve passes through $(x_0,g_0),\dots,(x_K,g_K)$, starting at the origin $(0,0)$ and bending upward (convex) as throughput deepens.
 
@@ -178,7 +182,7 @@ The configured curve passes through $(x_0,g_0),\dots,(x_K,g_K)$, starting at the
 
 ### Constraints (new, $\forall t\in\mathcal T$)
 
-Let $g(\cdot)$ be the convex PWL degradation cost, so the *ideal* term is $g(\tau_t)$ — but $g$ is not affine, so it cannot be written directly in an LP.
+Let $g(\cdot)$ be the convex PWL degradation cost, so the *ideal* term is $g(\tau_t)$: but $g$ is not affine, so it cannot be written directly in an LP.
 
 The **epigraph form** sidesteps this. The *epigraph* of a function is the set of points lying *on or above* its graph, $\{(\tau, D) : D \ge g(\tau)\}$. Rather than computing $g(\tau_t)$, introduce an auxiliary variable $D_t$ constrained to sit in that region by one linear lower-bound (cut) per segment. Then let the objective, which subtracts $D_t$, press it down onto the graph. The minimum feasible $D_t$ *is* $g(\tau_t)$, so the cost is reconstructed exactly with linear constraints only.
 
@@ -192,11 +196,11 @@ $$D_t \ge \ell_k(\tau_t) = a_k\,\tau_t + b_k \qquad \forall k=1,\dots,K.$$
 
 ![A convex piecewise-linear cost is the upper envelope of its segment lines: each segment line, extended, stays below the curve, so the pointwise maximum of the lines traces the curve exactly. The minimized auxiliary variable Dₜ lands on that envelope.](figures/pwl-epigraph.svg)
 
-**Why this is exact — the $\max(-D)\Rightarrow\min D\Rightarrow\max_k\ell_k\Rightarrow g$ chain.**
+**Why this is exact, the $\max(-D)\Rightarrow\min D\Rightarrow\max_k\ell_k\Rightarrow g$ chain.**
 Three steps, each an equality at the optimum:
 
 1. **Maximizing $-D_t$ minimizes $D_t$.**
-    $D_t$ enters the model *only* through its own cuts (6) and the objective term $-D_t$ — nothing else couples it (the cost is separable across periods, and $D_t$ does not appear in the SoC balance or power limits).
+    $D_t$ enters the model *only* through its own cuts (6) and the objective term $-D_t$: nothing else couples it (the cost is separable across periods, and $D_t$ does not appear in the SoC balance or power limits).
     So for any fixed dispatch $\tau_t$, the surrounding $\max$ pushes each $D_t$ to the *smallest* value its cuts allow; there is no incentive to leave it above its lower bound.
 2. **The smallest feasible $D_t$ is the pointwise max of the cuts.**
     Constraints (6) say $D_t \ge \ell_k(\tau_t)$ for *every* $k$ simultaneously, i.e. $D_t \ge \max_k \ell_k(\tau_t)$.
@@ -204,13 +208,13 @@ Three steps, each an equality at the optimum:
     $$D_t^\star = \max_{k=1,\dots,K}\ \ell_k(\tau_t).$$
 3. **That max equals the PWL cost, because $g$ is convex.**
     A convex PWL function is the **upper envelope of its own segment lines**: its slopes $a_k$ are non-decreasing in $k$ (the convexity validator enforces exactly this), so on each interval $\tau\in[x_{k-1},x_k]$ the steepest-so-far line $\ell_k$ is the maximal one, and $\max_k\ell_k(\tau)=g(\tau)$ pointwise.
-    Hence $D_t^\star=g(\tau_t)$ — the optimizer reconstructs the exact convex PWL cost with no λ-weights, binaries, or special-ordered sets.
+    Hence $D_t^\star=g(\tau_t)$: the optimizer reconstructs the exact convex PWL cost with no λ-weights, binaries, or special-ordered sets.
 
-This is *why* convexity is required: if the slopes were not monotone, $\max_k\ell_k$ would lie **above** $g$ between breakpoints (it would over-penalize), and the epigraph trick would no longer reproduce $g$ — that non-convex case is what SOS2 is for (see modeling notes).
+This is *why* convexity is required: if the slopes were not monotone, $\max_k\ell_k$ would lie **above** $g$ between breakpoints (it would over-penalize), and the epigraph trick would no longer reproduce $g$: that non-convex case is what SOS2 is for (see modeling notes).
 Non-negativity $D_t\ge0$ holds automatically (the first segment passes through the origin: $b_1=0$, $a_1\ge0$, so $\ell_1\ge0$ for $\tau_t\ge0$) and is kept as the variable's domain.
 
 *Landing exactly on a breakpoint.*
-If $\tau_t=x_k$, the two adjacent segment cuts $\ell_k,\ell_{k+1}$ are both tight and agree at $g_k$, so $D_t=g_k$ exactly — breakpoints are not special cases.
+If $\tau_t=x_k$, the two adjacent segment cuts $\ell_k,\ell_{k+1}$ are both tight and agree at $g_k$, so $D_t=g_k$ exactly; breakpoints are not special cases.
 
 ### Modified objective
 
@@ -222,13 +226,13 @@ Revenue is unchanged and still carries **no efficiency term**; the only addition
 
 - **Both directions, storage-side.**
     $\tau_t$ counts charge *and* discharge energy at the cell, so a full round trip of depth $q$ is penalized on both the charging period and the discharging period.
-    Efficiency appears inside $\tau_t$ because it is a *cell-side energy* quantity — this is a degradation measure, not the objective's cash flow, which stays grid-side with no efficiency term.
+    Efficiency appears inside $\tau_t$ because it is a *cell-side energy* quantity; this is a degradation measure, not the objective's cash flow, which stays grid-side with no efficiency term.
 - **Convex ⇒ epigraph, not SOS2.**
-    A convex PWL cost is exactly the max of its segment lines, so the cuts (6) represent it in a pure LP — no λ-weights, binaries, or special-ordered sets.
+    A convex PWL cost is exactly the max of its segment lines, so the cuts (6) represent it in a pure LP, no λ-weights, binaries, or special-ordered sets.
     SOS2 (the convex-combination method plus an adjacency rule) is the tool for **non-convex** PWL; it is not used here, and our solver (HiGHS) does not support SOS constraints in any case.
-    A non-convex degradation curve (future work) would need SOS2 via a SOS-capable solver or a binary segment-selection encoding — see [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost).
+    A non-convex degradation curve (future work) would need SOS2 via a SOS-capable solver or a binary segment-selection encoding; see [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost).
 - **Breakpoints vs. accuracy.**
-    More breakpoints approximate a smooth degradation curve better at the cost of more cuts (one per segment) — the accuracy-vs-solve-time trade-off.
+    More breakpoints approximate a smooth degradation curve better at the cost of more cuts (one per segment), the accuracy-vs-solve-time trade-off.
 - **Monotonicity.**
     $g$ non-decreasing $\Rightarrow$ a deeper discharge never lowers degradation cost (the gate's monotonicity property).
 
@@ -238,17 +242,17 @@ $T=2$, $\pi=[0,50]$, $\eta^{ch}=\eta^{dis}=1$, 1 MWh / 1 MW, $e_0=e^{\mathrm{tgt
 
 Terminal $=0$ forces discharge $=$ charge $=q$; with $\eta=1$ the throughput is $\tau=q$ in **each** period, so total degradation is $2g(q)$ and the objective is $f(q)=50q-2g(q)$, evaluated piecewise:
 
-- first segment ($0\le q\le 0.5$, slope 10): $f(q)=50q-2(10q)=30q$ — increasing;
-- second segment ($0.5\le q\le 1$, slope 60): $f(q)=50q-2\bigl(5+60(q-0.5)\bigr)=-70q+50$ — decreasing.
+- first segment ($0\le q\le 0.5$, slope 10): $f(q)=50q-2(10q)=30q$: increasing;
+- second segment ($0.5\le q\le 1$, slope 60): $f(q)=50q-2\bigl(5+60(q-0.5)\bigr)=-70q+50$: decreasing.
 
 Both pieces equal $15$ at $q=0.5$, so the maximum is the kink $q^\star=0.5$ → charge $[0.5,0]$, discharge $[0,0.5]$, soc $[0.5,0]$, objective $=\mathbf{15}$. The $\eta<1$ oracle (which pins the *storage-side* placement) and the full set are in [specs/R1.2-degradation.md](specs/R1.2-degradation.md).
 
 ---
 
-## R1.3 — Pre-flight feasibility (derived; no new model)
+## R1.3. Pre-flight feasibility (derived; no new model)
 
 *Governing reference:*
-none — engineering phase, **no new theory**.
+none; engineering phase, **no new theory**.
 The conditions below are algebraic corollaries of the R1.1 model
 (Williams, already governing).
 See [references.md § R1.3](references.md#r13--pre-flight-validation).
@@ -265,7 +269,7 @@ Power limits (3) with mutual exclusion (one direction per period) bound it by
 
 $$-\Delta^- \le a_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}.$$
 
-The efficiency placement mirrors the SoC balance (1) — $a_t$ is the *cell-side* increment, so charging multiplies by $\eta^{ch}$ (only part of the grid-side power reaches the cell) while discharging divides by $\eta^{dis}$ (more must leave the cell than reaches the grid). The extremes are attained one direction at a time, so mutual exclusion does not shrink the interval.
+The efficiency placement mirrors the SoC balance (1); $a_t$ is the *cell-side* increment, so charging multiplies by $\eta^{ch}$ (only part of the grid-side power reaches the cell) while discharging divides by $\eta^{dis}$ (more must leave the cell than reaches the grid). The extremes are attained one direction at a time, so mutual exclusion does not shrink the interval.
 
 ### Terminal reachability
 
@@ -277,7 +281,7 @@ trajectory through (1)–(3),(5) exists **iff**
 $$-\,T\,\Delta^- \;\le\; \Delta \;\le\; T\,\Delta^+ \qquad\text{(ramp-free).}$$
 
 *Sufficiency:*
-charge (or discharge) at the per-period extreme until $e^{\mathrm{tgt}}$ is hit, then idle — a monotone path that never leaves
+charge (or discharge) at the per-period extreme until $e^{\mathrm{tgt}}$ is hit, then idle, a monotone path that never leaves
 $[e_{\min}, e_{\max}]$ because both endpoints lie inside it.
 *Necessity:* the net change cannot exceed the summed per-period bounds.
 Violating the upper bound is unreachable-by-charging; the lower, unreachable-by-discharging.
@@ -289,7 +293,7 @@ Pre-flight therefore tests the ramp-free condition only (a sound fast filter) an
 
 ---
 
-## R1.4 — Backtest semantics (derived; no new model)
+## R1.4. Backtest semantics (derived; no new model)
 
 *Governing reference:*
 
@@ -298,7 +302,7 @@ Pre-flight therefore tests the ramp-free condition only (a sound fast filter) an
 See [references.md § R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band).
 
 This section adds **no constraints, variables, or objective terms**.
-It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey — all built from the *existing* R1.1/R1.2 optimizer.
+It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey; all built from the *existing* R1.1/R1.2 optimizer.
 If code and this section disagree, this governs.
 
 ### The information set (gate closure)
@@ -306,16 +310,16 @@ If code and this section disagree, this governs.
 The whole day-ahead block for delivery day $d$ is committed at a single gate (≈12:00 CET on $d-1$).
 So at decision time the agent knows **all** of day $d$'s prices, but **none** of day $d+1$'s.
 Write $\Pi_d$ for the price vector of day $d$.
-The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d-1$, and on **nothing from $d'>d$** — this is the leakage boundary (gate C).
+The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d-1$, and on **nothing from $d'>d$**: this is the leakage boundary (gate C).
 
 ### Three revenue quantities
 
 Let $V(\boldsymbol\pi;\,e_0,e^{\mathrm{tgt}})$ be the optimal objective of the R1.1/R1.2 MILP on price vector $\boldsymbol\pi$ with the given SoC endpoints, over a horizon that starts and ends empty unless stated.
 
-- **Perfect-foresight ceiling** $V^\star$ —
+- **Perfect-foresight ceiling** $V^\star$:
 one **full-horizon** solve over the entire concatenated series with $e_0=e_{\text{end}}=0$ and SoC free to carry **across** day boundaries. This is the theoretical maximum; nothing can exceed it.
-- **Rolling deployable value** $V^{\mathrm{roll}}=\sum_d V(\Pi_d;\,0,0)$ — **per-day** solves, each starting and ending empty. In a *deterministic* day-ahead setting the agent has no information about $\Pi_{d+1}$ at the day-$d$ gate, so it has no basis to carry SoC overnight; per-day independence (terminal SoC $=0$) is the honest myopic model. Each day's solve is still **intraday-optimal**.
-- **Greedy floor** $V^{\mathrm{greedy}}$ — a percentile rule (charge below the day's 20th price-percentile, discharge above the 80th), defined fully in the spec. A feasible but suboptimal policy; it ignores the round-trip-efficiency breakeven, so it can even trade at a loss.
+- **Rolling deployable value** $V^{\mathrm{roll}}=\sum_d V(\Pi_d;\,0,0)$: **per-day** solves, each starting and ending empty. In a *deterministic* day-ahead setting the agent has no information about $\Pi_{d+1}$ at the day-$d$ gate, so it has no basis to carry SoC overnight; per-day independence (terminal SoC $=0$) is the honest myopic model. Each day's solve is still **intraday-optimal**.
+- **Greedy floor** $V^{\mathrm{greedy}}$: a percentile rule (charge below the day's 20th price-percentile, discharge above the 80th), defined fully in the spec. A feasible but suboptimal policy; it ignores the round-trip-efficiency breakeven, so it can even trade at a loss.
 
 ### Provable ordering (a correctness gate)
 
@@ -323,11 +327,11 @@ $$0 \le V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star.$$
 
 ![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The gap between rolling and ceiling is the cross-day arbitrage a deterministic agent cannot capture; the headline metric is rolling over ceiling.](figures/backtest-bounds.svg)
 
-- $V^{\mathrm{roll}}\le V^\star$: the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem — the ceiling can only do at least as well.
+- $V^{\mathrm{roll}}\le V^\star$: the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem, the ceiling can only do at least as well.
 - $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}$: the greedy schedule is feasible for each day's MILP (it too ends the day empty), and the per-day MILP is optimal over all such schedules.
 - $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed (greedy can lose money); the floor on the *optimal* quantities is idle $\Rightarrow 0$.
 
-The gap $V^\star-V^{\mathrm{roll}}$ is exactly the **cross-day (overnight) arbitrage value** a deterministic agent provably cannot capture — the opportunity the R2 forecaster/recourse layer targets. The headline metric is $V^{\mathrm{roll}}/V^\star$ (% of perfect foresight captured).
+The gap $V^\star-V^{\mathrm{roll}}$ is exactly the **cross-day (overnight) arbitrage value** a deterministic agent provably cannot capture, the opportunity the R2 forecaster/recourse layer targets. The headline metric is $V^{\mathrm{roll}}/V^\star$ (% of perfect foresight captured).
 
 ### Sanity band (gate D)
 
@@ -335,7 +339,7 @@ The annualized ceiling per MWh-installed must sit inside a band **derived from t
 
 ---
 
-## R2.1 — Probabilistic price forecast (conformal intervals; no optimizer change)
+## R2.1. Probabilistic price forecast (conformal intervals; no optimizer change)
 
 *Governing reference: Angelopoulos & Bates, *A Gentle Introduction to Conformal Prediction* (see [`references.md`](references.md) § R2.1). This section summarizes only the coverage guarantee the forecaster relies on; it adds **no constraint, variable, or objective term** to the dispatch MILP above.*
 
@@ -345,20 +349,20 @@ R2.1 replaces a point price $\pi_t$ with an **interval** $[\ell_t, u_t]$ carryin
 
 $$ \mathbb P\big(y \in [\hat\mu(x)-\hat q,\ \hat\mu(x)+\hat q]\big) \ \ge\ 1-\alpha $$
 
-for exchangeable data, in finite samples, *independent of the model's accuracy* — the property the coverage gate checks empirically. Width is **constant** in $x$.
+for exchangeable data, in finite samples, *independent of the model's accuracy*: the property the coverage gate checks empirically. Width is **constant** in $x$.
 
 **CQR (the default; [ADR-0014](decisions/0014-cqr-over-split-conformal.md)).** Replace the point model with lower/upper quantile regressors $\hat q_{\alpha/2}, \hat q_{1-\alpha/2}$; conformalize on $\mathcal C$ with the signed score $E_i = \max\{\hat q_{\alpha/2}(x_i)-y_i,\ y_i-\hat q_{1-\alpha/2}(x_i)\}$ and its $(1-\alpha)$ quantile $\hat q$, giving $[\hat q_{\alpha/2}(x)-\hat q,\ \hat q_{1-\alpha/2}(x)+\hat q]$. Same marginal guarantee; width is now **input-adaptive**, which matters because day-ahead prices are heteroscedastic (volatile peaks, calm nights).
 
-**Gate (statistical, not a hand-solved oracle).** Empirical coverage under the R1.4 walk-forward must land in $1-\alpha \pm 0.05$ (nominal $0.9 \Rightarrow [0.85, 0.95]$); intervals obey $\ell_t \le \hat\mu_t \le u_t$; features are strictly pre-gate-closure (no leakage). **Exchangeability** is the load-bearing assumption — a price-distribution shift breaks it, which is exactly what the R2.1b drift monitor and the 7-day rolling recalibration exist to manage.
+**Gate (statistical, not a hand-solved oracle).** Empirical coverage under the R1.4 walk-forward must land in $1-\alpha \pm 0.05$ (nominal $0.9 \Rightarrow [0.85, 0.95]$); intervals obey $\ell_t \le \hat\mu_t \le u_t$; features are strictly pre-gate-closure (no leakage). **Exchangeability** is the load-bearing assumption; a price-distribution shift breaks it, which is exactly what the R2.1b drift monitor and the 7-day rolling recalibration exist to manage.
 
-**Considered but out of scope:** conditional (per-$x$) coverage guarantees (conformal gives only marginal); cross-conformal / jackknife+ (heavier, not needed at this data scale); adaptive conformal for distribution shift (ACI) — noted for R2.1b, not built here.
+**Considered but out of scope:** conditional (per-$x$) coverage guarantees (conformal gives only marginal); cross-conformal / jackknife+ (heavier, not needed at this data scale); adaptive conformal for distribution shift (ACI); noted for R2.1b, not built here.
 
 ---
 
 ## Changelog
 
-- **R1.1** — deterministic core.
-- **R1.2** — convex PWL degradation cost appended to the objective (epigraph form; SOS2 is the non-convex tool, not used here / unsupported by HiGHS); R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 when no breakpoints are configured.
-- **R1.3** — pre-flight feasibility *corollaries* of R1.1 (per-period increment bounds → terminal reachability); **no model change**. Ramp-free condition is necessary-and-sufficient; with ramp it stays necessary (sound filter), solver remains final arbiter.
-- **R1.4** — backtest *semantics* over the existing optimizer (perfect-foresight ceiling, rolling per-day deployable value, greedy floor; provable ordering $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$; leakage information set; sanity band); **no model change**.
-- **R2.1** — probabilistic price *forecast* (split/CQR conformal intervals with a distribution-free marginal-coverage guarantee); the uncertainty input to the R2 stochastic layer. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.
+- **R1.1**: deterministic core.
+- **R1.2**: convex PWL degradation cost appended to the objective (epigraph form; SOS2 is the non-convex tool, not used here / unsupported by HiGHS); R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 when no breakpoints are configured.
+- **R1.3**: pre-flight feasibility *corollaries* of R1.1 (per-period increment bounds → terminal reachability); **no model change**. Ramp-free condition is necessary-and-sufficient; with ramp it stays necessary (sound filter), solver remains final arbiter.
+- **R1.4**: backtest *semantics* over the existing optimizer (perfect-foresight ceiling, rolling per-day deployable value, greedy floor; provable ordering $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$; leakage information set; sanity band); **no model change**.
+- **R2.1**: probabilistic price *forecast* (split/CQR conformal intervals with a distribution-free marginal-coverage guarantee); the uncertainty input to the R2 stochastic layer. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.

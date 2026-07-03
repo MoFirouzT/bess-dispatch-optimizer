@@ -1121,7 +1121,7 @@ z
     </g>
    </g>
    <g id="text_12">
-    <!-- ① Feed delivered — REJECTED (stuck_feed): dispatch here would run on corrupt prices -->
+    <!-- ① Feed delivered: REJECTED (stuck_feed): dispatch here would run on corrupt prices -->
     <g transform="translate(72.85 60.723047) scale(0.1 -0.1)">
      <defs>
       <path id="DejaVuSans-dcd" d="M 5263 2331 
@@ -2822,7 +2822,7 @@ L 664.201406 281.110352
    </g>
   </g>
   <g id="text_53">
-   <!-- Ingestion guard — corrupt feed caught before dispatch -->
+   <!-- Ingestion guard, corrupt feed caught before dispatch -->
    <g transform="translate(176.840078 17.077969) scale(0.13 -0.13)">
     <defs>
      <path id="DejaVuSans-2c" d="M 628 4666 

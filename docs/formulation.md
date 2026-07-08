@@ -370,6 +370,28 @@ for exchangeable data, in finite samples, *independent of the model's accuracy*:
 
 ---
 
+## R2.2. Scenario generation + reduction (uncertainty representation; no optimizer change)
+
+*Governing reference: Dupačová, Gröwe-Kuska & Römisch (2003) and Heitsch & Römisch (2003) for probability-metric scenario reduction; King & Wallace, *Modeling with Stochastic Programming*, for generation framing (see [`references.md`](references.md) § R2.2). This section summarizes only the discrete construction R2.2 builds; it adds **no constraint, variable, or objective term** to the dispatch MILP above. The set it defines is the input the R2.3 stochastic program will optimize over.*
+
+R2.2 turns the R2.1 interval forecast into a **discrete probability distribution over price paths**: a scenario set $\{(\pi^{(s)}, p_s)\}_{s=1}^{S}$ where each $\pi^{(s)} = (\pi^{(s)}_1,\dots,\pi^{(s)}_T)$ is a full-horizon price path (house schema: €/MWh, grid-side, UTC hourly) and $p_s \ge 0$, $\sum_s p_s = 1$.
+
+**Generation (residual-path bootstrap; [ADR-0017](decisions/0017-residual-path-bootstrap-generation.md)).** Given the point forecast $\hat\mu = (\hat\mu_1,\dots,\hat\mu_T)$ and the forecaster's historical whole-day residual vectors $\{r^{(m)}\}_{m=1}^{M}$ (each $r^{(m)} = y^{(m)} - \hat\mu^{(m)}$, an actual-minus-forecast error path from the calibration history), draw $n$ indices $j_1,\dots,j_n$ uniformly with replacement and set $\pi^{(s)} = \hat\mu + r^{(j_s)}$, equiprobable $p_s = 1/n$. Resampling *whole vectors* (not per-hour draws) preserves the empirical intra-day correlation of forecast errors, so the paths carry realistic peak/trough shape rather than 24 independent wiggles.
+
+**Reduction distance.** For a fine distribution $P$ (support $\{\pi^{(i)}\}$, mass $p_i$) and a coarse one $Q$ supported on a *subset* of $P$'s atoms (the kept scenarios), the Wasserstein-$\ell$ (Kantorovich) distance under optimal redistribution has a closed form: each deleted atom's mass moves to its nearest kept atom, giving
+
+$$ D_\ell(P, Q) \;=\; \Big(\sum_{i \in J} p_i \,\min_{j \notin J}\, \lVert \pi^{(i)} - \pi^{(j)} \rVert^{\ell}\Big)^{1/\ell}, $$
+
+where $J$ is the deleted index set and $\lVert\cdot\rVert$ is the Euclidean ground metric on paths (default $\ell = 2$). The kept atom $j$ receives $q_j = p_j + \sum_{i \in J:\, j\, =\, \arg\min_{k \notin J}\lVert\pi^{(i)}-\pi^{(k)}\rVert} p_i$, so $Q$ stays a valid probability measure. (The same assignment-cost expression, with representatives that need not be original atoms, scores the k-means baseline whose centroids are not atoms; there it is an upper bound on the true $W_\ell$, used consistently so the two methods compare fairly.)
+
+**Fast forward selection ([ADR-0018](decisions/0018-forward-selection-over-kmeans.md)).** Choosing the size-$k$ subset that minimizes $D_\ell$ is combinatorial; forward selection is the standard greedy surrogate. Start with all atoms deleted; repeatedly add to the kept set the atom $u$ that most reduces $D_\ell$ (equivalently, minimizes $\sum_i p_i \min_{j \in \text{kept}\cup\{u\}} \lVert\pi^{(i)}-\pi^{(j)}\rVert^{\ell}$), until $|\text{kept}| = k$; then redistribute as above. k-means on the paths (centroids as representatives, cluster mass as probability) is the pragmatic baseline the gate compares against.
+
+**Gate (partly exact, partly statistical).** Reduction to a size-$S$ subset is the identity ($D = 0$); a small hand-built set has an exact $D_\ell$ and forward-selection choice (golden oracle). Beyond that the gate is behavioral: $D_\ell$ is non-increasing as $k$ grows; the forward-selected subset's $D_\ell$ is no larger than a random subset of equal size (the reducer does real work); the reduced measure conserves mass. Whether a reduced set preserves the eventual *dispatch value* is an R2.3 check (it needs the stochastic objective), deferred honestly rather than asserted here.
+
+**Considered but out of scope:** moment matching and copula generation (alternative generators, not built); ARIMA/GARCH parametric generation on raw prices (a second generator path, deferred); multistage / nested scenario trees (R2.2 is a single-stage day-ahead fan; tree structure belongs with R2.3 recourse); Fortet-Mourier and other probability metrics (the stability bound here uses Kantorovich).
+
+---
+
 ## Changelog
 
 - **R1.1**: deterministic core.
@@ -377,4 +399,5 @@ for exchangeable data, in finite samples, *independent of the model's accuracy*:
 - **R1.3**: pre-flight feasibility *corollaries* of R1.1 (per-period increment bounds → terminal reachability); **no model change**. Ramp-free condition is necessary-and-sufficient; with ramp it stays necessary (sound filter), solver remains final arbiter.
 - **R1.4**: backtest *semantics* over the existing optimizer (perfect-foresight ceiling, rolling per-day deployable value, greedy floor; provable ordering $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$; leakage information set; sanity band); **no model change**.
 - **R2.1**: probabilistic price *forecast* (split/CQR conformal intervals with a distribution-free marginal-coverage guarantee); the uncertainty input to the R2 stochastic layer. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.
+- **R2.2**: scenario *generation* (residual-path bootstrap off the R2.1 forecast) + *reduction* (Kantorovich-distance forward selection with probability redistribution; k-means baseline); the discrete uncertainty representation the R2.3 program optimizes over. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.
 - **Errata (2026-07-08)**: R1.4 ordering restated as $V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star$ with $0 \le V^{\mathrm{roll}}$ (the old display's $0 \le V^{\mathrm{greedy}}$ contradicted the greedy-can-lose-money note); sanity-band coefficient corrected to $c=\eta^{rt}(\text{cycles/day})\cdot 365$ ($E_{\text{usable}}$ wrongly appeared on both sides); R2.1 notation reconciled ($[\underline{\pi}_t,\overline{\pi}_t]$, margin $\hat s$). No model change.

@@ -92,10 +92,23 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.2. Scenario generation + reduction
+
+*Selected at R2.2 draft ([spec](specs/R2.2-scenarios.md)); reconciled/verified before implementation.*
+
+- **J. Dupačová, N. Gröwe-Kuska & W. Römisch, *Scenario reduction in stochastic programming: an approach using probability metrics* (Math. Programming, Ser. A, 2003)**, with **H. Heitsch & W. Römisch, *Scenario reduction algorithms in stochastic programming* (Comput. Optim. Appl. 24, 2003)**: *governing reference* (the new theory: probability-metric scenario reduction).
+  - The Kantorovich (Wasserstein) distance between discrete distributions, its **closed form under optimal redistribution** (deleted mass to the nearest kept atom), and **fast forward selection** / backward reduction → the reduction distance and greedy algorithm in [formulation.md § R2.2](formulation.md#r22-scenario-generation--reduction-uncertainty-representation-no-optimizer-change). *(Verify the theorem/section numbering and year before relying.)*
+  - **Deviation from the textbook-first policy, stated explicitly** (as R1.4 did for López de Prado): the reduction method is paper-defined and has no textbook of equal precision; these two 2003 papers are *the* source, so they are named governing rather than a textbook. Reconciled to house style: a scenario is a price path $\pi^{(s)}$ (€/MWh, grid-side, UTC schema), probabilities $p_s$; the probability metric is written $D_\ell$.
+- **A. King & S. Wallace, *Modeling with Stochastic Programming*, Springer, 2012**: *secondary (scenario-generation framing, pointer only).* What a good scenario set must preserve and why reduction is stability-driven, not cosmetic. *(Verify chapter.)*
+- **Birge & Louveaux, *Introduction to Stochastic Programming*; Shapiro, Dentcheva & Ruszczyński, *Lectures on Stochastic Programming* (free):** *secondary (foundations, pointer only);* scope authority moves here for R2.3, not R2.2.
+- *Alternatives considered:* **moment matching** (match a chosen moment list by construction) couples scenario quality to that list and carries no distance-stability bound; kept as noted-not-built. **k-means** clustering of paths is retained as the pragmatic *baseline* the gate compares against ([ADR-0018](decisions/0018-forward-selection-over-kmeans.md)), not the governed method. **ARIMA/GARCH** parametric generation on raw prices is a deferred second generator path.
+
+---
+
 ## Planned (not yet adopted)
 
 Chosen when the phase starts, then reconciled and recorded here. Candidates only; **not yet governing**:
 
-- **R2.2–2.3 stochastic / scenarios / robust:** Birge & Louveaux, *Introduction to Stochastic Programming*; Shapiro, Dentcheva & Ruszczyński, *Lectures on Stochastic Programming* (free); King & Wallace, *Modeling with Stochastic Programming*; Ben-Tal, El Ghaoui & Nemirovski, *Robust Optimization*.
+- **R2.3 stochastic / robust:** Birge & Louveaux, *Introduction to Stochastic Programming*; Shapiro, Dentcheva & Ruszczyński, *Lectures on Stochastic Programming* (free); Ben-Tal, El Ghaoui & Nemirovski, *Robust Optimization*.
 - **R2.3 recourse / MPC:** Rawlings, Mayne & Diehl, *Model Predictive Control: Theory, Computation, and Design* (free).
 - **R2.4 decomposition (Benders):** Conejo, Castillo, Mínguez & García-Bertrand, *Decomposition Techniques in Mathematical Programming*.

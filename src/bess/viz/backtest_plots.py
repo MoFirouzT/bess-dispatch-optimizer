@@ -177,3 +177,42 @@ def plot_ingestion_guard(
         color="#2a9d8f" if provenance == "healthy" else "#b00020",
     )  # fmt: skip
     return fig
+
+
+def plot_scenario_reduction(
+    kept_counts: list[int],
+    dist_forward: list[float],
+    times_ms: list[float],
+    *,
+    dist_kmeans: list[float] | None = None,
+    n_generate: int,
+    title: str = "Scenario reduction — count vs distance and cost",
+) -> Figure:
+    """The R2.2 trade-off (no new math): reduce a generated scenario set to varying
+    sizes and show the two curves that motivate the method.
+
+    Left: Kantorovich distance to the original vs kept count (forward selection,
+    and the k-means baseline if supplied) — smaller kept sets lose more of the
+    distribution. Right: reduction wall-clock vs kept count — the price paid.
+    Together they are the "keep ~50 of 300" argument, drawn rather than asserted.
+    """
+    fig, (ax_d, ax_t) = plt.subplots(1, 2, figsize=(11, 4.2))
+
+    ax_d.plot(kept_counts, dist_forward, "-o", color="#2a9d8f", label="forward selection")
+    if dist_kmeans is not None:
+        ax_d.plot(kept_counts, dist_kmeans, "--s", color="#e76f51", label="k-means baseline")
+    ax_d.set_xlabel("kept scenarios")
+    ax_d.set_ylabel("Kantorovich distance to original")
+    ax_d.set_title(f"Distance preserved (from {n_generate} generated)")
+    ax_d.legend()
+    ax_d.grid(alpha=0.3)
+
+    ax_t.plot(kept_counts, times_ms, "-o", color="#264653")
+    ax_t.set_xlabel("kept scenarios")
+    ax_t.set_ylabel("reduction time (ms)")
+    ax_t.set_title("Cost of reduction")
+    ax_t.grid(alpha=0.3)
+
+    fig.suptitle(title, fontsize=13)
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    return fig

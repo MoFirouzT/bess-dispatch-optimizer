@@ -35,3 +35,21 @@ uv run python examples/benchmark_scaling.py
 
 Timings are machine-dependent; on a recent laptop the month-long (720-period) solve
 is on the order of 100 ms, scaling roughly linearly in the horizon.
+
+## `scenario_reduction_demo.py` (R2.2)
+
+Generates a 300-path scenario set by residual-path bootstrap off a synthetic
+day-ahead shape, reduces it to a sweep of kept counts with fast forward selection
+(and the k-means baseline), and writes the count-vs-distance / count-vs-time
+trade-off figure the R2.2 spec calls for (`docs/figures/example-scenario-reduction.svg`).
+Needs the `examples` group (k-means and plotting).
+
+```bash
+uv run --group examples python examples/scenario_reduction_demo.py
+```
+
+Illustrative only (synthetic data): distance to the original set falls smoothly as
+more scenarios are kept, at a reduction cost that grows with the kept count. The
+k-means baseline reaches a slightly lower raw distance (its centroids are averaged
+paths), while forward selection keeps genuine price paths and carries the
+Kantorovich stability guarantee (ADR-0018).

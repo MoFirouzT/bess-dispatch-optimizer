@@ -156,6 +156,7 @@ class Battery:
         # (4) Ramp on net power (optional; None disables).
         if s.ramp is not None:
             ramp_limit = s.ramp  # MW/period
+
             def _ramp(m, t):
                 if t == 0:
                     return pyo.Constraint.Skip

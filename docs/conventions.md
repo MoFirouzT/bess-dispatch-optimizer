@@ -139,9 +139,9 @@ A line that must break a per-line check (for instance, to quote a banned word) c
 7. **If it's spatial, draw it.**
     A flow, an envelope, a set of nested bounds → one small SVG (`docs/figures/`) beats a dense paragraph.
 8. **✓ lint: no em dashes.**
-    The em dash (`—`) is banned outright in committed docs, and the ban is enforced per line.
+    The em dash (`—`) is banned outright in committed docs, and the ban is enforced per line. <!-- lint-ok: defines the banned glyph -->
     Reach for a colon, semicolon, comma, period, or parentheses, and vary the device so the prose does not settle into one substitute.
-    The glossary's term-definition format and the references' source-role format use a colon after the bold term; appositive asides take commas or parentheses; independent clauses take a semicolon or a full stop. <!-- lint-ok: defines the banned glyph -->
+    The glossary's term-definition format and the references' source-role format use a colon after the bold term; appositive asides take commas or parentheses; independent clauses take a semicolon or a full stop.
 9. **✓ lint: one load-bearing claim per sentence; files stay under ~600 lines.**
     Push qualifiers into the *next* sentence rather than nesting three asides.
     Split a file that outgrows the cap (agents read whole files).

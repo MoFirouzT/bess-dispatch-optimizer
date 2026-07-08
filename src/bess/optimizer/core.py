@@ -47,9 +47,9 @@ def build_model(
 
     # Objective — grid-side arbitrage revenue (NO efficiency factor) minus the
     # asset-provided degradation cost (R1.2; zero/absent ⇒ identical to R1.1).
-    revenue = sum(prices[t] * dt * (model.p_discharge[t] - model.p_charge[t]) for t in model.T)
+    revenue = sum(prices[t] * dt * (model.p_discharge[t] - model.p_charge[t]) for t in model.T) # type: ignore[operator]
     degradation = (
-        sum(model.degradation_cost[t] for t in model.T) if hasattr(model, "degradation_cost") else 0
+        sum(model.degradation_cost[t] for t in model.T) if hasattr(model, "degradation_cost") else 0 # type: ignore[operator]
     )
     model.revenue = pyo.Objective(expr=revenue - degradation, sense=pyo.maximize)
     return model
@@ -88,7 +88,7 @@ def solve(
     for _key, _val in _HIGHS_TOLERANCES.items():
         opt.options[_key] = _val
     if time_limit is not None:
-        opt.config.time_limit = time_limit
+        opt.config.time_limit = time_limit # type: ignore[attr-defined]
     results = opt.solve(model, load_solutions=False)
 
     # Fail loud if not optimal — pre-flight (check, above) handles the predictable
@@ -106,21 +106,21 @@ def solve(
     # materially negative D_t means the convex-PWL invariant is genuinely broken, so
     # surface it rather than hide it.
     if hasattr(model, "degradation_cost"):
-        for t in model.T:
-            d = pyo.value(model.degradation_cost[t])
-            if d < 0.0:
-                if d < -1e-5:
+        for t in model.T: # type: ignore[index]
+            d = pyo.value(model.degradation_cost[t]) # type: ignore[index]
+            if d < 0.0: # type: ignore[operator]
+                if d < -1e-5: # type: ignore[operator]
                     raise RuntimeError(
                         f"degradation_cost[{t}]={d!r} is materially negative — "
                         "convex-PWL non-negativity (formulation §R1.2) violated"
                     )
-                model.degradation_cost[t].set_value(0.0)
+                model.degradation_cost[t].set_value(0.0) # type: ignore[index]
 
-    idx = sorted(model.T)
+    idx = sorted(model.T) # type: ignore[index]
     return Schedule(
-        p_charge=[pyo.value(model.p_charge[t]) for t in idx],
-        p_discharge=[pyo.value(model.p_discharge[t]) for t in idx],
-        soc=[pyo.value(model.soc[t]) for t in idx],
-        objective=pyo.value(model.revenue),
+        p_charge=[pyo.value(model.p_charge[t]) for t in idx], # type: ignore[index]
+        p_discharge=[pyo.value(model.p_discharge[t]) for t in idx], # type: ignore[index]
+        soc=[pyo.value(model.soc[t]) for t in idx], # type: ignore[index]
+        objective=pyo.value(model.revenue), # type: ignore[index]
         termination="optimal",  # guard above guarantees optimality at this point
     )

@@ -7,7 +7,7 @@ Domain reference for the BE and NL power markets: *what the market does*. This i
 *Assumes: no prior power-market knowledge; terms are introduced as they appear (see also the [glossary](glossary.md)).*
 
 > **Scope flags.** Only the **day-ahead** market is in build scope for Release 1–2. FCR, aFRR, imbalance, and intraday are **reference only**: kept here for correctness of reasoning and possible future work. Build scope is marked per section.
-
+>
 > **Verification notice.** Market mechanics evolve. Cross-check every rule and parameter against current EPEX SPOT, TenneT, and Elia publications before implementing or trusting it. Key sources are listed at the end. Knowledge here is current as of early 2026.
 
 ---
@@ -15,7 +15,7 @@ Domain reference for the BE and NL power markets: *what the market does*. This i
 ## 1. Actors
 
 | Role | Netherlands | Belgium |
-|---|---|---|
+| --- | --- | --- |
 | TSO | TenneT TSO B.V. | Elia |
 | Regulator | ACM | CREG (federal) |
 | Day-ahead / intraday exchange | EPEX SPOT | EPEX SPOT (formerly Belpex) |
@@ -36,20 +36,24 @@ Both zones clear day-ahead through **SDAC** (Single Day-Ahead Coupling) with cro
 ## 3. Day-ahead market: **[BUILD SCOPE: Release 1–2]**
 
 ### Mechanism
+
 The EPEX SPOT day-ahead auction. Price-volume bids clear at the marginal price via the pan-European EUPHEMIA algorithm; cross-border capacity is allocated implicitly under flow-based coupling.
 
 ### Key parameters
+
 - **Gate closure:** 12:00 CET on D-1; results ~12:55 CET.
 - **Resolution:** 15-minute MTU (96 periods/day) since 2025-10-01 delivery. Hourly/30-min bids still accepted (cross-product matching), but the clearing and price series are 15-minute.
 - **Negative prices:** allowed and increasingly frequent with high renewable penetration.
 - **Currency:** EUR/MWh.
 
 ### Modelling implications
+
 - The optimizer's price input is the cleared day-ahead curve, treated as **known and deterministic** once published (D-1 after 12:00 CET). This is the deterministic core of Release 1.
 - **Resolution choice:** the *real* series is 15-minute. R1.1's hourly core (`Δt = 1.0`) is a deliberate simplification for the first correctness pass; the backtest (R1.4) and everything downstream should run on the native 15-minute series (`Δt = 0.25`, 96 periods/day). Keep `Δt` an explicit parameter everywhere so the switch is a config change, not a rewrite.
 - A storage-specific SDAC order type (lets storage bid without detailed forecasts) is planned for a future delivery; track it as possible future work, do not model it now.
 
 ### Data
+
 ENTSO-E Transparency Platform, `entsoe-py` method `query_day_ahead_prices`, area codes `10YNL----------L` (NL) and `10YBE----------2` (BE). Confirm the current token process at build time.
 
 ---
@@ -80,7 +84,7 @@ EPEX SPOT continuous trading, opens ~15:00 CET on D-1, runs until ~5 min before 
 
 ## 8. Gate-closure sequence (matters for the recourse layer)
 
-```
+```text
  FCR ──► aFRR-cap ──► DAY-AHEAD ──► intraday ──► aFRR-energy
  D-1      D-1 ~09:00   D-1 12:00 CET   D-1 15:00     real-time
  morning  CET          (build scope)   → pre-delivery
@@ -93,7 +97,7 @@ In a single-pass perfect-foresight solve this ordering is invisible. In the **ro
 ## 9. Data sources
 
 | Source | Use | Access |
-|---|---|---|
+| --- | --- | --- |
 | ENTSO-E Transparency | DA prices (BE/NL), load, generation | `entsoe-py`, free token |
 | Elia Open Data | BE imbalance, system imbalance, solar/wind | Open portal / API |
 | TenneT Open Data | NL imbalance, settlement | Open portal |

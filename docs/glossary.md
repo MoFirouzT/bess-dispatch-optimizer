@@ -1,18 +1,35 @@
 # Glossary / knowledge bank
 
-*Assumes: nothing; this file defines the battery, market, and optimization terms used across the repo from scratch. Symbols and their units live in [Conventions](conventions.md).*
+*Assumes: nothing;
+this file defines the battery, market, and optimization terms used across the repo from scratch.
+Symbols and their units live in [Conventions](conventions.md).*
 
-Entry shape: **term:** definition. *Why here:* relevance to this project. *Gotcha:* the common error or subtlety a bug (or a careless reading) trips on. Grown one section per build phase. The gotcha field is what makes this a living artifact rather than a dictionary.
+Entry shape:
+**term:** definition.
+*Why here:* relevance to this project.
+*Gotcha:* the common error or subtlety a bug (or a careless reading) trips on.
+Grown one section per build phase.
+The gotcha field is what makes this a living artifact rather than a dictionary.
 
 ---
 
 ## Market
 
-**Day-ahead (DA) market**: auction (EPEX SPOT, gate closure 12:00 CET on D-1) clearing the next day's energy at the marginal price. *Why here:* the price input the optimizer arbitrages. *Gotcha:* since 2025-10-01 it clears in **15-minute** MTU (96 periods/day), not hourly; a model built on "24 periods" is now modelling a published index, not the real product.
+**Day-ahead (DA) market**:
+auction (EPEX SPOT, gate closure 12:00 CET on D-1) clearing the next day's energy at the marginal price.
+*Why here:* the price input the optimizer arbitrages.
+*Gotcha:* since 2025-10-01 it clears in **15-minute** MTU (96 periods/day), not hourly; a model built on "24 periods" is now modelling a published index, not the real product.
 
-**Market Time Unit (MTU)**: the settlement granularity of a market product. *Why here:* sets the optimizer's period length `Δt`. *Gotcha:* DA MTU is now 15-min in BE/NL; the 60-min series is just the average of the four quarter-hours.
+**Market Time Unit (MTU)**:
+the settlement granularity of a market product.
+*Why here:* sets the optimizer's period length `Δt`.
+*Gotcha:* DA MTU is now 15-min in BE/NL; the 60-min series is just the average of the four quarter-hours.
 
-**Gate closure**: the deadline after which a market's bids are firm. *Why here:* defines the information set at decision time and the look-ahead-bias boundary in the backtest. *Gotcha:* the whole 24h day-ahead schedule is committed at the 12:00 CET gate. That single-shot commitment is *why* a naive day-ahead stochastic model has no recourse value.
+**Gate closure**:
+the deadline after which a market's bids are firm.
+*Why here:* defines the information set at decision time and the look-ahead-bias boundary in the backtest.
+*Gotcha:* the whole 24h day-ahead schedule is committed at the 12:00 CET gate.
+That single-shot commitment is *why* a naive day-ahead stochastic model has no recourse value.
 
 **Imbalance settlement**: real-time charge/payment for deviating from your nominated schedule, per 15-min ISP. *Why here:* distinct from arbitrage; the value proposition must not conflate them. *Gotcha:* a "day-ahead dispatch optimizer" does **not** reduce imbalance costs unless it models the imbalance market; claiming so is a market-mechanics error.
 
@@ -28,17 +45,34 @@ Entry shape: **term:** definition. *Why here:* relevance to this project. *Gotch
 
 ## Battery / physical
 
-**State of charge (SoC)**: energy currently stored, in MWh. *Why here:* the coupling state across periods. *Gotcha:* the SoC balance is where efficiency lives; a sign or placement error here is the #1 correctness trap.
+**State of charge (SoC)**:
+energy currently stored, in MWh.
+*Why here:* the coupling state across periods.
+*Gotcha:* the SoC balance is where efficiency lives; a sign or placement error here is the #1 correctness trap.
 
-**Round-trip efficiency (η_rt = η_ch·η_dis)**: fraction of energy returned over a full charge→discharge cycle. *Why here:* sets the minimum price spread that makes a trade profitable. *Gotcha:* it's **emergent** from the grid-side balance, not a term you multiply into revenue; delivering 1 MWh costs 1/η_rt MWh drawn.
+**Round-trip efficiency (η_rt = η_ch·η_dis)**:
+fraction of energy returned over a full charge→discharge cycle.
+*Why here:* sets the minimum price spread that makes a trade profitable.
+*Gotcha:* it's **emergent** from the grid-side balance, not a term you multiply into revenue; delivering 1 MWh costs 1/η_rt MWh drawn.
 
-**Inverter / power limit**: max charge or discharge power (MW). *Why here:* a hard physical constraint and a validation check. *Gotcha:* "can't charge faster than the inverter": energy capacity and power capacity are independent (1 MWh / 1 MW = 1-hour battery).
+**Inverter / power limit**:
+max charge or discharge power (MW).
+*Why here:* a hard physical constraint and a validation check.
+*Gotcha:* "can't charge faster than the inverter": energy capacity and power capacity are independent (1 MWh / 1 MW = 1-hour battery).
 
-**C-rate**: charge/discharge power relative to capacity (1C = full energy in 1 h). *Why here:* a 1 MWh/1 MW battery is 1C; duration = 1/C-rate.
+**C-rate**:
+charge/discharge power relative to capacity (1C = full energy in 1 h).
+*Why here:* a 1 MWh/1 MW battery is 1C; duration = 1/C-rate.
 
-**Depth of discharge (DoD) / cycle**: how deep a discharge goes / one full charge-discharge. *Why here:* drives degradation. *Gotcha:* deep cycles age the cell faster than shallow ones, which is why degradation is modelled as a non-linear (PWL) cost rather than a flat per-MWh fee.
+**Depth of discharge (DoD) / cycle**:
+how deep a discharge goes / one full charge-discharge.
+*Why here:* drives degradation.
+*Gotcha:* deep cycles age the cell faster than shallow ones, which is why degradation is modelled as a non-linear (PWL) cost rather than a flat per-MWh fee.
 
-**Degradation**: capacity/health loss from cycling and calendar age. *Why here:* a cost term in the objective (R1.2). *Gotcha:* if ignored, the optimizer over-cycles for tiny spreads; the PWL cost must make marginal deep cycling unprofitable.
+**Degradation**:
+capacity/health loss from cycling and calendar age.
+*Why here:* a cost term in the objective (R1.2).
+*Gotcha:* if ignored, the optimizer over-cycles for tiny spreads; the PWL cost must make marginal deep cycling unprofitable.
 
 ---
 

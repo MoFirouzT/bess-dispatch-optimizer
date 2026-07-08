@@ -29,5 +29,5 @@
   <text x="570" y="48" text-anchor="middle" font-size="11.5" fill="#57606a">(R2 target)</text>
 
   <!-- caption -->
-  <text x="360" y="256" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1f2328">0 ≤ V greedy ≤ V roll ≤ V★      ·      headline metric:  V roll / V★</text>
+  <text x="360" y="256" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1f2328">V greedy ≤ V roll ≤ V★,  0 ≤ V roll      ·      headline metric:  V roll / V★</text>
 </svg>

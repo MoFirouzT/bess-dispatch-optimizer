@@ -59,7 +59,9 @@ def _assert_in_own_band(rep) -> None:
     volatile summer legitimately annualizes above it, but stays inside its own band.
     """
     spec = BatterySpec()
-    c = spec.eta_charge * spec.eta_discharge * spec.capacity * (1.0 - spec.soc_min) * 365.0
+    # `ceiling` is already per MWh usable, so E_usable must NOT reappear here
+    # (formulation §R1.4 sanity band: c = η_rt · cycles/day · 365).
+    c = spec.eta_charge * spec.eta_discharge * 365.0
     heuristic = c * rep.mean_daily_spread_eur
     ceiling = rep.annualized_ceiling_per_mwh
     assert 0.8 * heuristic < ceiling < 1.6 * heuristic

@@ -31,7 +31,7 @@ in isolation.
   degraded, regardless of the solver `mode`.
 
 **Scope honesty:** R1.5's `POST /dispatch` takes client-supplied prices and does not
-fetch (its out-of-scope, unchanged). So this ADR does not add fetch-inside-the-
+fetch (it's out of scope, unchanged). So this ADR does not add fetch-inside-the-
 endpoint. The composition is exercised on the backtest/example fetch→solve path, and
 the vocabulary is defined so a future auto-fetch endpoint can attach `data_status`
 next to `mode` without new plumbing.

@@ -33,7 +33,9 @@ def test_structural_sanity_band_on_synthetic_series():
     assert rep.constraint_satisfaction
 
     # Coefficient recomputed from the spec (1 cycle/day heuristic) — not hard-coded.
-    c = spec.eta_charge * spec.eta_discharge * spec.capacity * (1.0 - spec.soc_min) * 365.0
+    # `annualized` is already per MWh usable, so E_usable must NOT reappear here
+    # (formulation §R1.4 sanity band: c = η_rt · cycles/day · 365).
+    c = spec.eta_charge * spec.eta_discharge * 365.0
     heuristic = c * rep.mean_daily_spread_eur
 
     annualized = rep.annualized_ceiling_per_mwh

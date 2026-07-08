@@ -49,12 +49,14 @@ See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch) for 
 | --- | --- | --- |
 | $\pi_t$ | day-ahead price in period $t$ (known) | €/MWh |
 | $\Delta t$ | period length | h |
-| $\eta^{ch}, \eta^{dis}$ | charge / discharge efficiency, $\in(0,1]$ | ; |
+| $\eta^{ch}, \eta^{dis}$ | charge / discharge efficiency, $\in(0,1]$ | – |
 | $\bar P^{ch}, \bar P^{dis}$ | max charge / discharge power | MW |
 | $e_{\min}, e_{\max}$ | usable SoC bounds | MWh |
 | $R$ | ramp limit on net power | MW per period |
-| $e_0$ | initial SoC | MWh |
-| $e^{\mathrm{tgt}}$ | terminal SoC target | MWh |
+| $e_0$ | initial SoC, $\in[e_{\min}, e_{\max}]$ | MWh |
+| $e^{\mathrm{tgt}}$ | terminal SoC target, $\in[e_{\min}, e_{\max}]$ | MWh |
+
+Both endpoint parameters must lie inside the SoC bounds (config validation enforces this); the R1.3 reachability proof relies on it.
 
 ### Decision variables
 
@@ -96,11 +98,21 @@ $$e_{T} = e^{\mathrm{tgt}}$$
 ### Modeling notes
 
 - **Mutual-exclusion binary $u_t$.**
-    The *LP relaxation* (the model with the integrality of $u_t$ dropped, which the solver visits inside branch-and-bound) self-enforces mutual exclusion wherever prices are non-negative and $\eta^{rt}<1$: a pointless round trip only loses energy, so the relaxation leaves $u_t$ integral on its own.
-    The binary earns its keep under **negative prices**, a *recurring* BE/NL condition (renewable oversupply, not a rare edge case).
-    There, charging *and* discharging at once dissipates grid energy while holding SoC fixed, a paid round-trip loss that looks profitable when $\pi_t<0$; only the binary forbids it.
-    It actually binds where a negative price meets a saturated SoC (no room to simply store the cheap energy), so most sub-zero hours still relax cleanly, yet enough do not that $u_t$ is a first-class correctness requirement, never a nicety.
-    On the *big-M*: constraint (3) is a big-M switch (a constraint whose right-hand side relaxes to a large constant when its binary is off). Here that constant is the power cap itself ($\bar P^{ch}, \bar P^{dis}$), the tightest valid bound, so no loose big-M is introduced and the relaxation stays tight.
+
+    **When prices are non-negative** ($\pi_t \ge 0$):
+    The *LP relaxation* (integrality of $u_t$ dropped) self-enforces mutual exclusion automatically whenever $\eta^{rt}<1$.
+    A simultaneous charge–discharge round trip loses energy with no revenue upside, so the relaxed *dispatch* is already exclusion-feasible without branching.
+    ($u_t$ itself may relax to a fractional value; what matters is that the dispatch it gates is integral in its own right.)
+
+    **When prices turn negative** ($\pi_t < 0$, a *recurring* BE/NL condition):
+    The binary becomes a first-class correctness requirement, not a nicety.
+    At negative prices, simultaneous charging and discharging looks profitable to the LP: it burns grid energy, and a negative price means the market pays the battery to do so.
+    But this round trip holds SoC fixed while drawing energy through the cell, which the balance constraint forbids: it is infeasible, and only the binary rules it out.
+    Most sub-zero hours still relax cleanly, so $u_t$ rarely binds, but enough do not that it is essential, chiefly when a negative price coincides with a saturated SoC (no room left to store the cheap energy).
+
+    **Big-M structure:**
+    Constraint (3) is a big-M switch: its right-hand side relaxes to a large constant when its binary is off.
+    Here the constant is the tightest valid bound: the power cap itself ($\bar P^{ch}, \bar P^{dis}$), so no loose big-M is introduced and the relaxation remains tight.
 - **Ramp.**
     Defined on net power for generality / grid-connection.
     Batteries ramp near-instantly, so $R$ is typically non-binding; disable by setting $R \ge \bar P^{ch} + \bar P^{dis}$.
@@ -146,7 +158,7 @@ Per-period **storage-side throughput**: the energy that actually passes through 
 
 $$\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t \qquad \in [0,\ \tau_{\max}]$$
 
-Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so exactly one term is non-zero.
+Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so at most one term is non-zero (both are zero in an idle period).
 
 Two physical limits cap the per-period throughput, and the binding one is whichever is smaller:
 
@@ -158,6 +170,8 @@ So its maximum is the smaller of the two:
 $$\tau_{\max} = \min\!\Bigl(\ \underbrace{\max\!\bigl(\eta^{ch}\bar P^{ch}\Delta t,\ \tfrac{\bar P^{dis}\Delta t}{\eta^{dis}}\bigr)}_{\text{power limit}},\ \ \underbrace{e_{\max}-e_{\min}}_{\text{SoC window}}\ \Bigr).$$
 
 So the SoC *capacity* does enter, as the per-period *flow* limit $e_{\max}-e_{\min}$. (The SoC *level* across periods is still governed by balance (1) and bounds (2); those are unchanged.)
+
+Both caps are already implied by constraints (1)–(3), so $\tau_t \le \tau_{\max}$ is a *derived* bound, not an added constraint; its only job is to normalize the breakpoints below.
 
 This is a per-period throughput proxy for cycle depth.
 
@@ -305,7 +319,7 @@ If code and this section disagree, this governs.
 The whole day-ahead block for delivery day $d$ is committed at a single gate (≈12:00 CET on $d-1$).
 So at decision time the agent knows **all** of day $d$'s prices, but **none** of day $d+1$'s.
 Write $\Pi_d$ for the price vector of day $d$.
-The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d-1$, and on **nothing from $d'>d$**: this is the leakage boundary (gate C).
+The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d-1$, and on **nothing from $d'>d$**: this is the leakage boundary (gate C; the gates are lettered in [specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)).
 
 ### Three revenue quantities
 
@@ -318,19 +332,19 @@ one **full-horizon** solve over the entire concatenated series with $e_0=e_{\tex
 
 ### Provable ordering (a correctness gate)
 
-$$0 \le V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star.$$
+$$V^{\mathrm{greedy}} \;\le\; V^{\mathrm{roll}} \;\le\; V^\star, \qquad 0 \;\le\; V^{\mathrm{roll}}.$$
 
 ![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The gap between rolling and ceiling is the cross-day arbitrage a deterministic agent cannot capture; the headline metric is rolling over ceiling.](figures/backtest-bounds.svg)
 
 - $V^{\mathrm{roll}}\le V^\star$: the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem, the ceiling can only do at least as well.
 - $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}$: the greedy schedule is feasible for each day's MILP (it too ends the day empty), and the per-day MILP is optimal over all such schedules.
-- $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed (greedy can lose money); the floor on the *optimal* quantities is idle $\Rightarrow 0$.
+- $0 \le V^{\mathrm{roll}}$: idle is feasible in every per-day solve, so each *optimal* per-day value is non-negative (likewise $0 \le V^\star$). $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed: greedy can trade at a loss, so the zero floor bounds the optimal quantities only.
 
 The gap $V^\star-V^{\mathrm{roll}}$ is exactly the **cross-day (overnight) arbitrage value** a deterministic agent provably cannot capture, the opportunity the R2 forecaster/recourse layer targets. The headline metric is $V^{\mathrm{roll}}/V^\star$ (% of perfect foresight captured).
 
 ### Sanity band (gate D)
 
-The annualized ceiling per MWh-installed must sit inside a band **derived from the fixture's own price statistics** (not hard-coded): $V^\star_{\text{annual}}/E_{\text{usable}} \approx c\cdot\overline{\text{spread}}_{\text{daily}}$, with $c=\eta^{rt}\,E_{\text{usable}}\,(\text{cycles/day})\cdot 365$ recomputed from the spec. A result above the ceiling band is a leakage red flag, not alpha.
+The annualized ceiling per MWh-installed must sit inside a band **derived from the fixture's own price statistics** (not hard-coded): $V^\star_{\text{annual}}/E_{\text{usable}} \approx c\cdot\overline{\text{spread}}_{\text{daily}}$, where $\overline{\text{spread}}_{\text{daily}}$ is the mean over days of that day's max-minus-min price and $c=\eta^{rt}\,(\text{cycles/day})\cdot 365$ is recomputed from the spec. ($E_{\text{usable}}$ already divides the left side, so it must not reappear in $c$; both sides are €/MWh-installed per year.) A result above the ceiling band is a leakage red flag, not alpha.
 
 ---
 
@@ -338,17 +352,19 @@ The annualized ceiling per MWh-installed must sit inside a band **derived from t
 
 *Governing reference: Angelopoulos & Bates, *A Gentle Introduction to Conformal Prediction* (see [`references.md`](references.md) § R2.1). This section summarizes only the coverage guarantee the forecaster relies on; it adds **no constraint, variable, or objective term** to the dispatch MILP above.*
 
-R2.1 replaces a point price $\pi_t$ with an **interval** $[\ell_t, u_t]$ carrying a distribution-free coverage guarantee, the uncertainty input the R2.2+ stochastic layer samples. Let a base regressor be fit on a *proper-training* split and a disjoint *calibration* split $\mathcal C$ (of size $n$) held out, with target miscoverage $\alpha$ (so $\text{confidence} = 1-\alpha$).
+R2.1 replaces a point price $\pi_t$ with an **interval** $[\underline{\pi}_t, \overline{\pi}_t]$ carrying a distribution-free coverage guarantee, the uncertainty input the R2.2+ stochastic layer samples. Let a base regressor be fit on a *proper-training* split and a disjoint *calibration* split $\mathcal C$ (of size $n$) held out, with target miscoverage $\alpha$ (so $\text{confidence} = 1-\alpha$).
 
-**Split conformal.** With calibration residuals $R_i = |y_i - \hat\mu(x_i)|$ for $i\in\mathcal C$, let $\hat q$ be the $\lceil(1-\alpha)(n+1)\rceil/n$ empirical quantile of $\{R_i\}$. The interval $\hat\mu(x)\pm\hat q$ then satisfies the **marginal coverage** bound
+*Notation reconciled to house style.* The reference writes the interval bounds as generic lower/upper limits and the conformal margin as $\hat q$. Here the bounds take the price symbol $\pi$ ($\underline{\pi}_t, \overline{\pi}_t$) and the margin is $\hat s$, because $\hat q_{\alpha/2}$ already names the quantile regressors below and $u_t$ is the R1.1 binary.
 
-$$ \mathbb P\big(y \in [\hat\mu(x)-\hat q,\ \hat\mu(x)+\hat q]\big) \ \ge\ 1-\alpha $$
+**Split conformal.** With calibration residuals $R_i = |y_i - \hat\mu(x_i)|$ for $i\in\mathcal C$, let $\hat s$ be the $\lceil(1-\alpha)(n+1)\rceil/n$ empirical quantile of $\{R_i\}$. The interval $\hat\mu(x)\pm\hat s$ then satisfies the **marginal coverage** bound
+
+$$ \mathbb P\big(y \in [\hat\mu(x)-\hat s,\ \hat\mu(x)+\hat s]\big) \ \ge\ 1-\alpha $$
 
 for exchangeable data, in finite samples, *independent of the model's accuracy*: the property the coverage gate checks empirically. Width is **constant** in $x$.
 
-**CQR (the default; [ADR-0014](decisions/0014-cqr-over-split-conformal.md)).** Replace the point model with lower/upper quantile regressors $\hat q_{\alpha/2}, \hat q_{1-\alpha/2}$; conformalize on $\mathcal C$ with the signed score $E_i = \max\{\hat q_{\alpha/2}(x_i)-y_i,\ y_i-\hat q_{1-\alpha/2}(x_i)\}$ and its $(1-\alpha)$ quantile $\hat q$, giving $[\hat q_{\alpha/2}(x)-\hat q,\ \hat q_{1-\alpha/2}(x)+\hat q]$. Same marginal guarantee; width is now **input-adaptive**, which matters because day-ahead prices are heteroscedastic (volatile peaks, calm nights).
+**CQR (the default; [ADR-0014](decisions/0014-cqr-over-split-conformal.md)).** Replace the point model with lower/upper quantile regressors $\hat q_{\alpha/2}, \hat q_{1-\alpha/2}$; conformalize on $\mathcal C$ with the signed score $E_i = \max\{\hat q_{\alpha/2}(x_i)-y_i,\ y_i-\hat q_{1-\alpha/2}(x_i)\}$ and its $(1-\alpha)$ quantile $\hat s$, giving $[\hat q_{\alpha/2}(x)-\hat s,\ \hat q_{1-\alpha/2}(x)+\hat s]$. Same marginal guarantee; width is now **input-adaptive**, which matters because day-ahead prices are heteroscedastic (volatile peaks, calm nights).
 
-**Gate (statistical, not a hand-solved oracle).** Empirical coverage under the R1.4 walk-forward must land in $1-\alpha \pm 0.05$ (nominal $0.9 \Rightarrow [0.85, 0.95]$); intervals obey $\ell_t \le \hat\mu_t \le u_t$; features are strictly pre-gate-closure (no leakage). **Exchangeability** is the load-bearing assumption; a price-distribution shift breaks it, which is exactly what the R2.1b drift monitor and the 7-day rolling recalibration exist to manage.
+**Gate (statistical, not a hand-solved oracle).** Empirical coverage under the R1.4 walk-forward must land in $1-\alpha \pm 0.05$ (nominal $0.9 \Rightarrow [0.85, 0.95]$); intervals obey $\underline{\pi}_t \le \hat\mu_t \le \overline{\pi}_t$; features are strictly pre-gate-closure (no leakage). **Exchangeability** is the load-bearing assumption; a price-distribution shift breaks it, which is exactly what the R2.1b drift monitor and the 7-day rolling recalibration exist to manage.
 
 **Considered but out of scope:** conditional (per-$x$) coverage guarantees (conformal gives only marginal); cross-conformal / jackknife+ (heavier, not needed at this data scale); adaptive conformal for distribution shift (ACI); noted for R2.1b, not built here.
 
@@ -361,3 +377,4 @@ for exchangeable data, in finite samples, *independent of the model's accuracy*:
 - **R1.3**: pre-flight feasibility *corollaries* of R1.1 (per-period increment bounds → terminal reachability); **no model change**. Ramp-free condition is necessary-and-sufficient; with ramp it stays necessary (sound filter), solver remains final arbiter.
 - **R1.4**: backtest *semantics* over the existing optimizer (perfect-foresight ceiling, rolling per-day deployable value, greedy floor; provable ordering $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$; leakage information set; sanity band); **no model change**.
 - **R2.1**: probabilistic price *forecast* (split/CQR conformal intervals with a distribution-free marginal-coverage guarantee); the uncertainty input to the R2 stochastic layer. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.
+- **Errata (2026-07-08)**: R1.4 ordering restated as $V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star$ with $0 \le V^{\mathrm{roll}}$ (the old display's $0 \le V^{\mathrm{greedy}}$ contradicted the greedy-can-lose-money note); sanity-band coefficient corrected to $c=\eta^{rt}(\text{cycles/day})\cdot 365$ ($E_{\text{usable}}$ wrongly appeared on both sides); R2.1 notation reconciled ($[\underline{\pi}_t,\overline{\pi}_t]$, margin $\hat s$). No model change.

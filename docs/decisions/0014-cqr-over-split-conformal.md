@@ -47,7 +47,7 @@ upper(1−α/2), median]`** with `prefit=True`, then `.conformalize(X_cal, y_cal
 
 ## Failure mode
 
-If the two quantile models cross (lower > upper before conformalization. MAPIE logs
+If the two quantile models cross (lower > upper before conformalization; MAPIE logs
 "ill-sorted"), the interval is degenerate. Signal: the interval-ordering property test
 (`lower ≤ point ≤ upper`) fails; CQR's correction and a monotone-in-confidence test
 guard it.

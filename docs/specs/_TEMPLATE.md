@@ -33,4 +33,13 @@
 - &lt;item&gt;
 
 ## Open questions
-- &lt;question&gt;
+
+Phase-local formulation / interface / build decisions only. Roadmap and
+positioning questions stay in the Tier 0 planning log, never here.
+
+Pose each with a proposed answer, then resolve it in place at review, keeping
+the resolved line so the section becomes the decision trail. Promote a decision
+to an ADR only when it is cross-cutting, and leave a pointer here.
+
+- &lt;question&gt; *Proposed:* &lt;recommendation&gt;.
+- &lt;question&gt; **Resolved:** &lt;decision + rationale&gt; (YYYY-MM-DD).

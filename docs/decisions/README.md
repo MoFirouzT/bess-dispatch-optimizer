@@ -39,18 +39,18 @@ How this decision could go wrong in practice, and the signal that would reveal i
 The other options and why they were rejected.
 ```
 
-## Index (starter; these are the foundational decisions to formalize; status `Proposed` until written)
+## Index
 
 | # | Title | Status |
 | --- | ------- | -------- |
-| 0001 | Pyomo for modelling (not linopy or CVXPY); chosen for the `mpi-sppy` two-stage / Benders path | Proposed |
-| 0002 | HiGHS as the default solver; Gurobi (academic licence) as an optional faster backend | Proposed |
-| 0003 | Grid-side metering: efficiency in the SoC balance, never in the objective | Proposed |
-| 0004 | Two-release structure; deterministic core ships before the stochastic layer | Proposed |
-| 0005 | Commit real fixture data so the test suite runs without an API token | Proposed |
-| 0006 | Day-ahead is 15-minute native; the R1.1 hourly core is a deliberate simplification | Proposed |
-| 0007 | Stochastic value requires a risk-aware objective and/or genuine recourse (avoid the VSS=0 trap) | Proposed |
-| 0008 | `uv` + `ruff` toolchain; import-linter enforces the dependency layering | Proposed |
+| 0001 | [Pyomo as the modelling layer (not linopy or CVXPY)](0001-pyomo-for-modelling.md) | Accepted |
+| 0002 | [HiGHS as the default solver; Gurobi optional](0002-highs-default-solver.md) | Accepted |
+| 0003 | [Grid-side metering: efficiency in the SoC balance, never in the objective](0003-grid-side-metering.md) | Accepted |
+| 0004 | [Two-release structure; deterministic core before the stochastic layer](0004-two-release-structure.md) | Accepted |
+| 0005 | [Commit real fixture data so the suite runs without a token](0005-commit-real-fixture-data.md) | Rejected |
+| 0006 | [Day-ahead is 15-minute native; the R1.1 hourly core is a deliberate simplification](0006-day-ahead-15min-native.md) | Accepted |
+| 0007 | [Stochastic value requires a risk-aware objective and/or genuine recourse (avoid the VSS=0 trap)](0007-stochastic-value-requires-risk-or-recourse.md) | Accepted |
+| 0008 | [`uv` + `ruff` toolchain; import-linter enforces the dependency layering](0008-uv-ruff-import-linter-toolchain.md) | Accepted |
 | 0009 | [SoC expressed per-unit in config, absolute MWh in the model](0009-soc-per-unit-in-config.md) | Accepted |
 | 0010 | [Relocate the greedy heuristic to `bess.optimizer` so serving can reuse it](0010-greedy-heuristic-in-optimizer.md) | Accepted |
 | 0011 | [Circuit-breaker semantics for the dispatch endpoint](0011-circuit-breaker-semantics.md) | Accepted |

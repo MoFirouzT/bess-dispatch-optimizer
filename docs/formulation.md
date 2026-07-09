@@ -71,29 +71,29 @@ Both endpoint parameters must lie inside the SoC bounds (config validation enfor
 
 Maximize day-ahead arbitrage revenue (grid-side cash flow, no efficiency term):
 
-$$\max \;\; \sum_{t \in \mathcal{T}} \pi_t\, \Delta t \,\bigl(p^{dis}_t - p^{ch}_t\bigr)$$
+$$\boxed{\;\max \;\; \sum_{t \in \mathcal{T}} \pi_t\, \Delta t \,\bigl(p^{dis}_t - p^{ch}_t\bigr)\;}$$
 
 ### Constraints
 
 **(1) State-of-charge balance** (with $e_0$ given as initial condition):
 
-$$e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \frac{p^{dis}_t}{\eta^{dis}} \Delta t \qquad \forall t \in \mathcal{T}$$
+$$\boxed{\;e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \frac{p^{dis}_t}{\eta^{dis}} \Delta t \qquad \forall t \in \mathcal{T}\;}$$
 
 **(2) SoC bounds:**
 
-$$e_{\min} \le e_t \le e_{\max} \qquad \forall t \in \mathcal{T}$$
+$$\boxed{\;e_{\min} \le e_t \le e_{\max} \qquad \forall t \in \mathcal{T}\;}$$
 
 **(3) Power limits with mutual exclusion** (no simultaneous charge and discharge):
 
-$$0 \le p^{ch}_t \le \bar P^{ch} u_t, \qquad 0 \le p^{dis}_t \le \bar P^{dis} (1 - u_t) \qquad \forall t \in \mathcal{T}$$
+$$\boxed{\;0 \le p^{ch}_t \le \bar P^{ch} u_t, \qquad 0 \le p^{dis}_t \le \bar P^{dis} (1 - u_t) \qquad \forall t \in \mathcal{T}\;}$$
 
 **(4) Ramp on net power** (for $t \ge 2$; $p^{net}_t \equiv p^{dis}_t - p^{ch}_t$):
 
-$$-R \le p^{net}_t - p^{net}_{t-1} \le R \qquad \forall t \in \mathcal{T},\, t \ge 2$$
+$$\boxed{\;-R \le p^{net}_t - p^{net}_{t-1} \le R \qquad \forall t \in \mathcal{T},\, t \ge 2\;}$$
 
 **(5) Terminal SoC:**
 
-$$e_{T} = e^{\mathrm{tgt}}$$
+$$\boxed{\;e_{T} = e^{\mathrm{tgt}}\;}$$
 
 ### Modeling notes
 
@@ -154,9 +154,10 @@ A flat €/MWh fee cannot capture this; a convex piecewise-linear (PWL) cost can
 
 ### Degradation measure
 
-Per-period **storage-side throughput**: the energy that actually passes through the cell, counting **both directions** (charging into the cell and discharging out of it both age it):
+Per-period **storage-side throughput**:
+the energy that actually passes through the cell, counting **both directions** (charging into the cell and discharging out of it both age it):
 
-$$\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t \qquad \in [0,\ \tau_{\max}]$$
+$$\boxed{\;\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t \qquad \in [0,\ \tau_{\max}]\;}$$
 
 Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so at most one term is non-zero (both are zero in an idle period).
 
@@ -169,7 +170,8 @@ So its maximum is the smaller of the two:
 
 $$\tau_{\max} = \min\!\Bigl(\ \underbrace{\max\!\bigl(\eta^{ch}\bar P^{ch}\Delta t,\ \tfrac{\bar P^{dis}\Delta t}{\eta^{dis}}\bigr)}_{\text{power limit}},\ \ \underbrace{e_{\max}-e_{\min}}_{\text{SoC window}}\ \Bigr).$$
 
-So the SoC *capacity* does enter, as the per-period *flow* limit $e_{\max}-e_{\min}$. (The SoC *level* across periods is still governed by balance (1) and bounds (2); those are unchanged.)
+So the SoC *capacity* does enter, as the per-period *flow* limit $e_{\max}-e_{\min}$.
+(The SoC *level* across periods is still governed by balance (1) and bounds (2); those are unchanged.)
 
 Both caps are already implied by constraints (1)–(3), so $\tau_t \le \tau_{\max}$ is a *derived* bound, not an added constraint; its only job is to normalize the breakpoints below.
 
@@ -201,15 +203,19 @@ The configured curve passes through $(x_0,g_0),\dots,(x_K,g_K)$, starting at the
 
 Let $g(\cdot)$ be the convex PWL degradation cost, so the *ideal* term is $g(\tau_t)$: but $g$ is not affine, so it cannot be written directly in an LP.
 
-The **epigraph form** sidesteps this. The *epigraph* of a function is the set of points lying *on or above* its graph, $\{(\tau, D) : D \ge g(\tau)\}$. Rather than computing $g(\tau_t)$, introduce an auxiliary variable $D_t$ constrained to sit in that region by one linear lower-bound (cut) per segment. Then let the objective, which subtracts $D_t$, press it down onto the graph. The minimum feasible $D_t$ *is* $g(\tau_t)$, so the cost is reconstructed exactly with linear constraints only.
+The **epigraph form** sidesteps this.
+The *epigraph* of a function is the set of points lying *on or above* its graph, $\{(\tau, D) : D \ge g(\tau)\}$.
+Rather than computing $g(\tau_t)$, introduce an auxiliary variable $D_t$ constrained to sit in that region by one linear lower-bound (cut) per segment.
+Then let the objective, which subtracts $D_t$, press it down onto the graph.
+The minimum feasible $D_t$ *is* $g(\tau_t)$, so the cost is reconstructed exactly with linear constraints only.
 
 For each segment $k=1,\dots,K$, the line through $(x_{k-1},g_{k-1})$ and $(x_k,g_k)$ is $\ell_k(\tau)=a_k\tau+b_k$ with
 
 $$a_k = \frac{g_k-g_{k-1}}{x_k-x_{k-1}}, \qquad b_k = g_{k-1}-a_k\,x_{k-1}.$$
 
-**(6) Epigraph cuts** (with $\tau_t = \eta^{ch} p^{ch}_t\Delta t + \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$, the throughput defined above):
+**(6) Epigraph cuts** (constraint (6) of the model, continuing the R1.1 list (1)–(5); with $\tau_t = \eta^{ch} p^{ch}_t\Delta t + \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$, the throughput defined above):
 
-$$D_t \ge \ell_k(\tau_t) = a_k\,\tau_t + b_k \qquad \forall k=1,\dots,K.$$
+$$\boxed{\;D_t \ge \ell_k(\tau_t) = a_k\,\tau_t + b_k \qquad \forall k=1,\dots,K,\ \forall t\in\mathcal T\;}$$
 
 ![A convex piecewise-linear cost is the upper envelope of its segment lines: each segment line, extended, stays below the curve, so the pointwise maximum of the lines traces the curve exactly. The minimized auxiliary variable Dₜ lands on that envelope.](figures/pwl-epigraph.svg)
 
@@ -218,24 +224,28 @@ Three steps, each an equality at the optimum:
 
 1. **Maximizing $-D_t$ minimizes $D_t$.**
     $D_t$ enters the model *only* through its own cuts (6) and the objective term $-D_t$: nothing else couples it (the cost is separable across periods, and $D_t$ does not appear in the SoC balance or power limits).
-    So for any fixed dispatch $\tau_t$, the surrounding $\max$ pushes each $D_t$ to the *smallest* value its cuts allow; there is no incentive to leave it above its lower bound.
+    So for any fixed dispatch $\tau_t$, the surrounding $\max$ pushes each $D_t$ to the *smallest* value its cuts allow;
+    there is no incentive to leave it above its lower bound.
 2. **The smallest feasible $D_t$ is the pointwise max of the cuts.**
     Constraints (6) say $D_t \ge \ell_k(\tau_t)$ for *every* $k$ simultaneously, i.e. $D_t \ge \max_k \ell_k(\tau_t)$.
     Combined with step 1 (drive $D_t$ down), the binding cut is the *largest* one and
     $$D_t^\star = \max_{k=1,\dots,K}\ \ell_k(\tau_t).$$
 3. **That max equals the PWL cost, because $g$ is convex.**
-    A convex PWL function is the **upper envelope of its own segment lines**: its slopes $a_k$ are non-decreasing in $k$ (the convexity validator enforces exactly this), so on each interval $\tau\in[x_{k-1},x_k]$ the steepest-so-far line $\ell_k$ is the maximal one, and $\max_k\ell_k(\tau)=g(\tau)$ pointwise.
+    A convex PWL function is the **upper envelope of its own segment lines**:
+    its slopes $a_k$ are non-decreasing in $k$ (the convexity validator enforces exactly this), so on each interval $\tau\in[x_{k-1},x_k]$ the steepest-so-far line $\ell_k$ is the maximal one, and $\max_k\ell_k(\tau)=g(\tau)$ pointwise.
     Hence $D_t^\star=g(\tau_t)$: the optimizer reconstructs the exact convex PWL cost with no λ-weights, binaries, or special-ordered sets.
 
-This is *why* convexity is required: if the slopes were not monotone, $\max_k\ell_k$ would lie **above** $g$ between breakpoints (it would over-penalize), and the epigraph trick would no longer reproduce $g$: that non-convex case is what SOS2 is for (see modeling notes).
-Non-negativity $D_t\ge0$ holds automatically (the first segment passes through the origin: $b_1=0$, $a_1\ge0$, so $\ell_1\ge0$ for $\tau_t\ge0$) and is kept as the variable's domain.
+This is *why* convexity is required:
+if the slopes were not monotone, $\max_k\ell_k$ would lie **above** $g$ between breakpoints (it would over-penalize), and the epigraph trick would no longer reproduce $g$: that non-convex case is what SOS2 is for (see modeling notes).
+Non-negativity $D_t\ge0$ holds automatically (the first segment passes through the origin:
+$b_1=0$, $a_1\ge0$, so $\ell_1\ge0$ for $\tau_t\ge0$) and is kept as the variable's domain.
 
 *Landing exactly on a breakpoint.*
 If $\tau_t=x_k$, the two adjacent segment cuts $\ell_k,\ell_{k+1}$ are both tight and agree at $g_k$, so $D_t=g_k$ exactly; breakpoints are not special cases.
 
 ### Modified objective
 
-$$\max\ \sum_{t\in\mathcal T}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]$$
+$$\boxed{\;\max\ \sum_{t\in\mathcal T}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]\;}$$
 
 Revenue is unchanged and still carries **no efficiency term**; the only addition is the subtracted $D_t\ge 0$.
 
@@ -280,7 +290,7 @@ If the code and this derivation ever disagree, this governs.
 From balance (1), each step changes SoC by $\,a_t \equiv e_t - e_{t-1} = \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$.
 Power limits (3) with mutual exclusion (one direction per period) bound it by
 
-$$-\Delta^- \le a_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}.$$
+$$\boxed{\;-\Delta^- \le a_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}.\;}$$
 
 The efficiency placement mirrors the SoC balance (1); $a_t$ is the *cell-side* increment, so charging multiplies by $\eta^{ch}$ (only part of the grid-side power reaches the cell) while discharging divides by $\eta^{dis}$ (more must leave the cell than reaches the grid). The extremes are attained one direction at a time, so mutual exclusion does not shrink the interval.
 
@@ -291,7 +301,7 @@ Summing the increment
 bounds over the $T$ periods, and noting the endpoint box bounds $e_0, e^{\mathrm{tgt}} \in [e_{\min}, e_{\max}]$ hold by construction, a feasible
 trajectory through (1)–(3),(5) exists **iff**
 
-$$-\,T\,\Delta^- \;\le\; \Delta \;\le\; T\,\Delta^+ \qquad\text{(ramp-free).}$$
+$$\boxed{\;-\,T\,\Delta^- \;\le\; \Delta \;\le\; T\,\Delta^+ \qquad\text{(ramp-free).}\;}$$
 
 *Sufficiency:*
 charge (or discharge) at the per-period extreme until $e^{\mathrm{tgt}}$ is hit, then idle, a monotone path that never leaves
@@ -332,7 +342,7 @@ one **full-horizon** solve over the entire concatenated series with $e_0=e_{\tex
 
 ### Provable ordering (a correctness gate)
 
-$$V^{\mathrm{greedy}} \;\le\; V^{\mathrm{roll}} \;\le\; V^\star, \qquad 0 \;\le\; V^{\mathrm{roll}}.$$
+$$\boxed{\;V^{\mathrm{greedy}} \;\le\; V^{\mathrm{roll}} \;\le\; V^\star, \qquad 0 \;\le\; V^{\mathrm{roll}}.\;}$$
 
 ![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The gap between rolling and ceiling is the cross-day arbitrage a deterministic agent cannot capture; the headline metric is rolling over ceiling.](figures/backtest-bounds.svg)
 
@@ -358,7 +368,7 @@ R2.1 replaces a point price $\pi_t$ with an **interval** $[\underline{\pi}_t, \o
 
 **Split conformal.** With calibration residuals $R_i = |y_i - \hat\mu(x_i)|$ for $i\in\mathcal C$, let $\hat s$ be the $\lceil(1-\alpha)(n+1)\rceil/n$ empirical quantile of $\{R_i\}$. The interval $\hat\mu(x)\pm\hat s$ then satisfies the **marginal coverage** bound
 
-$$ \mathbb P\big(y \in [\hat\mu(x)-\hat s,\ \hat\mu(x)+\hat s]\big) \ \ge\ 1-\alpha $$
+$$ \boxed{\;\mathbb P\big(y \in [\hat\mu(x)-\hat s,\ \hat\mu(x)+\hat s]\big) \ \ge\ 1-\alpha\;} $$
 
 for exchangeable data, in finite samples, *independent of the model's accuracy*: the property the coverage gate checks empirically. Width is **constant** in $x$.
 
@@ -380,7 +390,7 @@ R2.2 turns the R2.1 interval forecast into a **discrete probability distribution
 
 **Reduction distance.** For a fine distribution $P$ (support $\{\pi^{(i)}\}$, mass $p_i$) and a coarse one $Q$ supported on a *subset* of $P$'s atoms (the kept scenarios), the Wasserstein-$\ell$ (Kantorovich) distance under optimal redistribution has a closed form: each deleted atom's mass moves to its nearest kept atom, giving
 
-$$ D_\ell(P, Q) \;=\; \Big(\sum_{i \in J} p_i \,\min_{j \notin J}\, \lVert \pi^{(i)} - \pi^{(j)} \rVert^{\ell}\Big)^{1/\ell}, $$
+$$ \boxed{\;D_\ell(P, Q) \;=\; \Big(\sum_{i \in J} p_i \,\min_{j \notin J}\, \lVert \pi^{(i)} - \pi^{(j)} \rVert^{\ell}\Big)^{1/\ell}\;}, $$
 
 where $J$ is the deleted index set and $\lVert\cdot\rVert$ is the Euclidean ground metric on paths (default $\ell = 2$). The kept atom $j$ receives $q_j = p_j + \sum_{i \in J:\, j\, =\, \arg\min_{k \notin J}\lVert\pi^{(i)}-\pi^{(k)}\rVert} p_i$, so $Q$ stays a valid probability measure. (The same assignment-cost expression, with representatives that need not be original atoms, scores the k-means baseline whose centroids are not atoms; there it is an upper bound on the true $W_\ell$, used consistently so the two methods compare fairly.)
 
@@ -392,6 +402,56 @@ where $J$ is the deleted index set and $\lVert\cdot\rVert$ is the Euclidean grou
 
 ---
 
+## R2.3. Risk-aware two-stage dispatch + intraday recourse (optimizer delta)
+
+*Governing reference: Birge & Louveaux, *Introduction to Stochastic Programming* (two-stage recourse, VSS/EVPI); subordinate-authoritative Shapiro, Dentcheva & Ruszczyński (CVaR) and Rawlings, Mayne & Diehl (receding-horizon MPC). See [references.md § R2.3](references.md#r23-risk-aware-two-stage-dispatch--intraday-recourse). This is the first Release-2 section that **changes the optimizer**: it adds recourse variables, a CVaR risk term, and a non-anticipativity structure over the R1.1 physics, which is reused unchanged as the per-scenario second-stage model.*
+
+R2.3 optimizes dispatch over R2.2's scenario set $\{(\pi^{(s)}, p_s)\}_{s=1}^{S}$ instead of a single price path, and reports the **value of the stochastic solution (VSS)** so the layer is measured, not assumed ([ADR-0007](decisions/0007-stochastic-value-requires-risk-or-recourse.md)).
+
+**The VSS-collapse trap (the design driver).** If the whole 24-hour dispatch is one here-and-now decision $x$, the risk-neutral stochastic objective is $\max_x \mathbb E_s[\pi^{(s)}\!\cdot x] = \bar\pi\cdot x$ (with $\bar\pi = \sum_s p_s \pi^{(s)}$), *identical* to the mean-value problem, so VSS $= 0$: linear objective $\times$ price-independent feasible set. R2.3 escapes it two ways ([ADR-0019](decisions/0019-day-ahead-intraday-two-stage.md), [ADR-0020](decisions/0020-cvar-mean-risk-over-robust.md)): genuine, *limited* recourse; and a risk term that is not linear in the outcomes.
+
+### Two-stage structure (day-ahead commitment + intraday recourse)
+
+The house R1.1 net-export power is $g_t \equiv p^{dis}_t - p^{ch}_t$ (grid-side, MW). A **first-stage** day-ahead schedule $g^{DA}$ is committed before the intraday price is known; it is itself R1.1-feasible (its own SoC trajectory $e^{DA}$). A **second-stage** per-scenario dispatch $g^{(s)}$ re-optimizes against the realized price $\pi^{(s)}$, also R1.1-feasible (SoC balance, bounds, mutual-exclusion binary $u^{(s)}_t$, ramp, terminal), and is tied to the commitment by a **recourse budget**:
+
+$$\boxed{\;\lvert g^{(s)}_t - g^{DA}_t\rvert \;\le\; \Delta\bar P \;=\; \rho\,\bar P \qquad \forall t,\ \forall s, \qquad \rho \in [0,1].\;}$$
+
+$g^{DA}$ is **non-anticipative** (one schedule, shared across all scenarios); each $g^{(s)}$ adapts within $\Delta\bar P$ of it. Settlement: the day-ahead volume clears at the known day-ahead price $\pi^{DA}$ (default $\pi^{DA}=\bar\pi$), the intraday deviation at the realized price:
+
+$$\boxed{\;\text{profit}_s \;=\; \sum_{t}\Delta t\,\big[\pi^{DA}_t\,g^{DA}_t \;+\; \pi^{(s)}_t\,(g^{(s)}_t - g^{DA}_t)\big].\;}$$
+
+With $\pi^{DA}=\bar\pi$ this reduces to $\mathbb E_s[\text{profit}_s] = \mathbb E_s\big[\sum_t\Delta t\,\pi^{(s)}_t g^{(s)}_t\big]$, so $g^{DA}$ enters **only** through the budget constraint: it is the central commitment each scenario deviates from within $\Delta\bar P$. This is what makes the mean schedule a *suboptimal center* for a spread of scenarios, so VSS $> 0$ at intermediate $\rho$; the two limits $\rho\to 0$ (no recourse) and $\rho\to 1$ (unlimited recourse) both collapse to VSS $= 0$, a sanity check the gate uses.
+
+### Risk-aware objective (CVaR mean-risk; Rockafellar-Uryasev)
+
+Let $L_s = -\,\text{profit}_s$, tail level $\alpha\in(0,1)$, risk weight $\lambda\in[0,1]$. Introduce the VaR auxiliary $\eta$ and tail slacks $z_s\ge 0$:
+
+$$\boxed{\;\max_{g^{DA},\,g^{(s)},\,\eta,\,z_s} \ (1-\lambda)\sum_s p_s\,\text{profit}_s \;-\; \lambda\underbrace{\Big(\eta + \tfrac{1}{1-\alpha}\sum_s p_s\, z_s\Big)}_{\text{CVaR}_\alpha(L)} \quad\text{s.t.}\quad z_s \ge L_s - \eta,\ \ z_s\ge 0.\;}$$
+
+The bracket is $\text{CVaR}_\alpha$ of the loss; at the optimum $\eta$ recovers the Value-at-Risk. $\lambda=0$ is the risk-neutral expectation (the RP objective below); sweeping $\lambda$ traces the **mean-CVaR frontier**. Every term is LP-representable, so the program stays a MILP (the only integrality is the per-scenario $u^{(s)}_t$) solved by HiGHS, no new dependency.
+
+### Recourse realization (receding-horizon MPC)
+
+The deployable form of the recourse is receding-horizon control: execute the committed action, then at each step re-solve the *remaining* horizon at the updated (realized) prices, carrying SoC as the linking state, warm-started from the previous window ([ADR-0021](decisions/0021-mpc-recourse-out-of-sample-vss.md)). Plant model = SoC balance (1); disturbance = the price forecast; the intraday `dt` may refine to 15-minute while day-ahead stays hourly (`dt` is already a per-solve argument). This is the operational policy whose expected value the two-stage program above anticipates.
+
+### Decision-value metrics (Birge-Louveaux), tied to R1.4
+
+- **EV**: mean-value solve at $\bar\pi$, first-stage $\bar g$.
+- **RP**: recourse-problem value (the risk-neutral two-stage optimum, $\lambda=0$).
+- **EEV**: fix $g^{DA}=\bar g$, evaluate its expected value with optimal within-budget recourse.
+- **WS**: wait-and-see $=\sum_s p_s\,V^\star(\pi^{(s)})$, the scenario-averaged perfect-foresight value; this is R1.4's ceiling averaged over scenarios (the $\rho\to 1$ / unbudgeted limit).
+- **VSS** $=\text{RP}-\text{EEV}\ge 0$;   **EVPI** $=\text{WS}-\text{RP}\ge 0$.
+
+Ordering (a correctness gate, extending R1.4's $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$):
+
+$$\boxed{\;\text{EEV} \;\le\; \text{RP} \;\le\; \text{WS}.\;}$$
+
+The gate is: measured VSS $> 0$ **out-of-sample** on the designed value-generating instance (held-out realized paths, R1.4 leakage discipline; [ADR-0021](decisions/0021-mpc-recourse-out-of-sample-vss.md)); the CVaR-averse solution reduces tail loss versus the risk-neutral one under $\pm 10\%$ price error; and the VSS $=0$ collapse is reproduced exactly at the $\rho$-limits (a golden oracle, proving the trap is understood, not papered over).
+
+**Considered but out of scope:** the Bertsimas-Sim $\Gamma$-budget robust counterpart (an alternative to CVaR, noted not built; [ADR-0020](decisions/0020-cvar-mean-risk-over-robust.md)); hard chance constraints as a separate mechanism (the soft CVaR objective stands in); multistage ($>2$-stage) trees; Benders / L-shaped decomposition (R2.4 / optional Julia); an explicit intraday order-book or imbalance-settlement market model (the recourse re-trades against a realized price, it does not model market microstructure; R3 scope).
+
+---
+
 ## Changelog
 
 - **R1.1**: deterministic core.
@@ -400,4 +460,5 @@ where $J$ is the deleted index set and $\lVert\cdot\rVert$ is the Euclidean grou
 - **R1.4**: backtest *semantics* over the existing optimizer (perfect-foresight ceiling, rolling per-day deployable value, greedy floor; provable ordering $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$; leakage information set; sanity band); **no model change**.
 - **R2.1**: probabilistic price *forecast* (split/CQR conformal intervals with a distribution-free marginal-coverage guarantee); the uncertainty input to the R2 stochastic layer. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.
 - **R2.2**: scenario *generation* (residual-path bootstrap off the R2.1 forecast) + *reduction* (Kantorovich-distance forward selection with probability redistribution; k-means baseline); the discrete uncertainty representation the R2.3 program optimizes over. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.
+- **R2.3**: risk-aware two-stage dispatch over the scenario set + intraday recourse. **Optimizer delta** (the first in Release 2): a non-anticipative day-ahead commitment $g^{DA}$, per-scenario recourse dispatch $g^{(s)}$ (R1.1 physics reused) tied by a recourse budget $\lvert g^{(s)}-g^{DA}\rvert\le\rho\bar P$, and a CVaR mean-risk term (Rockafellar-Uryasev linearisation, weight $\lambda$). Reports VSS $=\text{RP}-\text{EEV}$ and EVPI $=\text{WS}-\text{RP}$ with the ordering $\text{EEV}\le\text{RP}\le\text{WS}$ (extends R1.4). Reduces to the R1.1/R1.4 deterministic solve at $S=1$; the VSS $=0$ collapse is reproduced at the $\rho$-limits. Stays a MILP on HiGHS, no new dependency.
 - **Errata (2026-07-08)**: R1.4 ordering restated as $V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star$ with $0 \le V^{\mathrm{roll}}$ (the old display's $0 \le V^{\mathrm{greedy}}$ contradicted the greedy-can-lose-money note); sanity-band coefficient corrected to $c=\eta^{rt}(\text{cycles/day})\cdot 365$ ($E_{\text{usable}}$ wrongly appeared on both sides); R2.1 notation reconciled ($[\underline{\pi}_t,\overline{\pi}_t]$, margin $\hat s$). No model change.

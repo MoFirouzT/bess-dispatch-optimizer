@@ -105,10 +105,25 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.3. Risk-aware two-stage dispatch + intraday recourse
+
+*Selected at R2.3 draft ([spec](specs/R2.3-stochastic-recourse.md)); reconciled/verified before implementation. R2.3 introduces more than one new theory, so it names one governing spine with two subordinate-but-authoritative sub-concept references (open question 3, resolved: one phase, not an R2.3a/b split).*
+
+- **J. R. Birge & F. Louveaux, *Introduction to Stochastic Programming*, 2nd ed., Springer, 2011**: *governing reference* (the spine: two-stage recourse and the value metrics).
+  - First-stage / second-stage (recourse) split and **non-anticipativity** → the shared day-ahead commitment `g^DA` vs. per-scenario recourse `g^(s)`. *(Two-stage recourse chapters; verify.)*
+  - **VSS** (value of the stochastic solution) and **EVPI**, and the ordering EEV ≤ RP ≤ WS → the R2.3 metric harness, extending R1.4's `V^greedy ≤ V^roll ≤ V*`. *(Chapter on the value of information / the stochastic solution; verify.)*
+  - Notation reconciliation: house style wins. Scenarios `π^(s)`, probabilities `p_s` (R2.2 schema); the generic first/second-stage vectors map onto `g^DA` and the per-scenario R1.1 dispatch.
+- **A. Shapiro, D. Dentcheva & A. Ruszczyński, *Lectures on Stochastic Programming: Modeling and Theory*, 2nd ed., SIAM, 2014** (free): *subordinate-authoritative (CVaR / coherent risk).*
+  - **CVaR** as a coherent risk measure and the **Rockafellar-Uryasev** linearization (`CVaR_α = min_η η + (1/(1−α))·E[(L−η)^+]`) → the mean-risk objective, VaR auxiliary `η`, tail slacks `z_s`. Method origin: R. T. Rockafellar & S. Uryasev, *Optimization of Conditional Value-at-Risk* (J. Risk, 2000). *(Coherent-risk-measure chapter; verify.)*
+- **J. B. Rawlings, D. Q. Mayne & M. Diehl, *Model Predictive Control: Theory, Computation, and Design*, 2nd ed., Nob Hill, 2017** (free): *subordinate-authoritative (receding-horizon MPC).*
+  - Receding-horizon control, state continuity across windows, and warm-start → the intraday recourse realization ([ADR-0021](decisions/0021-mpc-recourse-out-of-sample-vss.md)); plant model = SoC balance, disturbance = the price forecast. *(Receding-horizon / feasibility chapters; verify.)*
+- **Bertsimas & Sim, *The Price of Robustness* (Oper. Res., 2004); Ben-Tal, El Ghaoui & Nemirovski, *Robust Optimization* (Princeton, 2009):** *secondary (the robust alternative, pointer only).* The Γ-budget robust counterpart to CVaR, documented not built ([ADR-0020](decisions/0020-cvar-mean-risk-over-robust.md)).
+- *Alternatives considered:* **hard chance constraints** (per-scenario indicator binaries + big-M; the soft CVaR objective stands in); **mean-variance** (variance penalizes upside symmetrically; CVaR is the right tail measure); **full 24-hour here-and-now commitment** (the VSS = 0 trap, kept as a golden oracle only, [ADR-0019](decisions/0019-day-ahead-intraday-two-stage.md)).
+
+---
+
 ## Planned (not yet adopted)
 
 Chosen when the phase starts, then reconciled and recorded here. Candidates only; **not yet governing**:
 
-- **R2.3 stochastic / robust:** Birge & Louveaux, *Introduction to Stochastic Programming*; Shapiro, Dentcheva & Ruszczyński, *Lectures on Stochastic Programming* (free); Ben-Tal, El Ghaoui & Nemirovski, *Robust Optimization*.
-- **R2.3 recourse / MPC:** Rawlings, Mayne & Diehl, *Model Predictive Control: Theory, Computation, and Design* (free).
 - **R2.4 decomposition (Benders):** Conejo, Castillo, Mínguez & García-Bertrand, *Decomposition Techniques in Mathematical Programming*.

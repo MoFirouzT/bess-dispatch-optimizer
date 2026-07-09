@@ -76,8 +76,6 @@ def solve(
     """
     check(prices, battery, dt)
     model = build_model(prices, battery, dt)
-    # load_solutions=False so a residual (e.g. ramp-coupled) infeasibility returns
-    # a termination condition to guard on, rather than raising on solution load.
     opt = pyo.SolverFactory(solver)
     # Solve to a tight optimum. HiGHS's defaults (~1e-6/1e-7 gap & feasibility) can
     # leave each solve a few ×1e-6 short of the true optimum; when two near-identical
@@ -89,6 +87,8 @@ def solve(
         opt.options[_key] = _val
     if time_limit is not None:
         opt.config.time_limit = time_limit  # type: ignore[attr-defined]
+    # load_solutions=False so a residual (e.g. ramp-coupled) infeasibility returns
+    # a termination condition to guard on, rather than raising on solution load.
     results = opt.solve(model, load_solutions=False)
 
     # Fail loud if not optimal — pre-flight (check, above) handles the predictable

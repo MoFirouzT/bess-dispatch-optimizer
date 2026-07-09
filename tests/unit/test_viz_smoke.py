@@ -14,6 +14,10 @@ from bess.backtest.baselines import solve_window  # noqa: E402
 from bess.backtest.engine import run_backtest  # noqa: E402
 from bess.data.fixtures import synthetic_day_ahead  # noqa: E402
 from bess.viz.backtest_plots import plot_baselines, plot_dispatch_day  # noqa: E402
+from bess.viz.stochastic_plots import (  # noqa: E402
+    plot_risk_return_frontier,
+    plot_vss_curve,
+)
 
 
 def test_figures_build_without_error():
@@ -28,3 +32,16 @@ def test_figures_build_without_error():
     sched, _ = solve_window(day, spec, 1.0)
     fig_day = plot_dispatch_day(day, sched, spec, 1.0)
     assert fig_day.axes
+
+
+def test_stochastic_figures_build_without_error():
+    lambdas = [0.0, 0.3, 0.6, 0.9]
+    fig_frontier = plot_risk_return_frontier(
+        expected_profit=[40.0, 39.0, 38.0, 37.5],
+        cvar_loss=[-30.0, -33.0, -35.0, -36.0],
+        lambdas=lambdas,
+    )
+    assert fig_frontier.axes
+
+    fig_vss = plot_vss_curve(rhos=[0.0, 0.2, 0.5, 1.0, 2.0], vss=[0.0, 3.0, 6.0, 2.0, 0.0])
+    assert fig_vss.axes

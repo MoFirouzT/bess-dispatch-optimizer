@@ -53,3 +53,20 @@ more scenarios are kept, at a reduction cost that grows with the kept count. The
 k-means baseline reaches a slightly lower raw distance (its centroids are averaged
 paths), while forward selection keeps genuine price paths and carries the
 Kantorovich stability guarantee (ADR-0018).
+
+## `stochastic_demo.py` (R2.3)
+
+Builds synthetic day-ahead scenario sets and writes the two R2.3 figures: the
+mean-CVaR **risk-return frontier** (expected profit vs downside as the risk weight
+λ sweeps, `docs/figures/example-risk-return-frontier.svg`) and the **VSS curve**
+(value of the stochastic solution vs the recourse budget ρ,
+`docs/figures/example-vss-curve.svg`). Needs the `examples` group (plotting).
+
+```bash
+uv run --group examples python examples/stochastic_demo.py
+```
+
+Illustrative only (synthetic data): the frontier trades expected profit for lower
+downside as risk aversion grows; the VSS rises from 0 (no recourse) to a positive
+interior and falls back toward 0 (unlimited recourse) — the escape from the VSS = 0
+trap, with a finite budget the source of value (§R2.3, ADR-0019/0020).

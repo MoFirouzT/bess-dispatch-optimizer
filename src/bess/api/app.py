@@ -61,7 +61,7 @@ async def _preflight_handler(_request, exc: PreflightError) -> JSONResponse:
         issues=[
             IssueOut(
                 code=str(i.code.value),
-                field=i.field,
+                field=i.input_field,
                 message=i.message,
                 context=dict(i.context),
             )

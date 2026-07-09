@@ -187,6 +187,10 @@ R1.4 was **split**: R1.4a (done) = engine + baselines + metrics + leakage + band
 
 ## Known blockers / open questions
 
+- **Cross-spec deferral audit (2026-07-09).** Swept every spec for "deferred to later" items whose target phase is already done. Three found:
+  1. *"Reduced set preserves the **dispatch value**"* ([R2.2 open question 4](specs/R2.2-scenarios.md)) was deferred to R2.3 and R2.3 originally shipped without it (R2.2's gate only proved Kantorovich-*distance* preservation, an explicit proxy). **Resolved:** added `test_reduction_preserves_dispatch_value` (property, `tests/property/test_stochastic.py`): fits the RP commitment on the reduced set, scores it fixed against the full set at a common DA price, asserts it recovers ≥95% of the full-set optimum and still beats the mean-value plan. Margins gap≈0 / edge≈5-6 EUR over 3 seeds. Pure gate, no formulation delta.
+  2. *Warm-start / persistent solver* (deferred R1.5 to "an R2.3 latency optimization"): landed as a **no-op stub** only. `warm_start: bool = True` hook in `bess/recourse/mpc.py` (`_ = warm_start  # reserved`); latency-only (no correctness impact), and the default `True` is mildly misleading on a param that does nothing. **Open, low priority.**
+  3. *Real 15-min end-to-end backtest* ([R1.4b spec](specs/R1.4b-entsoe-loader.md), R1.1:121): the loader parses `PT15M` and property tests exercise `dt=0.25` on *synthetic* prices, but no test fetches + backtests **real** 15-min history (the live integration test deliberately avoids it). R1.4b was the last data-layer phase, so this follow-up has no future owner. **Open, minor.**
 - No blockers. R1.4b gate open/green; full suite 47 passed + 1 skipped (integration) with nothing deselected.
 - ~~Solver entry point~~; resolved: `appsi_highs`.
 - Confirm `dt` (Δt) stays a per-solve argument (hourly for R1.1 oracles; 15-min native deferred to R1.4 data layer).; spec says yes; carry forward.

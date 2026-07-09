@@ -280,7 +280,9 @@ The $\eta<1$ oracle (which pins the *storage-side* placement) and the full set a
 
 ## R1.3. Pre-flight feasibility (derived; no new model)
 
-*Governing reference: none; engineering phase, **no new theory**. The conditions below are algebraic corollaries of the R1.1 model (Williams, already governing). See [references.md § R1.3](references.md#r13--pre-flight-validation).*
+*Governing reference: none; engineering phase, **no new theory**.
+The conditions below are algebraic corollaries of the R1.1 model (Williams, already governing).
+See [references.md § R1.3](references.md#r13--pre-flight-validation).*
 
 This section adds **no constraints, variables, or objective terms**.
 It records the closed-form feasibility test the validation layer
@@ -289,31 +291,32 @@ If the code and this derivation ever disagree, this governs.
 
 ### Per-period SoC increment bounds
 
-From balance (1), each step changes SoC by $\,a_t \equiv e_t - e_{t-1} = \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$.
+From balance (1), each step changes SoC by $\,\Delta e_t \equiv e_t - e_{t-1} = \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$.
 Power limits (3) with mutual exclusion (one direction per period) bound it by
 
-$$\boxed{\;-\Delta^- \le a_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}.\;}$$
+$$\boxed{\;-\Delta^- \le \Delta e_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}.\;}$$
 
-The efficiency placement mirrors the SoC balance (1); $a_t$ is the *cell-side* increment, so charging multiplies by $\eta^{ch}$ (only part of the grid-side power reaches the cell) while discharging divides by $\eta^{dis}$ (more must leave the cell than reaches the grid). The extremes are attained one direction at a time, so mutual exclusion does not shrink the interval.
+The efficiency placement mirrors the SoC balance (1);
+$\Delta e_t$ is the *cell-side* increment, so charging multiplies by $\eta^{ch}$ (only part of the grid-side power reaches the cell) while discharging divides by $\eta^{dis}$ (more must leave the cell than reaches the grid).
+The extremes are attained one direction at a time, so mutual exclusion does not shrink the interval.
 
 ### Terminal reachability
 
 With $e_0$ given and the terminal condition (5) $e_T = e^{\mathrm{tgt}}$, write $\Delta \equiv e^{\mathrm{tgt}} - e_0$.
-Summing the increment
-bounds over the $T$ periods, and noting the endpoint box bounds $e_0, e^{\mathrm{tgt}} \in [e_{\min}, e_{\max}]$ hold by construction, a feasible
+Summing the increment bounds over the $T$ periods, and noting the endpoint box bounds $e_0, e^{\mathrm{tgt}} \in [e_{\min}, e_{\max}]$ hold by construction, a feasible
 trajectory through (1)–(3),(5) exists **iff**
 
 $$\boxed{\;-\,T\,\Delta^- \;\le\; \Delta \;\le\; T\,\Delta^+ \qquad\text{(ramp-free).}\;}$$
 
 *Sufficiency:*
-charge (or discharge) at the per-period extreme until $e^{\mathrm{tgt}}$ is hit, then idle, a monotone path that never leaves
-$[e_{\min}, e_{\max}]$ because both endpoints lie inside it.
+charge (or discharge) at the per-period extreme until $e^{\mathrm{tgt}}$ is hit, then idle, a monotone path that never leaves $[e_{\min}, e_{\max}]$ because both endpoints lie inside it.
 *Necessity:* the net change cannot exceed the summed per-period bounds.
 Violating the upper bound is unreachable-by-charging; the lower, unreachable-by-discharging.
 
 ### Ramp interaction
 
-Adding ramp (4) only *further* restricts the admissible $a_t$ sequence, so the inequality above remains **necessary** (a violation is still infeasible) but is **no longer sufficient**: a tight $R$ can make a nominally reachable target infeasible.
+Adding ramp (4) only *further* restricts the admissible $\Delta e_t$ sequence, so the inequality above remains **necessary** (a violation is still infeasible) but is **no longer sufficient**:
+a tight $R$ can make a nominally reachable target infeasible.
 Pre-flight therefore tests the ramp-free condition only (a sound fast filter) and leaves ramp-coupled infeasibility to the solver's optimality check.
 
 ---

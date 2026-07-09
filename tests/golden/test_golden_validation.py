@@ -38,7 +38,7 @@ def test_oracle_3_non_finite_price_with_index():
     spec = BatterySpec()
     issues = validate([10.0, math.nan, 20.0], spec, dt=1.0)
     assert codes(issues) == [IssueCode.NON_FINITE_PRICE]
-    assert issues[0].field == "prices[1]"
+    assert issues[0].input_field == "prices[1]"
 
 
 def test_oracle_4_non_positive_dt():
@@ -51,7 +51,7 @@ def test_oracle_5_terminal_unreachable_charge():
     spec = BatterySpec(soc_initial=0.0, soc_terminal=1.0, p_charge_max=0.5, eta_charge=1.0)
     issues = validate([50.0], spec, dt=1.0)
     assert codes(issues) == [IssueCode.TERMINAL_UNREACHABLE_CHARGE]
-    assert issues[0].field == "soc_terminal"
+    assert issues[0].input_field == "soc_terminal"
     assert issues[0].context["required"] == pytest.approx(1.0, abs=TOL)
     assert issues[0].context["reachable"] == pytest.approx(0.5, abs=TOL)
     assert issues[0].context["horizon"] == 1
@@ -62,7 +62,7 @@ def test_oracle_6_terminal_unreachable_discharge():
     spec = BatterySpec(soc_initial=1.0, soc_terminal=0.0, p_discharge_max=0.5, eta_discharge=1.0)
     issues = validate([50.0], spec, dt=1.0)
     assert codes(issues) == [IssueCode.TERMINAL_UNREACHABLE_DISCHARGE]
-    assert issues[0].field == "soc_terminal"
+    assert issues[0].input_field == "soc_terminal"
     assert issues[0].context["required"] == pytest.approx(1.0, abs=TOL)
     assert issues[0].context["reachable"] == pytest.approx(0.5, abs=TOL)
 

@@ -21,7 +21,7 @@ import pytest
 from bess.assets.battery import BatterySpec
 from bess.optimizer.core import solve
 from bess.recourse import rolling_recourse
-from bess.scenarios import ScenarioSet
+from bess.scenarios import ScenarioSet, reduce_scenarios
 from bess.stochastic import (
     out_of_sample_vss,
     solve_stochastic,
@@ -86,6 +86,56 @@ def test_out_of_sample_vss_positive(seed: int) -> None:
     res = out_of_sample_vss(train, evaluation, _BATT, rho=0.4)
     # The RP commitment, fit on training, beats the mean commitment on held-out days.
     assert res.vss_oos > 0.3
+
+
+# ----------------------- scenario reduction preserves the *dispatch value* (R2.2)
+#
+# R2.2's gate only proved Kantorovich-*distance* preservation, an explicit proxy;
+# its open question 4 deferred the decision-relevant check — "the reduced set
+# preserves the dispatch value" — to R2.3, where the stochastic program exists.
+# This is that check: the Heitsch-Römisch stability claim, that preserving the
+# reduction distance preserves the eventual stochastic decision. We fit the RP
+# day-ahead commitment on the reduced set, then score it (fixed) against the full
+# set at a common day-ahead price, exactly as the out-of-sample VSS scores a fixed
+# commitment on held-out paths. The reduced-set decision should nearly recover the
+# full-set optimum and still beat the mean-value (EV) commitment.
+
+
+def _net_to_pair(g: list[float]) -> tuple[list[float], list[float]]:
+    return [max(-x, 0.0) for x in g], [max(x, 0.0) for x in g]
+
+
+@pytest.mark.parametrize("seed", range(3))
+def test_reduction_preserves_dispatch_value(seed: int) -> None:
+    rng = np.random.default_rng(seed)
+    full = _scen(_gen_days(rng, 24), np.full(24, 1 / 24))
+    reduced, _dist = reduce_scenarios(full, n_reduced=6, method="forward")
+
+    rho = 0.4
+    full_mean = np.asarray(full.probs) @ np.asarray(full.paths)
+
+    def score(pair: tuple[list[float], list[float]]) -> float:
+        # Value of a *fixed* first-stage commitment on the full set, settling the
+        # day-ahead leg at the full mean so the comparison isolates decision quality.
+        return solve_stochastic(full, _BATT, rho=rho, fix_da=pair, pi_da=full_mean).expected_profit
+
+    full_pair = _net_to_pair(solve_stochastic(full, _BATT, rho=rho).g_da)
+    reduced_pair = _net_to_pair(solve_stochastic(reduced, _BATT, rho=rho).g_da)
+    ev_pair_sched = solve(list(full_mean), _BATT)
+    ev_pair = (ev_pair_sched.p_charge, ev_pair_sched.p_discharge)
+
+    v_full = score(full_pair)  # the ceiling: full-set optimum on the full set
+    v_reduced = score(reduced_pair)  # the reduced-set decision, scored on the full set
+    v_ev = score(ev_pair)  # the deterministic mean-value plan
+
+    # The full-set commitment is optimal on the full set, so it is the ceiling.
+    assert v_reduced <= v_full + TOL
+    # Preservation: the reduced decision recovers nearly all of the full optimum
+    # (a 6-atom reduction of 24 structured days keeps the decision-relevant mass).
+    assert v_full - v_reduced <= 0.05 * abs(v_full) + 1e-3
+    # Non-tautology: reduction keeps enough stochastic structure to still beat the
+    # smeared mean-value commitment (a random-quality plan would not).
+    assert v_reduced >= v_ev - TOL
 
 
 # -------------------------------- non-anticipativity: recourse within the budget

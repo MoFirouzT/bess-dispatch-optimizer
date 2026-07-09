@@ -42,7 +42,7 @@ class ValidationIssue:
     """One pre-flight finding. ``context`` carries the numbers behind ``message``."""
 
     code: IssueCode
-    field: str  # which input: "prices", "prices[3]", "dt", "soc_terminal"
+    input_field: str  # which input: "prices", "prices[3]", "dt", "soc_terminal"
     message: str  # human-readable and actionable; embeds the numbers
     context: dict[str, float | int] = field(default_factory=dict)
 
@@ -70,7 +70,7 @@ def validate(prices: Sequence[float], spec: BatterySpec, dt: float) -> list[Vali
         issues.append(
             ValidationIssue(
                 code=IssueCode.NON_POSITIVE_DT,
-                field="dt",
+                input_field="dt",
                 message=f"dt must be a finite positive period length, got {dt!r}",
                 context={"dt": dt},
             )
@@ -81,7 +81,7 @@ def validate(prices: Sequence[float], spec: BatterySpec, dt: float) -> list[Vali
         issues.append(
             ValidationIssue(
                 code=IssueCode.EMPTY_HORIZON,
-                field="prices",
+                input_field="prices",
                 message="prices is empty — no periods to dispatch",
             )
         )
@@ -91,7 +91,7 @@ def validate(prices: Sequence[float], spec: BatterySpec, dt: float) -> list[Vali
             issues.append(
                 ValidationIssue(
                     code=IssueCode.NON_FINITE_PRICE,
-                    field=f"prices[{t}]",
+                    input_field=f"prices[{t}]",
                     message=f"price at period {t} is not finite: {p!r}",
                     context={"index": t},
                 )
@@ -123,7 +123,7 @@ def _reachability_issues(spec: BatterySpec, n: int, dt: float) -> list[Validatio
             return [
                 ValidationIssue(
                     code=IssueCode.TERMINAL_UNREACHABLE_CHARGE,
-                    field="soc_terminal",
+                    input_field="soc_terminal",
                     message=(
                         f"terminal SoC needs +{delta:.6g} MWh of charging but at most "
                         f"{reachable:.6g} MWh is reachable in {n} period(s) "
@@ -144,7 +144,7 @@ def _reachability_issues(spec: BatterySpec, n: int, dt: float) -> list[Validatio
             return [
                 ValidationIssue(
                     code=IssueCode.TERMINAL_UNREACHABLE_DISCHARGE,
-                    field="soc_terminal",
+                    input_field="soc_terminal",
                     message=(
                         f"terminal SoC needs -{required:.6g} MWh of discharging but at most "
                         f"{reachable:.6g} MWh is reachable in {n} period(s) "

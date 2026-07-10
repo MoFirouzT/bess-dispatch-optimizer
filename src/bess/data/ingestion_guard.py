@@ -1,6 +1,6 @@
-"""Anomaly-aware ingestion circuit breaker — the second breaker (R1.5b).
+"""Anomaly-aware ingestion circuit breaker — the second breaker (R1.4c).
 
-Spec: ``docs/specs/R1.5b-ingestion-guard.md``. Where the R1.5 breaker wraps the
+Spec: ``docs/specs/R1.4c-ingestion-guard.md``. Where the R1.5 breaker wraps the
 *solve*, this wraps the *fetch*: every price-series fetch is classified
 
 - ``HEALTHY`` — passes through untouched;

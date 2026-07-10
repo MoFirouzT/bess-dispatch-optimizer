@@ -103,7 +103,7 @@ In a single-pass perfect-foresight solve this ordering is invisible. In the **ro
 | TenneT Open Data | NL imbalance, settlement | Open portal |
 | EPEX SPOT | DA/intraday reference, methodology | Public + licensed |
 
-**Reproducibility:** the test suite runs on **synthetic** fixtures so CI needs no token and the repo carries no third-party data (raw ENTSO-E grants no public-redistribution right). Real prices are fetched from ENTSO-E at runtime / in token-gated integration tests only; see [conventions.md](conventions.md) and the R1.4b spec.
+**Reproducibility:** the test suite runs on **synthetic** fixtures, so CI needs no token; real prices are fetched from ENTSO-E at runtime / in token-gated integration tests only. Why no market data is committed: [ADR-0005](decisions/0005-commit-real-fixture-data.md).
 
 ---
 

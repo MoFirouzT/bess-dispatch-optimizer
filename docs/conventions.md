@@ -66,7 +66,7 @@ Here the optimizer uses **two separate non-negative grid-side variables**, not o
 - `p_charge_mw` $= p^{ch}_t \ge 0$: power drawn from the grid.
 - `p_discharge_mw` $= p^{dis}_t \ge 0$: power delivered to the grid.
 
-**Metering is grid-side; efficiency lives only in the SoC balance, never in the objective** (the central correctness rule; see [formulation.md § "Conventions"](formulation.md#conventions)):
+**Metering is grid-side; efficiency lives only in the SoC balance, never in the objective** (the central correctness rule; see [formulation.md: "Conventions"](formulation.md#conventions)):
 
 $$e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \frac{p^{dis}_t}{\eta^{dis}} \Delta t$$
 

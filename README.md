@@ -47,9 +47,11 @@ The `bess` package is split into layers with a strict downward-only import direc
 - **R1.1**: deterministic MILP dispatch core
 - **R1.2**: convex piecewise-linear degradation cost
 - **R1.3**: pre-flight feasibility checks
-- **R1.4**: walk-forward backtest with greedy / rolling / perfect-foresight baselines, plus a live ENTSO-E day-ahead loader (BE/NL)
+- **R1.4** (backtest, data, and data reliability):
+  - **R1.4a**: walk-forward backtest with greedy / rolling / perfect-foresight baselines
+  - **R1.4b**: live ENTSO-E day-ahead loader (BE/NL)
+  - **R1.4c**: anomaly-aware ingestion guard, a *second* circuit breaker on the data feed, classifying each fetch outage / anomalous-but-present / healthy before it can reach the solver
 - **R1.5**: FastAPI dispatch service with a graceful-degradation circuit breaker (greedy fallback on solver timeout), Dockerized
-- **R1.5b**: anomaly-aware ingestion guard: a *second* circuit breaker on the data feed, classifying each fetch outage / anomalous-but-present / healthy before it can reach the solver
 
 **Forecasting and drift monitoring (Release 2), under way:**
 

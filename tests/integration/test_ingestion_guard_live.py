@@ -1,6 +1,6 @@
-"""Integration — R1.5b ingestion guard sanity-checked against real ENTSO-E prices.
+"""Integration — R1.4c ingestion guard sanity-checked against real ENTSO-E prices.
 
-Contract: docs/specs/R1.5b-ingestion-guard.md § "Acceptance gate" (the token-gated
+Contract: docs/specs/R1.4c-ingestion-guard.md § "Acceptance gate" (the token-gated
 integration check) and § "Config": confirm on *real* NL day-ahead data that
   (a) a genuine feed classifies HEALTHY — the guard does not false-positive on the
       real price shape (legitimate negatives/zeros, day-to-day repeats);

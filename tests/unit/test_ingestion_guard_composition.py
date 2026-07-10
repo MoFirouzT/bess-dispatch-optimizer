@@ -1,6 +1,6 @@
-"""Composition of the two circuit breakers (R1.5b, ADR-0013).
+"""Composition of the two circuit breakers (R1.4c, ADR-0013).
 
-Spec: ``docs/specs/R1.5b-ingestion-guard.md`` § "Acceptance gate" — the shared
+Spec: ``docs/specs/R1.4c-ingestion-guard.md`` § "Acceptance gate" — the shared
 degradation vocabulary, demonstrated end-to-end on synthetic data: a fetch that
 falls back to last-known-good, then a solve that is *optimal on that fallback*,
 must report a **degraded** overall provenance, not "healthy". This closes the

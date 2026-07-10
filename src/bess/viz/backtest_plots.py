@@ -6,7 +6,7 @@ Three figures, built from objects the pipeline already returns (no new math):
   (discharge up / charge down), and the SoC trajectory it produces;
 - :func:`plot_baselines` — the three revenue quantities (greedy floor, rolling
   deployable, perfect-foresight ceiling) with the headline % of perfect foresight;
-- :func:`plot_ingestion_guard` — the reliability hero (R1.5b): a corrupt feed the
+- :func:`plot_ingestion_guard` — the reliability hero (R1.4c): a corrupt feed the
   guard rejected, beside the trustworthy last-known-good it dispatched on instead.
 
 ``matplotlib`` is an optional dependency (the ``examples`` group); importing this
@@ -123,7 +123,7 @@ def plot_ingestion_guard(
     fault_slice: tuple[int, int] | None = None,
     title: str = "Ingestion guard — corrupt feed caught before dispatch",
 ) -> Figure:
-    """Reliability hero (R1.5b): the corrupt feed the guard rejected, above the
+    """Reliability hero (R1.4c): the corrupt feed the guard rejected, above the
     trustworthy last-known-good it dispatched on instead.
 
     Two stacked panels share the hour axis. Each shows net grid power (bars,

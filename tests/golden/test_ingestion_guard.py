@@ -1,6 +1,6 @@
-"""Golden oracles for the anomaly-aware ingestion guard (R1.5b).
+"""Golden oracles for the anomaly-aware ingestion guard (R1.4c).
 
-Spec: ``docs/specs/R1.5b-ingestion-guard.md`` § "Golden oracles". Hand-constructed
+Spec: ``docs/specs/R1.4c-ingestion-guard.md`` § "Golden oracles". Hand-constructed
 feeds with a *known* fault → the exact expected classification and reason. The
 un-fakeable counterpart, for data, to the MILP golden oracles: the corruption is
 objective (a gap is a gap), so "catch it and label it" is checked against inputs

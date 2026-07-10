@@ -27,7 +27,7 @@ lives **only in the state-of-charge balance and never in the objective**:
 
 Round-trip efficiency is **emergent** from this balance, not a separate term. The
 canonical statement, with the SoC-balance equation and the metering figure, is in
-[formulation.md § Conventions](../formulation.md); this ADR does not restate the
+[formulation.md: Conventions](../formulation.md); this ADR does not restate the
 math. Notation is fixed by [conventions.md](../conventions.md).
 
 ## Consequences

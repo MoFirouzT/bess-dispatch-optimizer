@@ -30,7 +30,7 @@ from the calibration history, and equal probabilities `p_s = 1/n`.
   parametric covariance model.
 - **Self-contained and token-free-testable.** It consumes only artefacts R2.1 already
   holds (point forecast + residuals); no new data feed, so the gate runs on synthetic
-  data in the main CI job, consistent with the no-committed-data rule.
+  data in the main CI job.
 - **Marginals stay honest.** Per hour, the bootstrap reproduces the empirical residual
   spread, so the scenario cloud's per-hour band is consistent with the conformal interval
   the forecaster already reports.

@@ -128,7 +128,7 @@ capacity/health loss from cycling and calendar age.
 
 ## Data reliability & MLOps
 
-**Ingestion circuit breaker**: a breaker wrapping the data *fetch* (as opposed to the solver breaker wrapping the *solve*), classifying each fetch and falling back to last-known-good on failure. *Why here:* R1.5b (`bess.data.ingestion_guard`); a wrong dispatch from silently-bad input data is as real a failure as a wrong formulation. *Gotcha:* it must stay a *separate* breaker from the solver one; a shared breaker firing on data corruption looks identical in the logs to a slow solver (ADR-0012).
+**Ingestion circuit breaker**: a breaker wrapping the data *fetch* (as opposed to the solver breaker wrapping the *solve*), classifying each fetch and falling back to last-known-good on failure. *Why here:* R1.4c (`bess.data.ingestion_guard`); a wrong dispatch from silently-bad input data is as real a failure as a wrong formulation. *Gotcha:* it must stay a *separate* breaker from the solver one; a shared breaker firing on data corruption looks identical in the logs to a slow solver (ADR-0012).
 
 **Outage vs. anomalous-but-present**: the two data-failure classes: an outage is *no present data* (timeout, 5xx); an anomaly is *present but untrustworthy data* (stuck feed, gap, duplicate, out-of-band). *Why here:* the guard's core taxonomy. *Gotcha:* the anomaly is the *more* dangerous case, since a stale-but-present price flows silently into a live dispatch whereas an outage is obvious.
 
@@ -136,7 +136,7 @@ capacity/health loss from cycling and calendar age.
 
 **EPEX SDAC price limits**: the harmonised clearing-price bounds of the single day-ahead coupling: min −600 €/MWh (from 2026-05-28), max 4000 €/MWh, escalatable in +1000 steps. *Why here:* the guard's out-of-band check is grounded in these, not a guessed range. *Gotcha:* it's a *market technical bound*, not the year-specific revenue sanity band; a value outside it cannot be a real clearing price.
 
-**Provenance composition**: combining the ingestion status and the solver mode into one overall trust label. *Why here:* R1.5b / ADR-0013; a solve that is optimal on stale fallback data is reported *degraded*, not healthy. *Gotcha:* if a consumer reads `mode="optimal"` alone it re-opens the silent-stale-dispatch hole; the composition exists to prevent that.
+**Provenance composition**: combining the ingestion status and the solver mode into one overall trust label. *Why here:* R1.4c / ADR-0013; a solve that is optimal on stale fallback data is reported *degraded*, not healthy. *Gotcha:* if a consumer reads `mode="optimal"` alone it re-opens the silent-stale-dispatch hole; the composition exists to prevent that.
 
 **Population Stability Index (PSI)**: a binned divergence measure between a reference and a current distribution, used to flag input drift. *Why here:* the R2.1b drift monitor's regime-shift signal (`psi ≥ 0.2` ⇒ inputs moved materially). *Gotcha:* PSI tells you *that* a distribution moved, not *why*; the skill is separating a genuine regime shift from model staleness.
 

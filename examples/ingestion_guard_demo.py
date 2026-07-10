@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ingestion-guard demo (R1.5b) — a corrupt feed caught before it reaches the solver.
+"""Ingestion-guard demo (R1.4c) — a corrupt feed caught before it reaches the solver.
 
 Treats a synthetic day-ahead series as the "fetch": one day is delivered with a
 bit-identical €0.00 stuck block (a frozen feed). The guard classifies it, falls

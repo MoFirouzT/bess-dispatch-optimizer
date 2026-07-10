@@ -44,7 +44,7 @@ next to `mode` without new plumbing.
 - `GuardResult` is a leaf-local value object; consumers read it (as the api layer
   already reads `Schedule` from `optimizer`), so no new import edge is created and the
   "data is a leaf" contract stays KEPT.
-- Enforced mechanically by an R1.5b acceptance-gate test: the backtest/example path
+- Enforced mechanically by an R1.4c acceptance-gate test: the backtest/example path
   routes through `guarded_fetch`, and a solve on a substituted last-known-good series
   reports a degraded provenance, not a bare `optimal`.
 

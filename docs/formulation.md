@@ -37,7 +37,7 @@ delivering 1 MWh to the grid ultimately costs $1/\eta^{rt}$ MWh drawn from the g
 ## R1.1. Deterministic core
 
 *Governing reference: Williams, *Model Building in Mathematical Programming*.
-See [references.md § R1.1](references.md#r11--deterministic-milp-dispatch) for secondary sources and notation mapping.*
+See [references.md: R1.1](references.md#r11--deterministic-milp-dispatch) for secondary sources and notation mapping.*
 
 ### Sets
 
@@ -140,7 +140,7 @@ The full oracle set (including the lossy and no-trade cases) is the test contrac
 
 ## R1.2. Piecewise-linear degradation cost
 
-*Governing reference: Williams, *Model Building in Mathematical Programming* (separable / piecewise-linear programming: convex PWL via the **epigraph form**; SOS2 noted as the non-convex tool). See [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost) for secondary sources and notation mapping.*
+*Governing reference: Williams, *Model Building in Mathematical Programming* (separable / piecewise-linear programming: convex PWL via the **epigraph form**; SOS2 noted as the non-convex tool). See [references.md: R1.2](references.md#r12--piecewise-linear-degradation-cost) for secondary sources and notation mapping.*
 
 Extends R1.1 by appending a **degradation cost** to the objective.
 All R1.1 sets, parameters, decision variables, and constraints (1)–(5) are unchanged; in particular the **SoC balance and grid-side metering are untouched**.
@@ -257,7 +257,7 @@ Revenue is unchanged and still carries **no efficiency term**; the only addition
 - **Convex ⇒ epigraph, not SOS2.**
     A convex PWL cost is exactly the max of its segment lines, so the cuts (6) represent it in a pure LP, no λ-weights, binaries, or special-ordered sets.
     SOS2 (the convex-combination method plus an adjacency rule) is the tool for **non-convex** PWL; it is not used here, and our solver (HiGHS) does not support SOS constraints in any case.
-    A non-convex degradation curve (future work) would need SOS2 via a SOS-capable solver or a binary segment-selection encoding; see [references.md § R1.2](references.md#r12--piecewise-linear-degradation-cost).
+    A non-convex degradation curve (future work) would need SOS2 via a SOS-capable solver or a binary segment-selection encoding; see [references.md: R1.2](references.md#r12--piecewise-linear-degradation-cost).
 - **Breakpoints vs. accuracy.**
     More breakpoints approximate a smooth degradation curve better at the cost of more cuts (one per segment), the accuracy-vs-solve-time trade-off.
 - **Monotonicity.**
@@ -282,7 +282,7 @@ The $\eta<1$ oracle (which pins the *storage-side* placement) and the full set a
 
 *Governing reference: none; engineering phase, **no new theory**.
 The conditions below are algebraic corollaries of the R1.1 model (Williams, already governing).
-See [references.md § R1.3](references.md#r13--pre-flight-validation).*
+See [references.md: R1.3](references.md#r13--pre-flight-validation).*
 
 This section adds **no constraints, variables, or objective terms**.
 It records the closed-form feasibility test the validation layer
@@ -324,7 +324,7 @@ Pre-flight therefore tests the ramp-free condition only (a sound fast filter) an
 ## R1.4. Backtest semantics (derived; no new model)
 
 *Governing reference: López de Prado, *Advances in Financial Machine Learning* (walk-forward evaluation + look-ahead/leakage discipline, the only new methodology this part adds).
-See [references.md § R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band) for secondary sources and domain framing.*
+See [references.md: R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band) for secondary sources and domain framing.*
 
 This section adds **no constraints, variables, or objective terms**.
 It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey;
@@ -383,7 +383,7 @@ A result above the ceiling band is a leakage red flag, not alpha.
 
 ## R2.1. Probabilistic price forecast (conformal intervals; no optimizer change)
 
-*Governing reference: Angelopoulos & Bates, *A Gentle Introduction to Conformal Prediction* (see [`references.md`](references.md) § R2.1). This section summarizes only the coverage guarantee the forecaster relies on; it adds **no constraint, variable, or objective term** to the dispatch MILP above.*
+*Governing reference: Angelopoulos & Bates, *A Gentle Introduction to Conformal Prediction* (see [`references.md`](references.md): R2.1). This section summarizes only the coverage guarantee the forecaster relies on; it adds **no constraint, variable, or objective term** to the dispatch MILP above.*
 
 R2.1 replaces a point price $\pi_t$ with an **interval** $[\underline{\pi}_t, \overline{\pi}_t]$ carrying a distribution-free coverage guarantee, the uncertainty input the R2.2+ stochastic layer samples. Let a base regressor be fit on a *proper-training* split and a disjoint *calibration* split $\mathcal C$ (of size $n$) held out, with target miscoverage $\alpha$ (so $\text{confidence} = 1-\alpha$).
 
@@ -405,7 +405,7 @@ for exchangeable data, in finite samples, *independent of the model's accuracy*:
 
 ## R2.2. Scenario generation + reduction (uncertainty representation; no optimizer change)
 
-*Governing reference: Dupačová, Gröwe-Kuska & Römisch (2003) and Heitsch & Römisch (2003) for probability-metric scenario reduction; King & Wallace, *Modeling with Stochastic Programming*, for generation framing (see [`references.md`](references.md) § R2.2). This section summarizes only the discrete construction R2.2 builds; it adds **no constraint, variable, or objective term** to the dispatch MILP above. The set it defines is the input the R2.3 stochastic program will optimize over.*
+*Governing reference: Dupačová, Gröwe-Kuska & Römisch (2003) and Heitsch & Römisch (2003) for probability-metric scenario reduction; King & Wallace, *Modeling with Stochastic Programming*, for generation framing (see [`references.md`](references.md): R2.2). This section summarizes only the discrete construction R2.2 builds; it adds **no constraint, variable, or objective term** to the dispatch MILP above. The set it defines is the input the R2.3 stochastic program will optimize over.*
 
 R2.2 turns the R2.1 interval forecast into a **discrete probability distribution over price paths**: a scenario set $\{(\pi^{(s)}, p_s)\}_{s=1}^{S}$ where each $\pi^{(s)} = (\pi^{(s)}_1,\dots,\pi^{(s)}_T)$ is a full-horizon price path (house schema: €/MWh, grid-side, UTC hourly) and $p_s \ge 0$, $\sum_s p_s = 1$.
 
@@ -427,7 +427,7 @@ where $J$ is the deleted index set and $\lVert\cdot\rVert$ is the Euclidean grou
 
 ## R2.3. Risk-aware two-stage dispatch + intraday recourse (optimizer delta)
 
-*Governing reference: Birge & Louveaux, *Introduction to Stochastic Programming* (two-stage recourse, VSS/EVPI); subordinate-authoritative Shapiro, Dentcheva & Ruszczyński (CVaR) and Rawlings, Mayne & Diehl (receding-horizon MPC). See [references.md § R2.3](references.md#r23-risk-aware-two-stage-dispatch--intraday-recourse). This is the first Release-2 section that **changes the optimizer**: it adds recourse variables, a CVaR risk term, and a non-anticipativity structure over the R1.1 physics, which is reused unchanged as the per-scenario second-stage model.*
+*Governing reference: Birge & Louveaux, *Introduction to Stochastic Programming* (two-stage recourse, VSS/EVPI); subordinate-authoritative Shapiro, Dentcheva & Ruszczyński (CVaR) and Rawlings, Mayne & Diehl (receding-horizon MPC). See [references.md: R2.3](references.md#r23-risk-aware-two-stage-dispatch--intraday-recourse). This is the first Release-2 section that **changes the optimizer**: it adds recourse variables, a CVaR risk term, and a non-anticipativity structure over the R1.1 physics, which is reused unchanged as the per-scenario second-stage model.*
 
 R2.3 optimizes dispatch over R2.2's scenario set $\{(\pi^{(s)}, p_s)\}_{s=1}^{S}$ instead of a single price path, and reports the **value of the stochastic solution (VSS)** so the layer is measured, not assumed ([ADR-0007](decisions/0007-stochastic-value-requires-risk-or-recourse.md)).
 

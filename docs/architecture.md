@@ -54,10 +54,28 @@ forecaster → scenarios ┘
 
 Two layers sit deliberately **outside** the serving chain:
 
-- `backtest`: an offline evaluation tool (R1.4). It must not import the serving chain (`api`, `explain`, `stochastic`, `recourse`, `scenarios`, `forecaster`); it drives the optimizer directly.
-- `data`: the ENTSO-E loader (R1.4b). A leaf: it imports nothing else in `bess`.
+- `backtest`: an offline evaluation tool (R1.4a). It must not import the serving chain (`api`, `explain`, `stochastic`, `recourse`, `scenarios`, `forecaster`); it drives the optimizer directly.
+- `data`: the ENTSO-E loader (R1.4b) and the ingestion guard that wraps the fetch (R1.4c). A leaf: it imports nothing else in `bess`.
 
 The headline invariant is `optimizer ⊥ api` (the optimizer never depends on the serving layer), which the layered contract gives for free.
+
+---
+
+## Release 1 by concern
+
+The phase numbers are delivery labels and do not line up one-to-one with the layers above.
+Grouped by concern, Release 1 is four blocks:
+
+| Concern | Modules | Phases |
+| --- | --- | --- |
+| Core optimizer | `assets`, `validation`, `optimizer` | R1.1 physics, R1.2 degradation, R1.3 pre-flight validation |
+| Data layer | `data` | R1.4b ENTSO-E loader, R1.4c ingestion guard |
+| Evaluation | `backtest` | R1.4a leakage-safe backtest, baselines, sanity band |
+| Serving | `api` | R1.5 FastAPI wrapper + solver circuit breaker |
+
+Two circuit breakers live at **different layers** and must stay separate (see [ADR-0012](decisions/0012-separate-ingestion-breaker.md)):
+the **ingestion** breaker (R1.4c) guards the *fetch* in the `data` leaf, and the **solver** breaker (R1.5) guards the *solve* in `api`.
+The ingestion guard is a data-layer reliability piece, not part of serving.
 
 ---
 
@@ -78,6 +96,6 @@ Specs, the README, and ADRs *point to* the formulation; they never restate an eq
 ## Solver & stack
 
 - **Modeling:** [Pyomo](https://www.pyomo.org/), which builds the MILP.
-- **Solver:** [HiGHS](https://highs.dev/) via `highspy` / Pyomo's `appsi_highs`. Note: HiGHS has no native SOS support, which is why R1.2's convex degradation cost uses the epigraph form rather than SOS2 (see [formulation.md § R1.2](formulation.md#r12--piecewise-linear-degradation-cost)).
+- **Solver:** [HiGHS](https://highs.dev/) via `highspy` / Pyomo's `appsi_highs`. Note: HiGHS has no native SOS support, which is why R1.2's convex degradation cost uses the epigraph form rather than SOS2 (see [formulation.md: R1.2](formulation.md#r12-piecewise-linear-degradation-cost)).
 - **Config:** [Pydantic v2](https://docs.pydantic.dev/), typed model parameters from YAML, validated at startup.
-- **Time series:** `pandas`, tz-aware UTC index (see [conventions.md § Time](conventions.md#1-time)).
+- **Time series:** `pandas`, tz-aware UTC index (see [conventions.md: Time](conventions.md#1-time)).

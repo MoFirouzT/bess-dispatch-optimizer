@@ -1,6 +1,6 @@
-"""Property gates for the ingestion guard (R1.5b).
+"""Property gates for the ingestion guard (R1.4c).
 
-Spec: ``docs/specs/R1.5b-ingestion-guard.md`` § "Property tests". The same
+Spec: ``docs/specs/R1.4c-ingestion-guard.md`` § "Property tests". The same
 "inputs the implementation did not choose" discipline the MILP invariants apply
 to constraints, applied to data:
 

@@ -4,7 +4,8 @@
 
 This file holds the canonical mathematics of the optimizer.
 Specs, the README, and ADRs **point here**; they never restate equations.
-Each phase appends a section; nothing is duplicated elsewhere.
+Each phase that changes the optimizer math appends a section; nothing is duplicated elsewhere.
+Pure engineering / data-reliability phases (R1.4c ingestion guard, R1.5 serving, R2.1b drift monitor) introduce no optimizer math and intentionally have no section here.
 Each section names its **governing reference** (see [references.md](references.md)) and summarizes only the theory the project implements; **house notation here and in [conventions.md](conventions.md) takes precedence** for shared quantities.
 
 *Assumes: the house notation in [Conventions](conventions.md) (grid-side power, per-unit SoC, `π / e / η / Δt`).
@@ -31,6 +32,45 @@ The round-trip efficiency $\eta^{rt}=\eta^{ch}\eta^{dis}$ is **emergent**, not a
 delivering 1 MWh to the grid ultimately costs $1/\eta^{rt}$ MWh drawn from the grid, enforced entirely by the balance above.
 
 ![Grid-side metering: power variables are measured at the grid terminal; efficiency applies only on the way into and out of the cell (the SoC balance), never in the cash flow.](figures/metering.svg)
+
+---
+
+## Model at a glance
+
+*A compact, one-screen statement of the full model. This is an index, not a second source of truth: the per-phase sections below (R1.1, R1.2, R2.3) are canonical and carry the derivations, rationale, and evolving detail; if the two ever disagree, the section governs. Current through R2.3 (R2.4 adds explanation, no optimizer change).*
+
+All power is metered **grid-side**, so efficiency enters only the SoC balance, never the objective (see [Conventions](#conventions) above).
+
+**Periods and variables.** Periods $t\in\{1,\dots,T\}$, step $\Delta t$ in hours. Grid-side power $p^{ch}_t,p^{dis}_t\ge 0$; SoC $e_t\in[e_{\min},e_{\max}]$; charge indicator $u_t\in\{0,1\}$; degradation cost $D_t\ge 0$; net export $g_t\equiv p^{dis}_t-p^{ch}_t$.
+
+**Objective** (R1.1 revenue minus R1.2 degradation):
+
+$$\max\ \sum_{t}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]$$
+
+**Constraints** ($\forall t\in\mathcal T$):
+
+| # | Constraint | Role |
+| --- | --- | --- |
+| (1) | $e_t = e_{t-1} + \eta^{ch}p^{ch}_t\Delta t - \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$ | SoC balance (efficiency lives here) |
+| (2) | $e_{\min}\le e_t\le e_{\max}$ | SoC bounds |
+| (3) | $0\le p^{ch}_t\le \bar P^{ch}u_t$, $\;0\le p^{dis}_t\le \bar P^{dis}(1-u_t)$ | power caps + no simultaneous charge/discharge |
+| (4) | $-R\le g_t-g_{t-1}\le R$ ($t\ge 2$) | ramp on net power |
+| (5) | $e_T=e^{\mathrm{tgt}}$ | terminal SoC |
+| (6) | $D_t\ge a_k\tau_t+b_k$ ($k=1,\dots,K$) | convex-PWL degradation (epigraph form) |
+
+with throughput $\tau_t=\eta^{ch}p^{ch}_t\Delta t+\tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$ and segment lines $(a_k,b_k)$ through convex breakpoints $(x_k,g_k)$, $g_0=0$. With no breakpoints, $D_t\equiv 0$ and the model is exactly R1.1.
+
+**Stochastic layer (R2.3).** Optimize over a scenario set $\{(\pi^{(s)},p_s)\}_{s=1}^S$ instead of one price path. A non-anticipative day-ahead commitment $g^{DA}$ (R1.1-feasible) and a per-scenario recourse dispatch $g^{(s)}$ (R1.1-feasible) are tied by a recourse budget
+
+$$\lvert g^{(s)}_t-g^{DA}_t\rvert\ \le\ \rho\,\bar P\qquad \rho\in[0,1],$$
+
+under a CVaR mean-risk objective (risk weight $\lambda\in[0,1]$, tail level $\alpha$; loss $L_s=-\,\text{profit}_s$):
+
+$$\max\ (1-\lambda)\sum_s p_s\,\text{profit}_s\ -\ \lambda\,\mathrm{CVaR}_\alpha(L).$$
+
+$\lambda=0$ is the risk-neutral recourse problem; sweeping $\lambda$ traces the mean-CVaR frontier. The program reduces to the deterministic MILP at $S=1$, and reports VSS $=\mathrm{RP}-\mathrm{EEV}$ and EVPI $=\mathrm{WS}-\mathrm{RP}$ with the ordering $\mathrm{EEV}\le\mathrm{RP}\le\mathrm{WS}$.
+
+**Solver.** A MILP throughout (the only integrality is $u_t$, and $u^{(s)}_t$ in the stochastic layer), solved by HiGHS via `appsi_highs`; no non-convex or SOS structure.
 
 ---
 
@@ -355,6 +395,12 @@ Let $V(\boldsymbol\pi;\,e_0,e^{\mathrm{tgt}})$ be the optimal objective of the R
     A feasible but suboptimal policy;
     it ignores the round-trip-efficiency breakeven, so it can even trade at a loss.
 
+**Day boundary (UTC).**
+A "day" here is a **UTC calendar day** (00:00–24:00 UTC): the engine windows the series by calendar-day grouping, and the rolling solves empty at each UTC midnight.
+That is 1 h (CET) or 2 h (CEST) after the local BE/NL market midnight, so the boundary falls in the calm early-morning hours where the battery is naturally near-empty, not mid-day.
+UTC alignment keeps every window a clean 24 periods (a local-day grouping would give ragged 23/25-hour windows at the DST transitions) and matches the UTC time convention ([conventions.md](conventions.md));
+the resulting 1-to-2-hour offset from the market day is immaterial to a rolling backtest that empties at each boundary.
+
 ### Provable ordering (a correctness gate)
 
 $$\boxed{\;V^{\mathrm{greedy}} \;\le\; V^{\mathrm{roll}} \;\le\; V^\star, \qquad 0 \;\le\; V^{\mathrm{roll}}.\;}$$
@@ -455,7 +501,7 @@ The bracket is $\text{CVaR}_\alpha$ of the loss; at the optimum $\eta$ recovers 
 
 ### Recourse realization (receding-horizon MPC)
 
-The deployable form of the recourse is receding-horizon control: execute the committed action, then at each step re-solve the *remaining* horizon at the updated (realized) prices, carrying SoC as the linking state, warm-started from the previous window ([ADR-0021](decisions/0021-mpc-recourse-out-of-sample-vss.md)). Plant model = SoC balance (1); disturbance = the price forecast; the intraday `dt` may refine to 15-minute while day-ahead stays hourly (`dt` is already a per-solve argument). This is the operational policy whose expected value the two-stage program above anticipates.
+The deployable form of the recourse is receding-horizon control: execute the committed action, then at each step re-solve the *remaining* horizon at the updated (realized) prices, carrying SoC as the linking state ([ADR-0021](decisions/0021-mpc-recourse-out-of-sample-vss.md)). Plant model = SoC balance (1); disturbance = the price forecast; the intraday `dt` may refine to 15-minute while day-ahead stays hourly (`dt` is already a per-solve argument). This is the operational policy whose expected value the two-stage program above anticipates.
 
 ### Decision-value metrics (Birge-Louveaux), tied to R1.4
 

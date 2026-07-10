@@ -1,44 +1,38 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
+[![tests](https://img.shields.io/badge/tests-125_(118_CI_%2B_7_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Grid-scale batteries earn money by charging when power is cheap and discharging when it is dear, but every cycle ages the cell and volatile renewable-driven prices make the timing hard.
-This project computes the revenue-maximizing schedule for that trade-off.
+This project computes the revenue-maximizing charge/discharge schedule for that trade-off, for a grid-scale **battery energy storage system (BESS)** in the Belgian/Dutch day-ahead market.
 
-Optimal day-ahead dispatch for a grid-scale **battery energy storage system (BESS)** in the Belgian/Dutch power market.
-Given a day-ahead price curve and a battery's physical limits, it computes the charge/discharge schedule that maximizes arbitrage revenue net of cell degradation, formulated as a deterministic mixed-integer linear program (MILP).
+It starts from a deterministic mixed-integer linear program (MILP) that maximizes arbitrage revenue net of cell degradation given a price curve and a battery's physical limits, then builds up to probabilistic price forecasting and a risk-aware stochastic dispatch layer for when prices are *not* known in advance.
 Correctness is gated by golden oracles and Hypothesis property tests; the layered architecture, docs charter, and forecast calibration are all enforced in CI.
 
 ## What problem this solves
 
-A battery earns money by **buying low and selling high**: charge when day-ahead electricity is cheap, discharge when it is expensive.
-The catch is that every cycle ages the cell, charging and discharging each lose energy (round-trip efficiency < 1), and the schedule must respect power, energy, and ramp limits.
-This project formulates that trade-off precisely and solves it to optimality, then measures how much of the theoretical maximum a realistic, no-look-ahead policy actually captures.
+A battery earns money by **buying low and selling high**, but every cycle ages the cell, charging and discharging each lose energy (round-trip efficiency < 1), and the schedule must respect power, energy, and ramp limits.
+
+There are really two problems here.
+When the price curve is **known**, dispatch is a deterministic optimization: the project solves it to optimality and measures how much of that ceiling a realistic no-look-ahead policy captures (Release 1).
+When prices are **uncertain**, the decision has to hedge across scenarios: the project forecasts prices as calibrated intervals and solves a two-stage risk-aware program whose value over a naive mean-forecast plan is measurable (Release 2).
 
 ## The model
 
-The core is a MILP over $T$ dispatch periods.
-It maximizes grid-side arbitrage revenue minus a degradation cost $D_t$:
+The core is a MILP over $T$ dispatch periods that maximizes grid-side arbitrage revenue minus a degradation cost $D_t$:
 
 $$\max \sum_{t} \Bigl[\, \pi_t\, \Delta t \,(p^{dis}_t - p^{ch}_t) \;-\; D_t \,\Bigr]$$
 
-subject to a state-of-charge balance (the one equation where round-trip efficiency enters), plus power, energy, and ramp limits and a binary that forbids simultaneous charge/discharge:
+subject to the state-of-charge balance, the one equation where round-trip efficiency enters:
 
 $$e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$$
 
-The degradation cost is a **convex piecewise-linear** function of per-period throughput, encoded in **epigraph form**:
-one linear cut per segment $k$ bounds the auxiliary variable $D_t$ from below, and the objective presses it down onto the curve, so $D_t$ reconstructs the exact PWL cost with no special-ordered sets (HiGHS has none):
-
-$$D_t \ge a_k\, \tau_t + b_k \qquad k = 1,\dots,K$$
+plus power, energy, and ramp limits, a binary that forbids simultaneous charge and discharge, and a terminal-SoC target. The degradation cost $D_t$ is a convex piecewise-linear function of per-period throughput, linearized in epigraph form (no special-ordered sets, which HiGHS lacks). Release 2 extends this into a two-stage stochastic program with a CVaR risk term and intraday recourse (§R2.3).
 
 The one non-obvious design choice is that **all power is metered grid-side**, so degradation is a cost subtracted from cash rather than an efficiency factor, and never touches the SoC balance.
-The full derivation, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md).
-
-## Architecture at a glance
-
-The `bess` package is split into layers with a strict downward-only import direction (`api` at the top, `assets` at the base), enforced in CI by import-linter. The headline invariant is `optimizer ⊥ api`: the deterministic core never depends on the serving layer, so it stays testable in isolation. The full layer map and dependency diagram are in [docs/architecture.md](docs/architecture.md).
+The complete model, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md) (start with its "Model at a glance" summary).
 
 ## Status
 
@@ -53,30 +47,45 @@ The `bess` package is split into layers with a strict downward-only import direc
   - **R1.4c**: anomaly-aware ingestion guard, a *second* circuit breaker on the data feed, classifying each fetch outage / anomalous-but-present / healthy before it can reach the solver
 - **R1.5**: FastAPI dispatch service with a graceful-degradation circuit breaker (greedy fallback on solver timeout), Dockerized
 
-**Forecasting and drift monitoring (Release 2), under way:**
+**Release 2 (forecasting → stochastic optimization), complete through R2.3**, gated by golden + property tests:
 
 - **R2.1**: probabilistic price forecaster: LightGBM quantile models wrapped in conformal prediction (MAPIE) for calibrated day-ahead price *intervals*, gated by empirical coverage under walk-forward
 - **R2.1b**: rolling drift monitor: separates a *regime shift* (market changed; a naive baseline degrades too) from *model staleness* (the model decayed relative to a seasonal-naive), so the flag is actionable
+- **R2.2**: scenario generation and reduction: residual-path bootstrap into probability-weighted price paths, reduced ~300 → ~50 within a Kantorovich tolerance
+- **R2.3**: risk-aware two-stage dispatch with intraday MPC recourse: a CVaR mean-risk MILP with a measured **value of the stochastic solution (VSS) > 0** out-of-sample, plus a risk/return frontier (see [Value under uncertainty](#value-under-uncertainty-release-2))
 
-**Stochastic optimization (Release 2), planned:** scenario generation, stochastic optimization, recourse, and explainability. See [docs/architecture.md](docs/architecture.md).
+**Remaining (Release 2):** **R2.4** dual-based explainability. See [docs/architecture.md](docs/architecture.md).
 
 ## Example results
 
-**A rolling, no-look-ahead policy captures 98.4% of the perfect-foresight revenue ceiling.** The residual gap is the cross-day (overnight) arbitrage a deterministic agent provably cannot reach, which is the opportunity Release 2 targets.
+**On real Dutch day-ahead prices, a rolling, no-look-ahead policy captures 99.9% of the perfect-foresight revenue ceiling.**
+Once the price curve is known, a myopic per-day policy is already near-optimal, so the deterministic problem is essentially solved. The value left on the table is not overnight foresight but *not knowing prices in advance*, which is what Release 2 addresses (and where a measured VSS shows up; see [Value under uncertainty](#value-under-uncertainty-release-2)).
 
-The numbers below come from a worked example on a **synthetic** 90-day Dutch-style day-ahead series (1 MWh / 1 MW asset, η = 0.95), reproducible with [`examples/worked_example.py`](examples/worked_example.py):
+The numbers below are from a worked example over a 91-day 2024-Q2 ENTSO-E NL day-ahead window (1 MWh / 1 MW asset, η = 0.95). No price data is committed; set an ENTSO-E token and run [`examples/worked_example.py`](examples/worked_example.py) to reproduce (without a token it falls back to a synthetic series):
 
-| Baseline | Revenue | Share of ceiling |
+| Baseline | Revenue (91 days) | Share of ceiling |
 | --- | --- | --- |
-| Greedy floor (percentile rule) | €3,472 | 50% |
-| Rolling deployable (per-day optimal) | €6,860 | **98.4%** |
-| Perfect-foresight ceiling | €6,972 | 100% |
+| Greedy floor (percentile rule) | €7,402 | 59% |
+| Rolling deployable (per-day optimal) | €12,526 | **99.9%** |
+| Perfect-foresight ceiling | €12,535 | 100% |
 
-The annualized ceiling is ≈ €28k per MWh-installed per year, inside the structural sanity band (gate D).
+Annualizing this volatile quarter (~9% negative-price hours) puts the ceiling near €50k per MWh-installed per year; a calmer year sits lower. Because gate D derives its band from each window's own price spread, a volatile quarter legitimately lands high without tripping it.
 
-![Optimal dispatch on the widest-spread day: charge through the cheap overnight hours, discharge into the evening price peak, return to empty by end of day.](docs/figures/example-dispatch-day.svg)
+![Optimal dispatch on the widest-spread real day (2024-05-01): the battery charges through the cheap overnight hours and a deeply negative-priced midday, then discharges into the morning and evening price peaks, returning to empty by end of day.](docs/figures/example-dispatch-day.svg)
 
-![Greedy floor vs. rolling deployable value vs. perfect-foresight ceiling over the 90-day series.](docs/figures/example-baselines.svg)
+![Greedy floor vs. rolling deployable value vs. perfect-foresight ceiling over the 91-day 2024-Q2 series.](docs/figures/example-baselines.svg)
+
+### Value under uncertainty (Release 2)
+
+The deterministic result above assumes the price curve is known. Release 2 drops that assumption: it forecasts prices as calibrated intervals (R2.1), samples them into scenarios (R2.2), and solves a two-stage risk-aware program that commits a day-ahead schedule now and re-dispatches intraday once prices realize (R2.3).
+
+That machinery only earns its place if it beats simply optimizing against the mean forecast. It does: the **value of the stochastic solution (VSS) is positive**, measured out-of-sample on held-out real days, and it rises then falls with the intraday recourse budget ρ (zero recourse and unlimited recourse both collapse to the mean-value plan; the value lives in between). Trading expected profit for downside protection traces a mean-CVaR frontier.
+
+![Value of the stochastic solution vs. the intraday recourse budget: zero at both ends, strictly positive in between, peaking where recourse is scarce enough to matter but ample enough to adapt.](docs/figures/example-vss-curve.svg)
+
+![Mean-CVaR risk/return frontier: raising the risk weight trades expected profit for a smaller downside (CVaR of loss), graded rather than a single point.](docs/figures/example-risk-return-frontier.svg)
+
+Both figures are built from real NL day-ahead prices reshaped into daily scenarios; reproduce with `examples/stochastic_demo.py` (token, synthetic fallback otherwise).
 
 Solve time scales benignly with horizon (one binary plus a few continuous variables per period); [`examples/benchmark_scaling.py`](examples/benchmark_scaling.py) reports it (numbers are from a local run, so treat them as relative):
 
@@ -87,6 +96,10 @@ Solve time scales benignly with horizon (one binary plus a few continuous variab
 | 1 month | 720 | ~120 ms |
 
 The plotting dependency is optional: `uv sync --group examples` installs it.
+
+## Architecture
+
+The `bess` package is split into layers with a strict downward-only import direction (`api` at the top, `assets` at the base), enforced in CI by import-linter. The headline invariant is `optimizer ⊥ api`: the deterministic core never depends on the serving layer, so it stays testable in isolation. The full layer map and dependency diagram are in [docs/architecture.md](docs/architecture.md).
 
 ## How to read the docs
 
@@ -143,7 +156,7 @@ Reproduce with `uv run --group examples python examples/ingestion_guard_demo.py`
 
 The core is a deterministic, single-asset, day-ahead dispatch engine, and its scope boundaries are deliberate:
 
-- **The optimizer takes prices as known.** It solves against a given day-ahead curve; it does not model price uncertainty. A probabilistic price forecaster with calibrated intervals already exists (R2.1), but feeding that uncertainty into the decision, via a two-stage stochastic / recourse layer, is the remaining Release 2 work, which is where the cross-day arbitrage gap measured by the backtest (`V* − V_roll`) is meant to be captured.
+- **The deterministic core takes prices as known.** The core MILP solves against a given day-ahead curve. Price *uncertainty* is handled by the Release 2 stack layered on top (forecaster R2.1 → scenarios R2.2 → two-stage risk-aware dispatch with intraday recourse R2.3), whose value over a mean-forecast plan is the VSS reported above; the remaining Release 2 item is dual-based explainability (R2.4).
 - **Day-ahead arbitrage only.** Intraday, imbalance, and ancillary-service markets (FCR / aFRR) are out of scope; the asset trades a single energy market.
 - **No grid-connection / congestion constraint.** Dispatch is not capped at a connection-point limit. Adding a congestion or curtailment cap is the natural next physical constraint and is relevant to Dutch (TenneT) grid conditions.
 - **Convex degradation only.** The degradation cost is a convex piecewise-linear curve (R1.2); rainflow cycle-counting and calendar aging are not modelled.

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import cast
 
 import pandas as pd
 
@@ -50,7 +51,8 @@ def _to_windows(prices: Sequence[float] | pd.Series, window: int | str) -> list[
     if isinstance(prices, pd.Series):
         if not isinstance(window, str):
             raise TypeError("with a pandas Series, `window` must be an offset string (e.g. '1D')")
-        return [grp.astype(float).tolist() for _, grp in prices.groupby(prices.index.normalize())]
+        index = cast(pd.DatetimeIndex, prices.index)
+        return [grp.astype(float).tolist() for _, grp in prices.groupby(index.normalize())]
     if not isinstance(window, int) or window < 1:
         raise TypeError("with a sequence, `window` must be a positive int (periods per window)")
     vals = [float(p) for p in prices]

@@ -10,20 +10,28 @@ later peak), then:
   from 0 (no recourse) to a positive interior and back toward 0 (unlimited
   recourse) — the escape from the VSS = 0 trap.
 
-Synthetic data only (the no-committed-data rule); numbers are illustrative, not a
-gate. Run:
+The **committed** figures are built from real ENTSO-E NL prices (each historical
+day is one equiprobable 24-hour scenario). To reproduce them, set a token and run:
+
+    ENTSOE_API_TOKEN=... uv run python examples/stochastic_demo.py
+
+Without a token it falls back to designed **synthetic** scenario sets (a common
+cheap charge hour, a random later peak) that trace the same shapes. Numbers are
+illustrative, not a gate; no real price data is committed (only the charts). Run:
 
     uv run python examples/stochastic_demo.py
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from bess.assets.battery import BatterySpec
+from bess.data.entsoe import fetch_day_ahead
 from bess.scenarios import ScenarioSet
 from bess.stochastic import solve_stochastic, value_of_stochastic_solution
 
@@ -76,40 +84,71 @@ def _vss_scenarios(seed: int = 0) -> ScenarioSet:
     return _make_set(np.asarray(days))
 
 
+def _real_daily_scenarios() -> ScenarioSet:
+    """Real NL day-ahead reshaped into equiprobable 24-hour scenarios.
+
+    A 45-day 2024-Q2 window (hourly, before the 2025-10 SDAC 15-min switch); each
+    calendar day is one price-path scenario — a historical distribution over day
+    shapes, the same construction the live integration test uses.
+    """
+    prices = fetch_day_ahead(
+        "NL", pd.Timestamp("2024-04-01", tz="UTC"), pd.Timestamp("2024-05-31 23:00", tz="UTC")
+    )
+    values = prices.to_numpy(dtype=float)
+    usable = (len(values) // 24) * 24
+    paths = values[:usable].reshape(-1, 24)[:45]
+    index = pd.date_range("2026-01-01", periods=24, freq="h", tz="UTC")
+    return ScenarioSet(paths=paths, probs=np.full(len(paths), 1.0 / len(paths)), index=index)
+
+
+def _configure():
+    """Pick the scenario sets and sweep grids: real NL if a token is set, else the
+    designed synthetic sets. Returns ``(frontier_scen, vss_scen, lambdas, rhos,
+    alpha, frho, tag)``; on real data one daily set serves both sweeps."""
+    if os.environ.get("ENTSOE_API_TOKEN"):
+        scen = _real_daily_scenarios()
+        lambdas = [0.0, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.9]
+        rhos = [0.0, 0.1, 0.2, 0.3, 0.5, 0.8, 1.2, 2.0]
+        return scen, scen, lambdas, rhos, 0.9, 0.3, "real NL, 2024-Q2"
+    return (
+        _frontier_scenarios(), _vss_scenarios(), LAMBDAS, RHOS,
+        FRONTIER_ALPHA, FRONTIER_RHO, "synthetic",
+    )  # fmt: skip
+
+
 def main() -> None:
-    # Risk-return frontier: sweep λ on the gamble set (at a fixed budget).
-    frontier_scen = _frontier_scenarios()
+    frontier_scen, vss_scen, lambdas, rhos, alpha, frho, tag = _configure()
+    print(f"Stochastic demo — {tag} scenario set\n")
+
+    # Risk-return frontier: sweep λ (at a fixed budget).
     exp_profit, cvar_loss = [], []
-    for lam in LAMBDAS:
-        sched = solve_stochastic(
-            frontier_scen, BATTERY, alpha=FRONTIER_ALPHA, lambda_=lam, rho=FRONTIER_RHO
-        )
+    for lam in lambdas:
+        sched = solve_stochastic(frontier_scen, BATTERY, alpha=alpha, lambda_=lam, rho=frho)
         exp_profit.append(sched.expected_profit)
         cvar_loss.append(sched.cvar)
 
-    # VSS curve: sweep the recourse budget ρ on the random-peak set (risk-neutral).
-    vss_scen = _vss_scenarios()
-    vss = [value_of_stochastic_solution(vss_scen, BATTERY, rho=r).vss for r in RHOS]
+    # VSS curve: sweep the recourse budget ρ (risk-neutral).
+    vss = [value_of_stochastic_solution(vss_scen, BATTERY, rho=r).vss for r in rhos]
 
-    print(f"Risk-return frontier (α={FRONTIER_ALPHA}, ρ={FRONTIER_RHO})\n")
+    print(f"Risk-return frontier (α={alpha}, ρ={frho})\n")
     print(f"{'lambda':>8} {'E[profit]':>12} {'CVaR loss':>12}")
     print("-" * 34)
-    for lam, e, c in zip(LAMBDAS, exp_profit, cvar_loss, strict=True):
+    for lam, e, c in zip(lambdas, exp_profit, cvar_loss, strict=True):
         print(f"{lam:>8.2f} {e:>12.3f} {c:>12.3f}")
 
     print("\nVSS vs recourse budget ρ (risk-neutral)\n")
     print(f"{'rho':>8} {'VSS':>12}")
     print("-" * 22)
-    for r, v in zip(RHOS, vss, strict=True):
+    for r, v in zip(rhos, vss, strict=True):
         print(f"{r:>8.2f} {v:>12.3f}")
 
     from bess.viz.stochastic_plots import plot_risk_return_frontier, plot_vss_curve
 
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    f1 = plot_risk_return_frontier(exp_profit, cvar_loss, LAMBDAS)
+    f1 = plot_risk_return_frontier(exp_profit, cvar_loss, lambdas)
     p1 = FIG_DIR / "example-risk-return-frontier.svg"
     f1.savefig(p1, format="svg", bbox_inches="tight")
-    f2 = plot_vss_curve(RHOS, vss)
+    f2 = plot_vss_curve(rhos, vss)
     p2 = FIG_DIR / "example-vss-curve.svg"
     f2.savefig(p2, format="svg", bbox_inches="tight")
     print(f"\nwrote {p1.name} and {p2.name} to docs/figures/")

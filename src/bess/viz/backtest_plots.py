@@ -26,10 +26,68 @@ try:
     matplotlib.use("Agg")  # headless: write files, never open a window
     import matplotlib.pyplot as plt
     from matplotlib.figure import Figure
+    from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, VPacker
 except ImportError as exc:  # pragma: no cover - exercised only without the extra
     raise ImportError(
         "bess.viz needs matplotlib — install the examples extra: `uv sync --group examples`"
     ) from exc
+
+
+# Colour contract — two roles kept strictly separate.
+#
+#   Directional (diverging): the sign of net grid power. Reserved for discharge vs
+#   charge and used NOWHERE else, so the reader's "green = discharge" mapping never
+#   leaks into a chart where it would be meaningless.
+_DISCHARGE = "#2a9d8f"  # net power ≥ 0 — delivering to the grid
+_CHARGE = "#e76f51"  # net power < 0 — drawing from the grid
+#
+#   Non-directional series carry no flow meaning, so they draw from a separate
+#   (blue) family — validated steps from the data-viz reference palette.
+_PRICE = "#e9c46a"  # day-ahead price line (its own hue, shared across figures)
+_SOC = "#2a78d6"  # state-of-charge trajectory — a state, not a flow direction
+# The three revenue baselines are an ordinal ladder (floor → deployable → ceiling),
+# so one blue hue light→dark reads them as rungs toward the ceiling, not as rivals.
+_BASELINE_RAMP = ("#86b6ef", "#3987e5", "#184f95")
+_METHOD = "#2a78d6"  # the advocated method (categorical, no flow meaning)
+_BASELINE_MUTED = "#898781"  # a recessive comparison baseline
+_FAULT = "#d03b3b"  # corrupt-region status red (distinct from the charge hue)
+
+# Consistent legend style across every figure.
+_LEGEND_KW = {"fontsize": 8, "framealpha": 0.9}
+
+
+def _set_flow_ylabel(ax) -> None:
+    """Label a net-power y-axis, encoding direction as the discharge/charge colours
+    (a small ■ before each word) rather than ↑/↓ arrows — so the cue reads without a
+    separate legend box. Multi-colour text is stacked as rotated offset boxes."""
+    parts = [
+        ("net grid power   ", "#333333"),
+        ("■ discharge", _DISCHARGE),
+        ("   ", "#333333"),
+        ("■ charge", _CHARGE),
+        ("   (MW)", "#333333"),
+    ]
+    boxes = [
+        TextArea(
+            t, textprops={"color": c, "rotation": 90, "ha": "left", "va": "bottom", "fontsize": 9}
+        )
+        for t, c in parts
+    ]
+    # Reversed: VPacker stacks the first child topmost, but rotated text reads
+    # bottom-to-top, so the last part must sit at the top of the stack.
+    ybox = VPacker(children=boxes[::-1], align="bottom", pad=0, sep=0)
+    ax.set_ylabel("")
+    ax.add_artist(
+        AnchoredOffsetbox(
+            loc="center left",
+            child=ybox,
+            pad=0,
+            frameon=False,
+            bbox_to_anchor=(-0.10, 0.5),
+            bbox_transform=ax.transAxes,
+            borderpad=0,
+        )  # fmt: skip
+    )
 
 
 def plot_dispatch_day(
@@ -51,24 +109,24 @@ def plot_dispatch_day(
 
     fig, ax_power = plt.subplots(figsize=(9, 4.5))
 
-    colors = ["#2a9d8f" if v >= 0 else "#e76f51" for v in net]  # discharge / charge
-    ax_power.bar(hours, net, width=0.8, color=colors, alpha=0.85, label="net power (MW)")
+    colors = [_DISCHARGE if v >= 0 else _CHARGE for v in net]
+    ax_power.bar(hours, net, width=0.8, color=colors, alpha=0.85)
     ax_power.axhline(0, color="#888", linewidth=0.8)
     ax_power.set_xlabel("hour of day (UTC)")
-    ax_power.set_ylabel("net grid power — discharge ↑ / charge ↓ (MW)")
+    _set_flow_ylabel(ax_power)
     ax_power.set_xticks(hours[::2])
 
     ax_soc = ax_power.twinx()
     ax_soc.plot(
-        hours, schedule_day.soc, color="#264653", linewidth=1.6, marker="o",
-        markersize=3, label="SoC (MWh)",
+        hours, schedule_day.soc, color=_SOC, linewidth=1.6, marker="o",
+        markersize=3,
     )  # fmt: skip
-    ax_soc.set_ylabel("SoC (MWh)", color="#264653")
+    ax_soc.set_ylabel("SoC (MWh)", color=_SOC)
     ax_soc.set_ylim(0, spec.capacity * 1.05)
 
     ax_price = ax_power.twinx()
     ax_price.spines["right"].set_position(("axes", 1.12))
-    ax_price.plot(hours, prices_day, color="#e9c46a", linewidth=2.0, label="price (€/MWh)")
+    ax_price.plot(hours, prices_day, color=_PRICE, linewidth=2.0)
     ax_price.set_ylabel("day-ahead price (€/MWh)", color="#b8860b")
 
     ax_power.set_title(title)
@@ -84,7 +142,7 @@ def plot_baselines(report: BacktestReport, *, title: str = "Backtest baselines")
         report.rolling.revenue_eur,
         report.perfect_foresight.revenue_eur,
     ]
-    colors = ["#e76f51", "#2a9d8f", "#264653"]
+    colors = list(_BASELINE_RAMP)
 
     fig, ax = plt.subplots(figsize=(6.5, 4.5))
     bars = ax.bar(names, values, color=colors, alpha=0.9)
@@ -139,10 +197,10 @@ def plot_ingestion_guard(
 
     def _panel(ax, prices: list[float], schedule: Schedule, price_color: str, subtitle: str):
         net = [d - c for c, d in zip(schedule.p_charge, schedule.p_discharge, strict=True)]
-        bar_colors = ["#2a9d8f" if v >= 0 else "#e76f51" for v in net]  # discharge / charge
+        bar_colors = [_DISCHARGE if v >= 0 else _CHARGE for v in net]
         ax.bar(hours, net, width=0.8, color=bar_colors, alpha=0.85)
         ax.axhline(0, color="#888", linewidth=0.8)
-        ax.set_ylabel("net power\ndischarge ↑ / charge ↓ (MW)")
+        _set_flow_ylabel(ax)
         ax.set_title(subtitle, loc="left", fontsize=10)
         ax_price = ax.twinx()
         ax_price.plot(hours, prices, color=price_color, linewidth=2.0)
@@ -155,7 +213,7 @@ def plot_ingestion_guard(
     )  # fmt: skip
     if fault_slice is not None:
         a, b = fault_slice
-        ax_top.axvspan(a - 0.5, b - 0.5, color="#e76f51", alpha=0.15)
+        ax_top.axvspan(a - 0.5, b - 0.5, color=_FAULT, alpha=0.15)
         ymax = ax_top.get_ylim()[1]
         ax_top.text(
             (a + b) / 2 - 0.5, ymax * 0.82, "corrupt",
@@ -163,7 +221,7 @@ def plot_ingestion_guard(
         )  # fmt: skip
 
     _panel(
-        ax_bot, fallback_prices, fallback_schedule, "#e9c46a",
+        ax_bot, fallback_prices, fallback_schedule, _PRICE,
         "② Guard fell back to last-known-good: dispatch runs on trustworthy prices",
     )  # fmt: skip
     ax_bot.set_xlabel("hour of day (UTC)")
@@ -198,16 +256,16 @@ def plot_scenario_reduction(
     """
     fig, (ax_d, ax_t) = plt.subplots(1, 2, figsize=(11, 4.2))
 
-    ax_d.plot(kept_counts, dist_forward, "-o", color="#2a9d8f", label="forward selection")
+    ax_d.plot(kept_counts, dist_forward, "-o", color=_METHOD, label="forward selection")
     if dist_kmeans is not None:
-        ax_d.plot(kept_counts, dist_kmeans, "--s", color="#e76f51", label="k-means baseline")
+        ax_d.plot(kept_counts, dist_kmeans, "--s", color=_BASELINE_MUTED, label="k-means baseline")
     ax_d.set_xlabel("kept scenarios")
     ax_d.set_ylabel("Kantorovich distance to original")
     ax_d.set_title(f"Distance preserved (from {n_generate} generated)")
-    ax_d.legend()
+    ax_d.legend(**_LEGEND_KW)
     ax_d.grid(alpha=0.3)
 
-    ax_t.plot(kept_counts, times_ms, "-o", color="#264653")
+    ax_t.plot(kept_counts, times_ms, "-o", color=_METHOD)
     ax_t.set_xlabel("kept scenarios")
     ax_t.set_ylabel("reduction time (ms)")
     ax_t.set_title("Cost of reduction")

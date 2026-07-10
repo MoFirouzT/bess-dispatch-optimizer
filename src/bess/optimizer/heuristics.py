@@ -53,8 +53,8 @@ def greedy_window(
     if m == 0:
         return Schedule([], [], [], 0.0)
 
-    p_lo = float(np.percentile(prices, charge_pct, method=method))
-    p_hi = float(np.percentile(prices, discharge_pct, method=method))
+    p_lo = float(np.percentile(prices, charge_pct, method=method))  # type: ignore[call-overload]
+    p_hi = float(np.percentile(prices, discharge_pct, method=method))  # type: ignore[call-overload]
     # Most SoC one trailing period can remove (storage-side) — the liquidation budget.
     max_removal = spec.p_discharge_max * dt / spec.eta_discharge
 

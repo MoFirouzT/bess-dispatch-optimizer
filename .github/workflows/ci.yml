@@ -33,7 +33,10 @@ jobs:
         run: uv run python scripts/lint_docs.py
 
       - name: Tests (pytest + solver smoke)
-        run: uv run pytest
+        # Deselect the token-gated live-API tests (`-m "not integration"`): they
+        # never run in CI, so a push never spends ENTSO-E quota. Run them on demand
+        # locally with the token to verify against real data.
+        run: uv run pytest -m "not integration"
 
   forecast:
     runs-on: ubuntu-latest

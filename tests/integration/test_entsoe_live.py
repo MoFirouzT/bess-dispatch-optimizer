@@ -10,7 +10,11 @@ What it proves on *real* NL day-ahead prices:
   (a) the provable ordering `V_greedy <= V_roll <= V*` survives real volatility;
   (b) each slice's annualized ceiling sits in the §5 band derived from its *own*
       daily spread, and a volatile **summer** slice has a wider spread and higher
-      ceiling than a calm **Q1** slice (the §5 band shifts up seasonally).
+      ceiling than a calm **Q1** slice (the §5 band shifts up seasonally);
+  (c) the **15-minute** MTU path (live since the 2025-10 SDAC switch) fetches,
+      windows, and backtests end-to-end at `dt=0.25` — the ordering and physical
+      feasibility hold on real sub-hourly prices, and the sub-hourly `dt` flows
+      correctly through annualization.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python needs the
 Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note" and
@@ -37,10 +41,10 @@ requires_token = pytest.mark.skipif(
 )
 
 
-def _checked_report(prices: pd.Series):
+def _checked_report(prices: pd.Series, *, dt: float = 1.0):
     """Run the backtest, assert the provable ordering, return the report."""
     spec = BatterySpec()  # 1 MWh / 1 MW, η=0.95
-    rep = run_backtest(prices, spec, dt=1.0, window="1D")
+    rep = run_backtest(prices, spec, dt=dt, window="1D")
     assert rep.greedy.revenue_eur <= rep.rolling.revenue_eur + 1e-6
     assert rep.rolling.revenue_eur <= rep.perfect_foresight.revenue_eur + 1e-6
     assert rep.constraint_satisfaction
@@ -91,3 +95,44 @@ def test_real_data_seasonal_band_shift_and_ordering():
     # higher annualized ceiling than calm winter — the §5 band shifts up.
     assert volatile.mean_daily_spread_eur > calm.mean_daily_spread_eur
     assert volatile.annualized_ceiling_per_mwh > calm.annualized_ceiling_per_mwh
+
+
+@requires_token
+def test_real_15min_end_to_end_backtest():
+    """Real 15-minute (PT15M) day-ahead → windowed → backtested at dt=0.25.
+
+    Closes the R1.4b follow-up (the loader parses PT15M and property tests exercise
+    dt=0.25 on *synthetic* prices, but nothing fetched + backtested **real** 15-min
+    history). November 2025 is a clean full-PT15M month: after the 2025-10 SDAC
+    switch and clear of any DST transition. In UTC every calendar-day window is
+    exactly 96 quarter-hours (DST never yields a 92/100-point UTC day), so the
+    day-grouping and dt=0.25 annualization are checked directly.
+
+    The tight seasonal band is asserted on the hourly slices above; here the
+    sub-hourly granularity legitimately shifts the ceiling/heuristic ratio, so this
+    asserts the resolution-independent guarantees (provable ordering, physical
+    feasibility, and a non-leaking annualized ceiling) rather than re-asserting a
+    band not independently verified at 15-min resolution.
+    """
+    start = pd.Timestamp("2025-11-01", tz="UTC")
+    end = pd.Timestamp("2025-12-01", tz="UTC")
+    # ENTSO-E's end is inclusive, so the fetch tacks a single trailing point onto
+    # the next day; take the half-open interval [start, end) for whole days only.
+    prices = fetch_day_ahead("NL", start, end)
+    prices = prices.loc[prices.index < end]
+
+    # The fetched series is genuinely 15-minute (validate_price_series already
+    # guarantees a single regular step; assert that step is 15 min).
+    step = prices.index.to_series().diff().dropna().iloc[0]
+    assert step == pd.Timedelta(minutes=15), f"expected PT15M, got {step}"
+
+    # Every UTC calendar-day window is exactly 96 quarter-hours — proves the
+    # sub-hourly path drove the day-grouping, not an hourly fallback.
+    day_sizes = prices.groupby(prices.index.normalize()).size()
+    assert (day_sizes == 96).all(), f"non-96 windows: {day_sizes[day_sizes != 96].to_dict()}"
+
+    rep = _checked_report(prices, dt=0.25)
+
+    # Sub-hourly dt flows through annualization: a positive, non-leaking ceiling.
+    assert rep.annualized_ceiling_per_mwh > 0.0
+    assert rep.annualized_ceiling_per_mwh < RED_FLAG_EUR_PER_MWH_YR * 2

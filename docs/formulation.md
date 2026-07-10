@@ -323,10 +323,12 @@ Pre-flight therefore tests the ramp-free condition only (a sound fast filter) an
 
 ## R1.4. Backtest semantics (derived; no new model)
 
-*Governing reference: López de Prado, *Advances in Financial Machine Learning* (walk-forward evaluation + look-ahead/leakage discipline, the only new methodology this part adds). See [references.md § R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band) for secondary sources and domain framing.*
+*Governing reference: López de Prado, *Advances in Financial Machine Learning* (walk-forward evaluation + look-ahead/leakage discipline, the only new methodology this part adds).
+See [references.md § R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band) for secondary sources and domain framing.*
 
 This section adds **no constraints, variables, or objective terms**.
-It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey; all built from the *existing* R1.1/R1.2 optimizer.
+It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey;
+all built from the *existing* R1.1/R1.2 optimizer.
 If code and this section disagree, this governs.
 
 ### The information set (gate closure)
@@ -341,9 +343,17 @@ The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d
 Let $V(\boldsymbol\pi;\,e_0,e^{\mathrm{tgt}})$ be the optimal objective of the R1.1/R1.2 MILP on price vector $\boldsymbol\pi$ with the given SoC endpoints, over a horizon that starts and ends empty unless stated.
 
 - **Perfect-foresight ceiling** $V^\star$:
-one **full-horizon** solve over the entire concatenated series with $e_0=e_{\text{end}}=0$ and SoC free to carry **across** day boundaries. This is the theoretical maximum; nothing can exceed it.
-- **Rolling deployable value** $V^{\mathrm{roll}}=\sum_d V(\Pi_d;\,0,0)$: **per-day** solves, each starting and ending empty. In a *deterministic* day-ahead setting the agent has no information about $\Pi_{d+1}$ at the day-$d$ gate, so it has no basis to carry SoC overnight; per-day independence (terminal SoC $=0$) is the honest myopic model. Each day's solve is still **intraday-optimal**.
-- **Greedy floor** $V^{\mathrm{greedy}}$: a percentile rule (charge below the day's 20th price-percentile, discharge above the 80th), defined fully in the spec. A feasible but suboptimal policy; it ignores the round-trip-efficiency breakeven, so it can even trade at a loss.
+    one **full-horizon** solve over the entire concatenated series with $e_0=e_{\text{end}}=0$ and SoC free to carry **across** day boundaries.
+    This is the theoretical maximum; nothing can exceed it.
+- **Rolling deployable value**
+    $V^{\mathrm{roll}}=\sum_d V(\Pi_d;\,0,0)$: **per-day** solves, each starting and ending empty.
+    In a *deterministic* day-ahead setting the agent has no information about $\Pi_{d+1}$ at the day-$d$ gate, so it has no basis to carry SoC overnight;
+    per-day independence (terminal SoC $=0$) is the honest myopic model.
+    Each day's solve is still **intraday-optimal**.
+- **Greedy floor** $V^{\mathrm{greedy}}$:
+    a percentile rule (charge below the day's 20th price-percentile, discharge above the 80th), defined fully in the spec.
+    A feasible but suboptimal policy;
+    it ignores the round-trip-efficiency breakeven, so it can even trade at a loss.
 
 ### Provable ordering (a correctness gate)
 
@@ -351,15 +361,23 @@ $$\boxed{\;V^{\mathrm{greedy}} \;\le\; V^{\mathrm{roll}} \;\le\; V^\star, \qquad
 
 ![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The gap between rolling and ceiling is the cross-day arbitrage a deterministic agent cannot capture; the headline metric is rolling over ceiling.](figures/backtest-bounds.svg)
 
-- $V^{\mathrm{roll}}\le V^\star$: the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem, the ceiling can only do at least as well.
-- $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}$: the greedy schedule is feasible for each day's MILP (it too ends the day empty), and the per-day MILP is optimal over all such schedules.
-- $0 \le V^{\mathrm{roll}}$: idle is feasible in every per-day solve, so each *optimal* per-day value is non-negative (likewise $0 \le V^\star$). $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed: greedy can trade at a loss, so the zero floor bounds the optimal quantities only.
+- $V^{\mathrm{roll}}\le V^\star$:
+    the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem, the ceiling can only do at least as well.
+- $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}$:
+    the greedy schedule is feasible for each day's MILP (it too ends the day empty), and the per-day MILP is optimal over all such schedules.
+- $0 \le V^{\mathrm{roll}}$:
+    idle is feasible in every per-day solve, so each *optimal* per-day value is non-negative (likewise $0 \le V^\star$).
+    $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed: greedy can trade at a loss, so the zero floor bounds the optimal quantities only.
 
-The gap $V^\star-V^{\mathrm{roll}}$ is exactly the **cross-day (overnight) arbitrage value** a deterministic agent provably cannot capture, the opportunity the R2 forecaster/recourse layer targets. The headline metric is $V^{\mathrm{roll}}/V^\star$ (% of perfect foresight captured).
+The gap $V^\star-V^{\mathrm{roll}}$ is exactly the **cross-day (overnight) arbitrage value** a deterministic agent provably cannot capture, the opportunity the R2 forecaster/recourse layer targets.
+The headline metric is $V^{\mathrm{roll}}/V^\star$ (% of perfect foresight captured).
 
 ### Sanity band (gate D)
 
-The annualized ceiling per MWh-installed must sit inside a band **derived from the fixture's own price statistics** (not hard-coded): $V^\star_{\text{annual}}/E_{\text{usable}} \approx c\cdot\overline{\text{spread}}_{\text{daily}}$, where $\overline{\text{spread}}_{\text{daily}}$ is the mean over days of that day's max-minus-min price and $c=\eta^{rt}\,(\text{cycles/day})\cdot 365$ is recomputed from the spec. ($E_{\text{usable}}$ already divides the left side, so it must not reappear in $c$; both sides are €/MWh-installed per year.) A result above the ceiling band is a leakage red flag, not alpha.
+The annualized ceiling per MWh-installed must sit inside a band **derived from the fixture's own price statistics** (not hard-coded):
+$V^\star_{\text{annual}}/E_{\text{usable}} \approx c\cdot\overline{\text{spread}}_{\text{daily}}$, where $\overline{\text{spread}}_{\text{daily}}$ is the mean over days of that day's max-minus-min price and $c=\eta^{rt}\,(\text{cycles/day})\cdot 365$ is recomputed from the spec.
+($E_{\text{usable}}$ already divides the left side, so it must not reappear in $c$; both sides are €/MWh-installed per year.)
+A result above the ceiling band is a leakage red flag, not alpha.
 
 ---
 

@@ -36,18 +36,14 @@ def rolling_recourse(
     *,
     dt: float = 1.0,
     forecast: Sequence[float] | np.ndarray | None = None,
-    warm_start: bool = True,
 ) -> RecourseResult:
     """Simulate the MPC recourse against a realised price path.
 
     At each step the current price is known (``realized[t]``) and the remaining
     horizon uses ``forecast`` (``None`` ⇒ perfect foresight, i.e. the realised
     path). The first action of each re-solve is committed and settled at the
-    realised price; SoC is carried into the next window. ``warm_start`` is a hook
-    for seeding each re-solve from the previous window (a latency optimisation);
-    it does not change the computed policy.
+    realised price; SoC is carried into the next window.
     """
-    _ = warm_start  # reserved: warm-start is a solver-latency optimisation only
     realized = np.asarray(realized, dtype=float)
     horizon = len(realized)
     future_prices = realized if forecast is None else np.asarray(forecast, dtype=float)

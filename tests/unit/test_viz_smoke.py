@@ -11,9 +11,8 @@ pytest.importorskip("matplotlib")
 
 from bess.assets.battery import BatterySpec  # noqa: E402
 from bess.backtest.baselines import solve_window  # noqa: E402
-from bess.backtest.engine import run_backtest  # noqa: E402
 from bess.data.fixtures import synthetic_day_ahead  # noqa: E402
-from bess.viz.backtest_plots import plot_baselines, plot_dispatch_day  # noqa: E402
+from bess.viz.backtest_plots import plot_dispatch_day  # noqa: E402
 from bess.viz.stochastic_plots import (  # noqa: E402
     plot_risk_return_frontier,
     plot_vss_curve,
@@ -23,10 +22,6 @@ from bess.viz.stochastic_plots import (  # noqa: E402
 def test_figures_build_without_error():
     prices = synthetic_day_ahead(days=3)
     spec = BatterySpec()
-    report = run_backtest(prices, spec, dt=1.0, window="1D")
-
-    fig_base = plot_baselines(report)
-    assert fig_base.axes
 
     day = prices.iloc[:24].astype(float).tolist()
     sched, _ = solve_window(day, spec, 1.0)

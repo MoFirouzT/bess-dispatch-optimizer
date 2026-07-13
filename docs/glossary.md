@@ -67,22 +67,22 @@ charge/discharge power relative to capacity (1C = full energy in 1 h).
 **Depth of discharge (DoD) / cycle**:
 how deep a discharge goes / one full charge-discharge.
 *Why here:* drives degradation.
-*Gotcha:* deep cycles age the cell faster than shallow ones, which is why degradation is modelled as a non-linear (PWL) cost rather than a flat per-MWh fee.
+*Gotcha:* deep cycles age the cell faster than shallow ones (a nonlinear DoD effect); R1.2 deploys the **linear** case of that cycle-based model (a €/MWh throughput cost), with the nonlinear-convex version referenced as future work.
 
 **Degradation**:
 capacity/health loss from cycling and calendar age.
 *Why here:* a cost term in the objective (R1.2).
-*Gotcha:* if ignored, the optimizer over-cycles for tiny spreads; the PWL cost must make marginal deep cycling unprofitable.
+*Gotcha:* if ignored, the optimizer over-cycles for tiny spreads; the wear cost must make cycling unprofitable once the price spread no longer covers the €/MWh throughput fee.
 
 ---
 
 ## Optimization
 
-**MILP**: Mixed-Integer Linear Program. *Why here:* the dispatch model (binaries for charge/discharge exclusivity; PWL via SOS2). *Gotcha:* the solve time is the solver's, not the modelling language's: a Pyomo-vs-JuMP "speed race" on a small MILP measures construction overhead, i.e. noise.
+**MILP**: Mixed-Integer Linear Program. *Why here:* the dispatch model (binaries for charge/discharge exclusivity). *Gotcha:* the solve time is the solver's, not the modelling language's: a Pyomo-vs-JuMP "speed race" on a small MILP measures construction overhead, i.e. noise.
 
 **LP relaxation**: the MILP with integrality dropped. *Why here:* its tightness governs branch-and-bound speed. *Gotcha:* a loose big-M weakens the relaxation; prefer indicator constraints / SOS, and let the power cap *be* the big-M.
 
-**SOS2 (Special Ordered Set type 2)**: at most two consecutive members non-zero; encodes piecewise-linear functions. *Why here:* the general tool for **non-convex** PWL. R1.2's degradation cost is *convex*, so it uses the simpler **epigraph form** (max of segment lines, pure LP) instead; SOS2 is documented as the non-convex path. *Gotcha:* HiGHS has no native SOS support, so a non-convex PWL would need a SOS-capable solver or a binary segment-selection encoding; for convex PWL, SOS2 is unnecessary anyway.
+**SOS2 (Special Ordered Set type 2)**: at most two consecutive members non-zero; encodes piecewise-linear functions. *Why here:* the general tool for **non-convex** PWL. R1.2's deployed degradation cost is *linear* (no PWL); a future nonlinear-**convex** degradation would use the simpler **epigraph form** (max of segment lines, pure LP), and only a non-convex curve would need SOS2. *Gotcha:* HiGHS has no native SOS support, so a non-convex PWL would need a SOS-capable solver or a binary segment-selection encoding.
 
 **Recourse / two-stage stochastic program**: first-stage decisions made under uncertainty, second-stage decisions adapt after it resolves. *Why here:* the R2.3 layer. *Gotcha:* with a linear objective and a price-independent feasible set, the two-stage program **collapses to the mean** (VSS=0); value needs a risk-aware objective or genuine recourse.
 

@@ -1,13 +1,16 @@
 """Reproducible plots for the worked example exported to ``docs/figures/``.
 
-Three figures, built from objects the pipeline already returns (no new math):
+Figures built from objects the pipeline already returns (no new math):
 
 - :func:`plot_dispatch_day` — one representative day: price, net grid power
   (discharge up / charge down), and the SoC trajectory it produces;
-- :func:`plot_baselines` — the three revenue quantities (greedy floor, rolling
-  deployable, perfect-foresight ceiling) with the headline % of perfect foresight;
 - :func:`plot_ingestion_guard` — the reliability hero (R1.4c): a corrupt feed the
   guard rejected, beside the trustworthy last-known-good it dispatched on instead.
+
+The baseline comparison (greedy floor / rolling deployable / perfect-foresight
+ceiling) is reported as numbers in the README, not plotted: rolling is each day's
+independent optimum, so its gap to the ceiling is pure cross-day carry — a single
+figure adds nothing the table does not.
 
 ``matplotlib`` is an optional dependency (the ``examples`` group); importing this
 module without it raises a clear ``ImportError``. ``viz`` sits outside the serving
@@ -17,7 +20,6 @@ chain and is not part of any import-linter contract.
 from __future__ import annotations
 
 from bess.assets.battery import BatterySpec
-from bess.backtest.engine import BacktestReport
 from bess.optimizer.core import Schedule
 
 try:
@@ -122,7 +124,9 @@ def plot_dispatch_day(
         markersize=3,
     )  # fmt: skip
     ax_soc.set_ylabel("SoC (MWh)", color=_SOC)
-    ax_soc.set_ylim(0, spec.capacity * 1.05)
+    # Pad below 0 so an empty battery (SoC = 0) sits visibly above the axis floor
+    # rather than being hidden on it; headroom above full for the marker.
+    ax_soc.set_ylim(-spec.capacity * 0.06, spec.capacity * 1.08)
 
     ax_price = ax_power.twinx()
     ax_price.spines["right"].set_position(("axes", 1.12))
@@ -130,42 +134,14 @@ def plot_dispatch_day(
     ax_price.set_ylabel("day-ahead price (€/MWh)", color="#b8860b")
 
     ax_power.set_title(title)
-    fig.tight_layout()
-    return fig
-
-
-def plot_baselines(report: BacktestReport, *, title: str = "Backtest baselines") -> Figure:
-    """Bar chart of the three revenue quantities + the headline % of perfect foresight."""
-    names = ["greedy\nfloor", "rolling\ndeployable", "perfect-foresight\nceiling"]
-    values = [
-        report.greedy.revenue_eur,
-        report.rolling.revenue_eur,
-        report.perfect_foresight.revenue_eur,
-    ]
-    colors = list(_BASELINE_RAMP)
-
-    fig, ax = plt.subplots(figsize=(6.5, 4.5))
-    bars = ax.bar(names, values, color=colors, alpha=0.9)
-    ax.set_ylabel("revenue over horizon (€)")
-    ax.set_title(title)
-    for bar, v in zip(bars, values, strict=True):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2, v, f"€{v:,.0f}",
-            ha="center", va="bottom", fontsize=9,
-        )  # fmt: skip
-
-    # Headline as a footnote, not an in-plot annotation: keeps the bars unobscured.
-    pct = report.pct_of_perfect_foresight
-    ax.margins(y=0.12)  # headroom so the value labels clear the axes frame
-    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    fig.tight_layout(rect=(0, 0.12, 1, 1))
     fig.text(
-        0.5,
-        0.02,
-        f"Rolling (no look-ahead) captures {pct:.1%} of the perfect-foresight ceiling.",
-        ha="center",
-        fontsize=9,
-        color="#555",
-    )
+        0.5, 0.02,
+        "Linear degradation prices every MWh of throughput equally (€/MWh), so the battery "
+        "cycles only when a price\nspread clears the round-trip wear cost; shallower spreads "
+        "that pure arbitrage would take are left idle.",
+        ha="center", va="bottom", fontsize=8.5, color="#555",
+    )  # fmt: skip
     return fig
 
 

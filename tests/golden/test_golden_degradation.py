@@ -1,9 +1,13 @@
-"""Golden oracles for R1.2 — convex PWL degradation cost (epigraph form).
+"""Golden oracles for R1.2 — linear degradation cost (D_t = c_deg · τ_t).
 
 Contract: docs/specs/R1.2-degradation.md § "Golden oracles".
-Math: docs/formulation.md § "R1.2 — Piecewise-linear degradation cost".
+Math: docs/formulation.md § "R1.2. Degradation cost".
 
 All use a 1 MWh / 1 MW battery, dt=1, e0 = e_tgt = 0. Tolerance 1e-6.
+
+A linear cost makes the cycle bang-bang: with a constant per-MWh cost the trade is
+all-or-nothing (full cycle when the spread clears 2·c_deg, idle otherwise), unlike
+the retired convex-PWL model's partial optimum.
 """
 
 import pytest
@@ -20,42 +24,43 @@ def assert_list_close(actual, expected, tol=TOL):
         assert a == pytest.approx(e, abs=tol), f"index {i}: {a} != {e}"
 
 
-def test_oracle_1_degradation_bites():
-    """Convex slope (60) > spread (50) past the kink ⇒ cycle stops at q=0.5.
-    Both-direction cost 2·g(q); optimum at the kink. Objective 15."""
-    deg = DegradationSpec(throughput_pu=[0.0, 0.5, 1.0], cost_eur=[0.0, 5.0, 35.0])
+def test_oracle_1_cheap_wear_full_cycle():
+    """Round-trip cost 2·c_deg=20 < spread 50 ⇒ full cycle; obj = 50 − 2·10 = 30."""
+    deg = DegradationSpec(cost_per_mwh=10.0)
     spec = BatterySpec(eta_charge=1.0, eta_discharge=1.0, degradation=deg)
     s = solve([0.0, 50.0], spec, dt=1.0)
 
-    assert s.objective == pytest.approx(15.0, abs=TOL)
-    assert_list_close(s.p_charge, [0.5, 0.0])
-    assert_list_close(s.p_discharge, [0.0, 0.5])
-    assert_list_close(s.soc, [0.5, 0.0])
-
-
-def test_oracle_2_cheap_degradation_full_cycle():
-    """Slopes 2, 4 ⇒ 2·slope < 50: full cycle still optimal, profit shaved by 2·g(1)=6."""
-    deg = DegradationSpec(throughput_pu=[0.0, 0.5, 1.0], cost_eur=[0.0, 1.0, 3.0])
-    spec = BatterySpec(eta_charge=1.0, eta_discharge=1.0, degradation=deg)
-    s = solve([0.0, 50.0], spec, dt=1.0)
-
-    assert s.objective == pytest.approx(44.0, abs=TOL)
+    assert s.objective == pytest.approx(30.0, abs=TOL)
     assert_list_close(s.p_charge, [1.0, 0.0])
     assert_list_close(s.p_discharge, [0.0, 1.0])
     assert_list_close(s.soc, [1.0, 0.0])
 
 
+def test_oracle_2_expensive_wear_idle():
+    """Round-trip cost 2·c_deg=60 > spread 50 ⇒ don't trade; obj 0. Breakeven c_deg=25."""
+    deg = DegradationSpec(cost_per_mwh=30.0)
+    spec = BatterySpec(eta_charge=1.0, eta_discharge=1.0, degradation=deg)
+    s = solve([0.0, 50.0], spec, dt=1.0)
+
+    assert s.objective == pytest.approx(0.0, abs=TOL)
+    assert_list_close(s.p_charge, [0.0, 0.0])
+    assert_list_close(s.p_discharge, [0.0, 0.0])
+    assert_list_close(s.soc, [0.0, 0.0])
+
+
 def test_oracle_3_storage_side():
-    """η_dis=0.8 ⇒ τ_max=min(1.25,1)=1; throughput is cell-side (τ=q each period).
-    A grid-side implementation evaluates g at p_dis=0.8q and lands elsewhere. Objective 10."""
-    deg = DegradationSpec(throughput_pu=[0.0, 0.5, 1.0], cost_eur=[0.0, 5.0, 20.0])
+    """η_dis=0.8: τ is cell-side (discharge τ = p_dis/η_dis = 1, not 0.8).
+
+    f(q) = (40 − 2·c_deg)·q; at c_deg=10 the slope is 20 > 0 ⇒ q*=1, obj 20.
+    A grid-side cost would score discharge throughput as p_dis=0.8 and give 22."""
+    deg = DegradationSpec(cost_per_mwh=10.0)
     spec = BatterySpec(eta_charge=1.0, eta_discharge=0.8, degradation=deg)
     s = solve([0.0, 50.0], spec, dt=1.0)
 
-    assert s.objective == pytest.approx(10.0, abs=TOL)
-    assert_list_close(s.p_charge, [0.5, 0.0])
-    assert_list_close(s.p_discharge, [0.0, 0.4])
-    assert_list_close(s.soc, [0.5, 0.0])
+    assert s.objective == pytest.approx(20.0, abs=TOL)
+    assert_list_close(s.p_charge, [1.0, 0.0])
+    assert_list_close(s.p_discharge, [0.0, 0.8])
+    assert_list_close(s.soc, [1.0, 0.0])
 
 
 def test_oracle_4_disabled_matches_r11():
@@ -67,25 +72,3 @@ def test_oracle_4_disabled_matches_r11():
     assert_list_close(s.p_charge, [1.0, 0.0, 0.0])
     assert_list_close(s.p_discharge, [0.0, 1.0, 0.0])
     assert_list_close(s.soc, [1.0, 0.0, 0.0])
-
-
-def test_oracle_5_no_phantom_objective_from_sub_tolerance_cost():
-    """Regression: a near-zero degradation curve must not yield a phantom positive.
-
-    Hypothesis-found degenerate case (test_degradation_never_pays): flat prices, a
-    cost curve whose only non-zero increment is ~1e-7. The optimum is idle ⇒ exactly
-    0. HiGHS presolve used to return D_t = -6.67e-7 (the top segment's line at τ=0),
-    inflating the objective to +1.33e-6 > the no-degradation value. solve() now clamps
-    that sub-tolerance D_t < 0 (convex PWL is non-negative through the origin), so the
-    objective is 0 and never exceeds the degradation-disabled solve."""
-    deg = DegradationSpec(
-        throughput_pu=[0.0, 1 / 3, 2 / 3, 1.0], cost_eur=[0.0, 0.0, 0.0, 1e-6 / 3]
-    )
-    spec = BatterySpec(
-        eta_charge=1.0, eta_discharge=1.0, soc_initial=0.0, soc_terminal=0.0, degradation=deg
-    )
-    s = solve([0.0, 0.0], spec, dt=0.25)
-    s_off = solve([0.0, 0.0], spec.model_copy(update={"degradation": None}), dt=0.25)
-
-    assert s.objective == pytest.approx(0.0, abs=TOL)
-    assert s.objective <= s_off.objective + TOL  # degradation never pays

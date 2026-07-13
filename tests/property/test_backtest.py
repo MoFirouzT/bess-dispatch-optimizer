@@ -8,7 +8,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from bess.assets.battery import BatterySpec
+from bess.assets.battery import BatterySpec, DegradationSpec, schedule_degradation_cost
 from bess.backtest.engine import run_backtest
 
 EPS = 1e-6
@@ -35,6 +35,17 @@ def backtest_case(draw):
             max_size=k * w,
         )
     )
+    # Half the cases price wear (a random linear c_deg), so the ordering / consistency
+    # gates are exercised net of degradation, not only in the R1.1 (D_t ≡ 0) regime.
+    deg = draw(
+        st.one_of(
+            st.none(),
+            st.builds(
+                lambda c: DegradationSpec(cost_per_mwh=c),
+                st.floats(min_value=0.0, max_value=16.0),
+            ),
+        )
+    )
     spec = BatterySpec(
         capacity=draw(st.floats(min_value=0.5, max_value=3.0)),
         soc_min=0.0,
@@ -42,6 +53,7 @@ def backtest_case(draw):
         p_discharge_max=draw(st.floats(min_value=0.5, max_value=3.0)),
         eta_charge=draw(st.floats(min_value=0.8, max_value=1.0)),
         eta_discharge=draw(st.floats(min_value=0.8, max_value=1.0)),
+        degradation=deg,
     )
     dt = draw(st.sampled_from([0.25, 0.5, 1.0]))
     return prices, spec, dt, w
@@ -95,16 +107,17 @@ def test_all_baselines_feasible(case):
 @settings(max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(backtest_case())
 def test_objective_consistency(case):
-    """Each baseline's reported revenue == grid-side cash flow recomputed from its
-    own schedule (no efficiency term)."""
+    """Each baseline's reported revenue == net profit recomputed from its own
+    schedule: grid-side cash flow (no efficiency term) minus its degradation cost."""
     prices, spec, dt, w = case
     rep = run_backtest(prices, spec, dt=dt, window=w)
     for result in (rep.greedy, rep.rolling, rep.perfect_foresight):
         sched = result.schedule
-        recomputed = sum(
+        gross = sum(
             prices[t] * dt * (sched.p_discharge[t] - sched.p_charge[t]) for t in range(len(prices))
         )
-        assert result.revenue_eur == pytest.approx(recomputed, abs=EPS)
+        net = gross - schedule_degradation_cost(spec, sched.p_charge, sched.p_discharge, dt)
+        assert result.revenue_eur == pytest.approx(net, abs=EPS)
 
 
 @settings(max_examples=100, deadline=None, suppress_health_check=[HealthCheck.too_slow])

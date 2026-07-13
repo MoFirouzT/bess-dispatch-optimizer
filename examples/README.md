@@ -12,10 +12,11 @@ uv sync --group examples
 
 ## `worked_example.py`
 
-Runs the walk-forward backtest (greedy / rolling / perfect-foresight) on a 90-day
-synthetic series, prints the headline metrics, and regenerates the two figures the
-README embeds (`docs/figures/example-dispatch-day.svg`,
-`docs/figures/example-baselines.svg`).
+Runs the walk-forward backtest (greedy / rolling / perfect-foresight) on real
+ENTSO-E prices when a token is set (synthetic fallback otherwise), prints the
+headline baseline numbers, and regenerates the dispatch figure the README embeds
+(`docs/figures/example-dispatch-day.svg`). The baseline comparison is reported as
+numbers, not plotted.
 
 ```bash
 uv run python examples/worked_example.py

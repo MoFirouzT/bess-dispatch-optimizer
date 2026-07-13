@@ -96,6 +96,6 @@ Specs, the README, and ADRs *point to* the formulation; they never restate an eq
 ## Solver & stack
 
 - **Modeling:** [Pyomo](https://www.pyomo.org/), which builds the MILP.
-- **Solver:** [HiGHS](https://highs.dev/) via `highspy` / Pyomo's `appsi_highs`. Note: HiGHS has no native SOS support, which is why R1.2's convex degradation cost uses the epigraph form rather than SOS2 (see [formulation.md: R1.2](formulation.md#r12-piecewise-linear-degradation-cost)).
+- **Solver:** [HiGHS](https://highs.dev/) via `highspy` / Pyomo's `appsi_highs`. R1.2's degradation is a **linear** wear cost (the linear DoD-stress case of Xu 2018 / Shi 2017; see [formulation.md: R1.2](formulation.md#r12-degradation-cost)), native to the LP. A future nonlinear-convex degradation would use the epigraph form rather than SOS2, since HiGHS has no native SOS support.
 - **Config:** [Pydantic v2](https://docs.pydantic.dev/), typed model parameters from YAML, validated at startup.
 - **Time series:** `pandas`, tz-aware UTC index (see [conventions.md: Time](conventions.md#1-time)).

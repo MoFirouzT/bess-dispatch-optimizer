@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-125_(118_CI_%2B_7_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-126_(119_CI_%2B_7_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -29,7 +29,7 @@ subject to the state-of-charge balance, the one equation where round-trip effici
 
 $$e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$$
 
-plus power, energy, and ramp limits, a binary that forbids simultaneous charge and discharge, and a terminal-SoC target. The degradation cost $D_t$ is a convex piecewise-linear function of per-period throughput, linearized in epigraph form (no special-ordered sets, which HiGHS lacks). Release 2 extends this into a two-stage stochastic program with a CVaR risk term and intraday recourse (§R2.3).
+plus power, energy, and ramp limits, a binary that forbids simultaneous charge and discharge, and a terminal-SoC target. The degradation cost $D_t = c^{deg}\,\tau_t$ is linear in per-period storage-side throughput (the linear DoD-stress case of the Xu 2018 / Shi 2017 cycle-based model), so it stays native to the LP. Release 2 extends this into a two-stage stochastic program with a CVaR risk term and intraday recourse (§R2.3).
 
 The one non-obvious design choice is that **all power is metered grid-side**, so degradation is a cost subtracted from cash rather than an efficiency factor, and never touches the SoC balance.
 The complete model, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md) (start with its "Model at a glance" summary).
@@ -39,7 +39,7 @@ The complete model, every constraint, and the governing references are in [docs/
 **Deterministic core and serving (Release 1), complete**, gated by golden + property tests:
 
 - **R1.1**: deterministic MILP dispatch core
-- **R1.2**: convex piecewise-linear degradation cost
+- **R1.2**: linear degradation cost on throughput
 - **R1.3**: pre-flight feasibility checks
 - **R1.4** (backtest, data, and data reliability):
   - **R1.4a**: walk-forward backtest with greedy / rolling / perfect-foresight baselines
@@ -58,22 +58,20 @@ The complete model, every constraint, and the governing references are in [docs/
 
 ## Example results
 
-**On real Dutch day-ahead prices, a rolling, no-look-ahead policy captures 99.9% of the perfect-foresight revenue ceiling.**
+**On real Dutch day-ahead prices, a rolling, no-look-ahead policy captures 99.4% of the perfect-foresight revenue ceiling.**
 Once the price curve is known, a myopic per-day policy is already near-optimal, so the deterministic problem is essentially solved. The value left on the table is not overnight foresight but *not knowing prices in advance*, which is what Release 2 addresses (and where a measured VSS shows up; see [Value under uncertainty](#value-under-uncertainty-release-2)).
 
-The numbers below are from a worked example over a 91-day 2024-Q2 ENTSO-E NL day-ahead window (1 MWh / 1 MW asset, η = 0.95). No price data is committed; set an ENTSO-E token and run [`examples/worked_example.py`](examples/worked_example.py) to reproduce (without a token it falls back to a synthetic series):
+The numbers below are from a worked example over a 91-day 2024-Q2 ENTSO-E NL day-ahead window (1 MWh / 1 MW asset, η = 0.95), **net of a priced linear degradation cost** (R1.2, €15/MWh of throughput). No price data is committed; set an ENTSO-E token and run [`examples/worked_example.py`](examples/worked_example.py) to reproduce (without a token it falls back to a synthetic series):
 
-| Baseline | Revenue (91 days) | Share of ceiling |
+| Baseline | Net profit (91 days) | Share of ceiling |
 | --- | --- | --- |
-| Greedy floor (percentile rule) | €7,402 | 59% |
-| Rolling deployable (per-day optimal) | €12,526 | **99.9%** |
-| Perfect-foresight ceiling | €12,535 | 100% |
+| Greedy floor (percentile rule) | €4,441 | 55% |
+| Rolling deployable (per-day optimal) | €8,056 | **99.0%** |
+| Perfect-foresight ceiling | €8,139 | 100% |
 
-Annualizing this volatile quarter (~9% negative-price hours) puts the ceiling near €50k per MWh-installed per year; a calmer year sits lower. Because gate D derives its band from each window's own price spread, a volatile quarter legitimately lands high without tripping it.
+Rolling is each day's independent optimum (every day solved empty-to-empty with full knowledge of *that* day), so the whole €84 gap to the ceiling (1.0%) is pure cross-day carry: the overnight SoC a per-day agent cannot justify without tomorrow's prices, which is exactly what Release 2 targets. Wear is priced, not ignored: it removes nearly a third of gross ceiling revenue (€11,643 gross → €8,139 net) and cuts the naive greedy floor more, since greedy cycles without regard to degradation. Annualizing this volatile quarter (~9% negative-price hours) puts the net ceiling near €33k per MWh-installed per year; a calmer year sits lower. Because gate D derives its band from each window's own price spread, a volatile quarter legitimately lands high without tripping it.
 
 ![Optimal dispatch on the widest-spread real day (2024-05-01): the battery charges through the cheap overnight hours and a deeply negative-priced midday, then discharges into the morning and evening price peaks, returning to empty by end of day.](docs/figures/example-dispatch-day.svg)
-
-![Greedy floor vs. rolling deployable value vs. perfect-foresight ceiling over the 91-day 2024-Q2 series.](docs/figures/example-baselines.svg)
 
 ### Value under uncertainty (Release 2)
 
@@ -159,5 +157,5 @@ The core is a deterministic, single-asset, day-ahead dispatch engine, and its sc
 - **The deterministic core takes prices as known.** The core MILP solves against a given day-ahead curve. Price *uncertainty* is handled by the Release 2 stack layered on top (forecaster R2.1 → scenarios R2.2 → two-stage risk-aware dispatch with intraday recourse R2.3), whose value over a mean-forecast plan is the VSS reported above; the remaining Release 2 item is dual-based explainability (R2.4).
 - **Day-ahead arbitrage only.** Intraday, imbalance, and ancillary-service markets (FCR / aFRR) are out of scope; the asset trades a single energy market.
 - **No grid-connection / congestion constraint.** Dispatch is not capped at a connection-point limit. Adding a congestion or curtailment cap is the natural next physical constraint and is relevant to Dutch (TenneT) grid conditions.
-- **Convex degradation only.** The degradation cost is a convex piecewise-linear curve (R1.2); rainflow cycle-counting and calendar aging are not modelled.
+- **Linear degradation only.** The degradation cost is linear in throughput (R1.2, the linear DoD-stress case); the nonlinear convex deep-cycle penalty, rainflow cycle-counting, and calendar aging are not modelled.
 - **Single asset, single node.** No portfolio of assets and no network model.

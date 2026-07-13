@@ -6,7 +6,7 @@ This file holds the canonical mathematics of the optimizer.
 Specs, the README, and ADRs **point here**; they never restate equations.
 Each phase that changes the optimizer math appends a section; nothing is duplicated elsewhere.
 Pure engineering / data-reliability phases (R1.4c ingestion guard, R1.5 serving, R2.1b drift monitor) introduce no optimizer math and intentionally have no section here.
-Each section names its **governing reference** (see [references.md](references.md)) and summarizes only the theory the project implements; **house notation here and in [conventions.md](conventions.md) takes precedence** for shared quantities.
+Sections that introduce new theory name a **source reference** where one applies (see [references.md](references.md)); standard techniques and engineering phases carry none. Each section summarizes only the theory the project implements; **house notation here and in [conventions.md](conventions.md) takes precedence** for shared quantities.
 
 *Assumes: the house notation in [Conventions](conventions.md) (grid-side power, per-unit SoC, `π / e / η / Δt`).
 Battery and power-market terms are defined in the [glossary](glossary.md); each section is self-contained, so read Conventions first.*
@@ -56,9 +56,9 @@ $$\max\ \sum_{t}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]$$
 | (3) | $0\le p^{ch}_t\le \bar P^{ch}u_t$, $\;0\le p^{dis}_t\le \bar P^{dis}(1-u_t)$ | power caps + no simultaneous charge/discharge |
 | (4) | $-R\le g_t-g_{t-1}\le R$ ($t\ge 2$) | ramp on net power |
 | (5) | $e_T=e^{\mathrm{tgt}}$ | terminal SoC |
-| (6) | $D_t\ge a_k\tau_t+b_k$ ($k=1,\dots,K$) | convex-PWL degradation (epigraph form) |
+| (6) | $D_t = c^{\text{deg}}\,\tau_t$ | linear wear cost on throughput (R1.2) |
 
-with throughput $\tau_t=\eta^{ch}p^{ch}_t\Delta t+\tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$ and segment lines $(a_k,b_k)$ through convex breakpoints $(x_k,g_k)$, $g_0=0$. With no breakpoints, $D_t\equiv 0$ and the model is exactly R1.1.
+with storage-side throughput $\tau_t=\eta^{ch}p^{ch}_t\Delta t+\tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$ and marginal wear cost $c^{\text{deg}}$ (€/MWh; the linear DoD-stress case of Xu 2018 / Shi 2017). At $c^{\text{deg}}=0$ the term vanishes and the model is exactly R1.1.
 
 **Stochastic layer (R2.3).** Optimize over a scenario set $\{(\pi^{(s)},p_s)\}_{s=1}^S$ instead of one price path. A non-anticipative day-ahead commitment $g^{DA}$ (R1.1-feasible) and a per-scenario recourse dispatch $g^{(s)}$ (R1.1-feasible) are tied by a recourse budget
 
@@ -76,8 +76,7 @@ $\lambda=0$ is the risk-neutral recourse problem; sweeping $\lambda$ traces the 
 
 ## R1.1. Deterministic core
 
-*Governing reference: Williams, *Model Building in Mathematical Programming*.
-See [references.md: R1.1](references.md#r11--deterministic-milp-dispatch) for secondary sources and notation mapping.*
+*No governing reference: standard MILP modeling (mutual-exclusion binary, power-cap big-M). House notation ([conventions.md](conventions.md)) governs; see [references.md: R1.1](references.md#r11-deterministic-milp-dispatch) for domain context.*
 
 ### Sets
 
@@ -178,151 +177,68 @@ The full oracle set (including the lossy and no-trade cases) is the test contrac
 
 ---
 
-## R1.2. Piecewise-linear degradation cost
+## R1.2. Degradation cost
 
-*Governing reference: Williams, *Model Building in Mathematical Programming* (separable / piecewise-linear programming: convex PWL via the **epigraph form**; SOS2 noted as the non-convex tool). See [references.md: R1.2](references.md#r12--piecewise-linear-degradation-cost) for secondary sources and notation mapping.*
+*Governing reference: B. Xu, A. Oudalov, A. Ulbig, G. Andersson, D. Kirschen, "Modeling of Li-Ion Battery Degradation for Cell Life Assessment," IEEE Trans. Smart Grid 9(2), 2018; convexity from Y. Shi, B. Xu, Y. Tan, B. Zhang, "A Convex Cycle-based Degradation Model for Battery Energy Storage Planning and Operation," 2017 (arXiv:1703.07968); cycle depths from control actions from B. Xu, Y. Shi, D. Kirschen, B. Zhang, "Optimal Regulation Response of Batteries Under Cycle Aging Mechanisms," 2017 (arXiv:1703.07824). We adopt their **linear DoD-stress** case. See [references.md: R1.2](references.md#r12-degradation-cost).*
 
-Extends R1.1 by appending a **degradation cost** to the objective.
-All R1.1 sets, parameters, decision variables, and constraints (1)–(5) are unchanged; in particular the **SoC balance and grid-side metering are untouched**.
-Degradation is a **cost subtracted from revenue**; it is *not* an efficiency factor and does *not* enter the SoC balance.
-With no breakpoints configured the term is identically zero and the model reduces to R1.1 exactly.
+Extends R1.1 by subtracting a **degradation cost** from the objective.
+All R1.1 sets, variables, and constraints (1)–(5) are unchanged; the SoC balance and grid-side metering are untouched.
+Degradation is a cost on cell usage, never an efficiency factor, and it does not enter the SoC balance.
+At zero wear cost the term vanishes and the model reduces to R1.1 exactly.
 
-### Rationale
+### Degradation measure and cost
 
-Deep cycles age a cell faster than shallow ones, so the marginal cost of throughput **increases with depth**: a convex, increasing function.
-A flat €/MWh fee cannot capture this; a convex piecewise-linear (PWL) cost can, and it makes marginal deep cycling unprofitable once the price spread no longer covers the rising degradation slope.
+The project prices wear as a **linear cost on cell throughput**, the *linear power-based* degradation model (Shi 2017 §II-C-1). Define per-period **storage-side throughput**, the cell-side energy moved in both directions (the efficiency-weighted SoC increment of Xu 2017 Eq. 6, scaled by capacity):
 
-### Degradation measure
+$$\boxed{\;\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t\;}$$
 
-Per-period **storage-side throughput**:
-the energy that actually passes through the cell, counting **both directions** (charging into the cell and discharging out of it both age it):
+Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so at most one term is non-zero. The per-period degradation cost is linear in throughput:
 
-$$\boxed{\;\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t \qquad \in [0,\ \tau_{\max}]\;}$$
-
-Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so at most one term is non-zero (both are zero in an idle period).
-
-Two physical limits cap the per-period throughput, and the binding one is whichever is smaller:
-
-- **Power**: only $\bar P\Delta t$ of energy can move through the inverter in one period of length $\Delta t$;
-- **Usable SoC window**: the cell cannot take in or give up more than $e_{\max}-e_{\min}$ in one step.
-
-So its maximum is the smaller of the two:
-
-$$\tau_{\max} = \min\!\Bigl(\ \underbrace{\max\!\bigl(\eta^{ch}\bar P^{ch}\Delta t,\ \tfrac{\bar P^{dis}\Delta t}{\eta^{dis}}\bigr)}_{\text{power limit}},\ \ \underbrace{e_{\max}-e_{\min}}_{\text{SoC window}}\ \Bigr).$$
-
-So the SoC *capacity* does enter, as the per-period *flow* limit $e_{\max}-e_{\min}$.
-(The SoC *level* across periods is still governed by balance (1) and bounds (2); those are unchanged.)
-
-Both caps are already implied by constraints (1)–(3), so $\tau_t \le \tau_{\max}$ is a *derived* bound, not an added constraint; its only job is to normalize the breakpoints below.
-
-This is a per-period throughput proxy for cycle depth.
-
-**Out of scope**: genuinely harder or different, deliberately deferred:
-**rainflow** cycle counting (path-dependent and non-convex; it does *not* reduce to a per-period cost) and **calendar aging**.
-A coarser "equivalent-full-cycle" normalization is a cheap future variation, not a barrier; it is simply not built here.
-
-### Parameters (new)
-
-The degradation cost is a piecewise-linear (PWL) function of throughput, specified by **breakpoints** indexed $k=0,\dots,K$ (subscripts are indices, not exponents):
+$$\boxed{\;D_t = c^{\text{deg}}\,\tau_t \qquad \forall t\in\mathcal T\;}$$
 
 | Symbol | Meaning | Unit |
 | --- | --- | --- |
-| $\phi_k$ | $k$-th throughput breakpoint, **per-unit of $\tau_{\max}$**: $0=\phi_0<\phi_1<\dots<\phi_K=1$ (size- and $\Delta t$-independent, consistent with [ADR-0009](decisions/0009-soc-per-unit-in-config.md)) | p.u. |
-| $x_k$ | the same breakpoint in absolute energy, $x_k=\phi_k\,\tau_{\max}$ | MWh |
-| $g_k$ | degradation cost when throughput equals $x_k$: $0=g_0\le g_1\le\dots\le g_K$, and **convex**: the segment slopes $\dfrac{g_k-g_{k-1}}{x_k-x_{k-1}}$ are non-decreasing in $k$ | € |
+| $c^{\text{deg}}$ | marginal wear cost per unit storage-side throughput (Shi 2017 §II-C-1) | €/MWh |
+| $D_t$ | degradation cost incurred in period $t$ | € |
 
-The configured curve passes through $(x_0,g_0),\dots,(x_K,g_K)$, starting at the origin $(0,0)$ and bending upward (convex) as throughput deepens.
+$c^{\text{deg}}$ is an operating parameter, set from the cell **replacement cost divided by lifetime energy throughput** (standard arbitrage practice); reported values sit in roughly **€7–15/MWh** of throughput. It is a cell-chemistry property: independent of the asset's power and energy ratings, and, because it multiplies a total-throughput sum, independent of the time step $\Delta t$. The linear cost is native to the LP: no auxiliary breakpoints, cuts, or special-ordered sets are needed.
 
-### Decision variables (new)
-
-| Symbol | Meaning | Domain |
-| --- | --- | --- |
-| $D_t$ | degradation cost incurred in period $t$ | $\ge 0$ |
-
-### Constraints (new, $\forall t\in\mathcal T$)
-
-Let $g(\cdot)$ be the convex PWL degradation cost, so the *ideal* term is $g(\tau_t)$: but $g$ is not affine, so it cannot be written directly in an LP.
-
-The **epigraph form** sidesteps this.
-The *epigraph* of a function is the set of points lying *on or above* its graph, $\{(\tau, D) : D \ge g(\tau)\}$.
-Rather than computing $g(\tau_t)$, introduce an auxiliary variable $D_t$ constrained to sit in that region by one linear lower-bound (cut) per segment.
-Then let the objective, which subtracts $D_t$, press it down onto the graph.
-The minimum feasible $D_t$ *is* $g(\tau_t)$, so the cost is reconstructed exactly with linear constraints only.
-
-For each segment $k=1,\dots,K$, the line through $(x_{k-1},g_{k-1})$ and $(x_k,g_k)$ is $\ell_k(\tau)=a_k\tau+b_k$ with
-
-$$a_k = \frac{g_k-g_{k-1}}{x_k-x_{k-1}}, \qquad b_k = g_{k-1}-a_k\,x_{k-1}.$$
-
-**(6) Epigraph cuts** (constraint (6) of the model, continuing the R1.1 list (1)–(5); with $\tau_t = \eta^{ch} p^{ch}_t\Delta t + \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$, the throughput defined above):
-
-$$\boxed{\;D_t \ge \ell_k(\tau_t) = a_k\,\tau_t + b_k \qquad \forall k=1,\dots,K,\ \forall t\in\mathcal T\;}$$
-
-![A convex piecewise-linear cost is the upper envelope of its segment lines: each segment line, extended, stays below the curve, so the pointwise maximum of the lines traces the curve exactly. The minimized auxiliary variable Dₜ lands on that envelope.](figures/pwl-epigraph.svg)
-
-**Why this is exact, the $\max(-D)\Rightarrow\min D\Rightarrow\max_k\ell_k\Rightarrow g$ chain.**
-Three steps, each an equality at the optimum:
-
-1. **Maximizing $-D_t$ minimizes $D_t$.**
-    $D_t$ enters the model *only* through its own cuts (6) and the objective term $-D_t$: nothing else couples it (the cost is separable across periods, and $D_t$ does not appear in the SoC balance or power limits).
-    So for any fixed dispatch $\tau_t$, the surrounding $\max$ pushes each $D_t$ to the *smallest* value its cuts allow;
-    there is no incentive to leave it above its lower bound.
-2. **The smallest feasible $D_t$ is the pointwise max of the cuts.**
-    Constraints (6) say $D_t \ge \ell_k(\tau_t)$ for *every* $k$ simultaneously, i.e. $D_t \ge \max_k \ell_k(\tau_t)$.
-    Combined with step 1 (drive $D_t$ down), the binding cut is the *largest* one and
-    $$D_t^\star = \max_{k=1,\dots,K}\ \ell_k(\tau_t).$$
-3. **That max equals the PWL cost, because $g$ is convex.**
-    A convex PWL function is the **upper envelope of its own segment lines**:
-    its slopes $a_k$ are non-decreasing in $k$ (the convexity validator enforces exactly this), so on each interval $\tau\in[x_{k-1},x_k]$ the steepest-so-far line $\ell_k$ is the maximal one, and $\max_k\ell_k(\tau)=g(\tau)$ pointwise.
-    Hence $D_t^\star=g(\tau_t)$: the optimizer reconstructs the exact convex PWL cost with no λ-weights, binaries, or special-ordered sets.
-
-This is *why* convexity is required:
-if the slopes were not monotone, $\max_k\ell_k$ would lie **above** $g$ between breakpoints (it would over-penalize), and the epigraph trick would no longer reproduce $g$: that non-convex case is what SOS2 is for (see modeling notes).
-Non-negativity $D_t\ge0$ holds automatically (the first segment passes through the origin:
-$b_1=0$, $a_1\ge0$, so $\ell_1\ge0$ for $\tau_t\ge0$) and is kept as the variable's domain.
-
-*Landing exactly on a breakpoint.*
-If $\tau_t=x_k$, the two adjacent segment cuts $\ell_k,\ell_{k+1}$ are both tight and agree at $g_k$, so $D_t=g_k$ exactly; breakpoints are not special cases.
+**Grounding (why this is the cited model, not a shortcut).** Xu (2018) and Shi (2017) model cell aging as a sum $c^{\text{rep}}\sum_i\Phi(d_i)$ over charge/discharge cycle depths $d_i$ (SoC ranges extracted by the **rainflow** algorithm), where $\Phi$ is the depth-of-discharge stress function and $c^{\text{rep}}$ the cell replacement cost. Shi (2017 §II-C-1) shows the **linear** stress $\Phi(d)=k_1 d$ "is equivalent to the linear power-based degradation model": the total cost then depends only on total throughput, independent of how it partitions into cycles, so rainflow drops out and the cost is exactly the $D_t=c^{\text{deg}}\tau_t$ above. The richer nonlinear-$\Phi$ case is more accurate but not LP-native; it is future work below.
 
 ### Modified objective
 
-$$\boxed{\;\max\ \sum_{t\in\mathcal T}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]\;}$$
+$$\boxed{\;\max\ \sum_{t\in\mathcal T}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ c^{\text{deg}}\,\tau_t\Bigr]\;}$$
 
-Revenue is unchanged and still carries **no efficiency term**; the only addition is the subtracted $D_t\ge 0$.
+Revenue is unchanged and still carries **no efficiency term**; the only addition is the subtracted linear wear cost.
 
-### Modeling notes
+### Properties (gate-relevant)
 
-- **Both directions, storage-side.**
-    $\tau_t$ counts charge *and* discharge energy at the cell, so a full round trip of depth $q$ is penalized on both the charging period and the discharging period.
-    Efficiency appears inside $\tau_t$ because it is a *cell-side energy* quantity; this is a degradation measure, not the objective's cash flow, which stays grid-side with no efficiency term.
-- **Convex ⇒ epigraph, not SOS2.**
-    A convex PWL cost is exactly the max of its segment lines, so the cuts (6) represent it in a pure LP, no λ-weights, binaries, or special-ordered sets.
-    SOS2 (the convex-combination method plus an adjacency rule) is the tool for **non-convex** PWL; it is not used here, and our solver (HiGHS) does not support SOS constraints in any case.
-    A non-convex degradation curve (future work) would need SOS2 via a SOS-capable solver or a binary segment-selection encoding; see [references.md: R1.2](references.md#r12--piecewise-linear-degradation-cost).
-- **Breakpoints vs. accuracy.**
-    More breakpoints approximate a smooth degradation curve better at the cost of more cuts (one per segment), the accuracy-vs-solve-time trade-off.
-- **Monotonicity.**
-    $g$ non-decreasing $\Rightarrow$ a deeper discharge never lowers degradation cost (the gate's monotonicity property).
+- **$\Delta t$-invariant.** $\sum_t \tau_t$ is the total energy through the cell over the horizon, unchanged by the time discretization, so a fixed physical dispatch costs the same at hourly or quarter-hourly resolution (gate: equal total degradation at $\Delta t=1$ and $\Delta t=0.25$).
+- **Spec-invariant.** $c^{\text{deg}}$ is a €/MWh chemistry property; $c^{\text{rep}}$ scales with capacity, so the marginal cost is independent of the asset's power and energy ratings.
+- **Monotone.** $c^{\text{deg}}\ge0$, so more throughput never lowers cost.
+- **Reduces to R1.1** at $c^{\text{deg}}=0$.
 
-### Worked example (degradation bites; $\eta=1$)
+### Out of scope (referenced future work)
 
-$T=2$, $\pi=[0,50]$, $\eta^{ch}=\eta^{dis}=1$, 1 MWh / 1 MW, $e_0=e^{\mathrm{tgt}}=0$, $\Delta t=1$, so $\tau_{\max}=\min(\max(1,1),\,1)=1$.
-Breakpoints $\phi=[0,0.5,1]$, costs $g=[0,5,35]$ (segment slopes 10 then 60 €/MWh; convex).
+- **Nonlinear convex DoD stress (the more accurate model).** Real cells age faster per unit energy the deeper the cycle: an NMC cell loses roughly **ten times** more life at 100% depth-of-discharge than at 10% for the same charged energy (Shi 2017 §I; Xu 2017 §II). The linear cost above misses this deep-cycle penalty. Capturing it uses a convex nonlinear stress $\Phi(d)=k_2\,d\,e^{k_3 d}$ or $k_4\,d^{k_5}$ (Xu 2018), still convex in the SoC profile (Shi 2017, Thm 1) but requiring rainflow cycle identification, which has no closed form. It is therefore convex yet **not LP-representable**: solvable by Shi's subgradient method, or by a cycle-detection MILP in which a convex-PWL **epigraph** linearization of $\Phi$ (Williams; [references.md: R1.2](references.md#r12-degradation-cost)) embeds the segments. Deferred to keep the LP/MILP core; the linear case is the gate-testable stand-in.
+- **Calendar aging** (time-based capacity fade). Deferred.
 
-Terminal $=0$ forces discharge $=$ charge $=q$; with $\eta=1$ the throughput is $\tau=q$ in **each** period, so total degradation is $2g(q)$ and the objective is $f(q)=50q-2g(q)$, evaluated piecewise:
+### Worked example ($\eta=1$)
 
-- first segment ($0\le q\le 0.5$, slope 10): $f(q)=50q-2(10q)=30q$: increasing;
-- second segment ($0.5\le q\le 1$, slope 60): $f(q)=50q-2\bigl(5+60(q-0.5)\bigr)=-70q+50$: decreasing.
+$T=2$, $\pi=[0,50]$, $\eta^{ch}=\eta^{dis}=1$, a 1 MWh / 1 MW battery, $e_0=e^{\mathrm{tgt}}=0$, $\Delta t=1$. Terminal $=0$ forces discharge $=$ charge $=q$, so $\tau=q$ in each period and the objective is $f(q)=50q-2c^{\text{deg}}q$.
 
-Both pieces equal $15$ at $q=0.5$, so the maximum is the kink $q^\star=0.5$ → charge $[0.5,0]$, discharge $[0,0.5]$, soc $[0.5,0]$, objective $=\mathbf{15}$.
-The $\eta<1$ oracle (which pins the *storage-side* placement) and the full set are in [specs/R1.2-degradation.md](specs/R1.2-degradation.md).
+- At $c^{\text{deg}}=10$ €/MWh: $f(q)=30q$, increasing, so $q^\star=1$ → charge $[1,0]$, discharge $[0,1]$, soc $[1,0]$, objective $=\mathbf{30}$.
+- At $c^{\text{deg}}=30$ €/MWh: $f(q)=-10q$, so $q^\star=0$ (idle), objective $=\mathbf{0}$: wear exceeds the €50 round-trip spread. The breakeven is $c^{\text{deg}}=25$ €/MWh.
+
+The full oracle set (including the storage-side $\eta<1$ case) is in [specs/R1.2-degradation.md](specs/R1.2-degradation.md).
 
 ---
 
 ## R1.3. Pre-flight feasibility (derived; no new model)
 
-*Governing reference: none; engineering phase, **no new theory**.
-The conditions below are algebraic corollaries of the R1.1 model (Williams, already governing).
-See [references.md: R1.3](references.md#r13--pre-flight-validation).*
+*No governing reference; engineering phase, **no new theory**.
+The conditions below are algebraic corollaries of the R1.1 model.
+See [references.md: R1.3](references.md#r13-pre-flight-validation).*
 
 This section adds **no constraints, variables, or objective terms**.
 It records the closed-form feasibility test the validation layer
@@ -381,6 +297,7 @@ The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d
 ### Three revenue quantities
 
 Let $V(\boldsymbol\pi;\,e_0,e^{\mathrm{tgt}})$ be the optimal objective of the R1.1/R1.2 MILP on price vector $\boldsymbol\pi$ with the given SoC endpoints, over a horizon that starts and ends empty unless stated.
+All three quantities are **net of degradation**: each is the R1.2 objective (grid-side cash flow minus $\sum_t D_t$), so when wear is priced the greedy floor is scored net of its own $D_t$ too, on the same $\tau_{\max}$ basis, keeping the ordering below valid (with no degradation, $D_t\equiv 0$ and each reduces to gross arbitrage).
 
 - **Perfect-foresight ceiling** $V^\star$:
     one **full-horizon** solve over the entire concatenated series with $e_0=e_{\text{end}}=0$ and SoC free to carry **across** day boundaries.
@@ -524,10 +441,11 @@ The gate is: measured VSS $> 0$ **out-of-sample** on the designed value-generati
 ## Changelog
 
 - **R1.1**: deterministic core.
-- **R1.2**: convex PWL degradation cost appended to the objective (epigraph form; SOS2 is the non-convex tool, not used here / unsupported by HiGHS); R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 when no breakpoints are configured.
+- **R1.2**: degradation cost subtracted from the objective, the **linear DoD-stress** case of the Xu 2018 / Shi 2017 cycle-based model (equivalently a linear power-based cost): $D_t = c^{\text{deg}}\tau_t$ on storage-side throughput, $\Delta t$-invariant and independent of the asset's power / energy ratings. R1.1 sets / variables / constraints and the SoC balance unchanged; reduces to R1.1 at $c^{\text{deg}}=0$. Nonlinear convex $\Phi$ (rainflow; convex but not LP) is referenced future work.
 - **R1.3**: pre-flight feasibility *corollaries* of R1.1 (per-period increment bounds → terminal reachability); **no model change**. Ramp-free condition is necessary-and-sufficient; with ramp it stays necessary (sound filter), solver remains final arbiter.
 - **R1.4**: backtest *semantics* over the existing optimizer (perfect-foresight ceiling, rolling per-day deployable value, greedy floor; provable ordering $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$; leakage information set; sanity band); **no model change**.
 - **R2.1**: probabilistic price *forecast* (split/CQR conformal intervals with a distribution-free marginal-coverage guarantee); the uncertainty input to the R2 stochastic layer. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.
 - **R2.2**: scenario *generation* (residual-path bootstrap off the R2.1 forecast) + *reduction* (Kantorovich-distance forward selection with probability redistribution; k-means baseline); the discrete uncertainty representation the R2.3 program optimizes over. **No optimizer change**: adds no constraint, variable, or objective term to the dispatch MILP.
 - **R2.3**: risk-aware two-stage dispatch over the scenario set + intraday recourse. **Optimizer delta** (the first in Release 2): a non-anticipative day-ahead commitment $g^{DA}$, per-scenario recourse dispatch $g^{(s)}$ (R1.1 physics reused) tied by a recourse budget $\lvert g^{(s)}-g^{DA}\rvert\le\rho\bar P$, and a CVaR mean-risk term (Rockafellar-Uryasev linearisation, weight $\lambda$). Reports VSS $=\text{RP}-\text{EEV}$ and EVPI $=\text{WS}-\text{RP}$ with the ordering $\text{EEV}\le\text{RP}\le\text{WS}$ (extends R1.4). Reduces to the R1.1/R1.4 deterministic solve at $S=1$; the VSS $=0$ collapse is reproduced at the $\rho$-limits. Stays a MILP on HiGHS, no new dependency.
 - **Errata (2026-07-08)**: R1.4 ordering restated as $V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star$ with $0 \le V^{\mathrm{roll}}$ (the old display's $0 \le V^{\mathrm{greedy}}$ contradicted the greedy-can-lose-money note); sanity-band coefficient corrected to $c=\eta^{rt}(\text{cycles/day})\cdot 365$ ($E_{\text{usable}}$ wrongly appeared on both sides); R2.1 notation reconciled ($[\underline{\pi}_t,\overline{\pi}_t]$, margin $\hat s$). No model change.
+- **R1.2 model change (2026-07-11)**: degradation regrounded. The earlier convex-PWL-of-throughput cost (epigraph form) was self-derived and matched no published source; replaced by the **linear DoD-stress** case of the cited cycle-based model (Xu 2018; Shi 2017 §II-C-1), a linear €/MWh throughput cost that is $\Delta t$-invariant (fixes a resolution dependence exposed by 15-min data) and asset-scale-invariant. Governing reference updated in [references.md](references.md); implementation (config, code, golden oracles) follows.

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Worked example — run the backtest, print the headline metrics, emit two figures.
+"""Worked example — run the backtest, print the headline metrics, emit the dispatch figure.
 
-Reproduces the two figures committed under ``docs/figures/``. The **committed**
-figures are built from real ENTSO-E NL day-ahead prices; to reproduce them, set an
+The baselines (greedy / rolling / ceiling) are reported as printed numbers, not a
+plot. Reproduces the dispatch figure committed under ``docs/figures/``. The
+**committed** figure is built from real ENTSO-E NL day-ahead prices; to reproduce it, set an
 ENTSO-E token (``ENTSOE_API_TOKEN``, see ``.env.example``) and run:
 
     uv sync --group examples
@@ -10,10 +11,10 @@ ENTSO-E token (``ENTSOE_API_TOKEN``, see ``.env.example``) and run:
 
 Without a token it falls back to a **synthetic** NL-like series
 (``bess.data.fixtures.synthetic_day_ahead``) so the example always runs, but the
-figures then differ from the committed real-data ones. No real price data is
-committed either way (only the rendered charts).
+figure then differs from the committed real-data one. No real price data is
+committed either way (only the rendered chart).
 
-Outputs ``docs/figures/example-dispatch-day.svg`` and ``example-baselines.svg``.
+Outputs ``docs/figures/example-dispatch-day.svg``.
 """
 
 from __future__ import annotations
@@ -23,14 +24,21 @@ from pathlib import Path
 
 import pandas as pd
 
-from bess.assets.battery import BatterySpec
+from bess.assets.battery import BatterySpec, DegradationSpec, schedule_degradation_cost
 from bess.backtest.baselines import solve_window
 from bess.backtest.engine import run_backtest
 from bess.data.entsoe import fetch_day_ahead
 from bess.data.fixtures import synthetic_day_ahead
-from bess.viz.backtest_plots import plot_baselines, plot_dispatch_day
+from bess.viz.backtest_plots import plot_dispatch_day
 
 FIGURES = Path(__file__).resolve().parent.parent / "docs" / "figures"
+
+# Linear wear cost (R1.2) so the example prices degradation, not just arbitrage.
+# Grounded at €15 / MWh of storage-side throughput: ≈ €150 / kWh capex over ~5,000
+# equivalent full cycles at 2 MWh throughput per cycle. A fixed marginal wear cost
+# suppresses the shallow round trips whose spread the pure-arbitrage model would take
+# but that do not clear the wear cost.
+DEGRADATION = DegradationSpec(cost_per_mwh=15.0)  # c_deg (€/MWh throughput); R1.2 linear
 
 # Real-data window for the committed figures: a full 2024-Q2 (91 days), safely
 # hourly (before the 2025-10 SDAC 15-min switch) so dt = 1.0 holds.
@@ -53,15 +61,22 @@ def _load_prices() -> tuple[pd.Series, str, str]:
 
 def main() -> None:
     prices, source, tag = _load_prices()
-    spec = BatterySpec()  # 1 MWh / 1 MW, η = 0.95
+    spec = BatterySpec(degradation=DEGRADATION)  # 1 MWh / 1 MW, η = 0.95
     dt = 1.0
 
     report = run_backtest(prices, spec, dt=dt, window="1D")
 
-    print(f"Worked example — {source}, 1 MWh / 1 MW asset")
-    print(f"  greedy floor          €{report.greedy.revenue_eur:>10,.2f}")
-    print(f"  rolling deployable    €{report.rolling.revenue_eur:>10,.2f}")
-    print(f"  perfect-foresight     €{report.perfect_foresight.revenue_eur:>10,.2f}")
+    # Wear priced into the ceiling schedule (all revenues below are net of it).
+    ceil = report.perfect_foresight.schedule
+    deg_ceiling = schedule_degradation_cost(spec, ceil.p_charge, ceil.p_discharge, dt)
+    pf = report.perfect_foresight.revenue_eur
+    gross_pf = pf + deg_ceiling
+
+    print(f"Worked example — {source}, 1 MWh / 1 MW asset, wear priced (R1.2)")
+    print(f"  greedy floor          €{report.greedy.revenue_eur:>10,.2f}   (net of wear)")
+    print(f"  rolling deployable    €{report.rolling.revenue_eur:>10,.2f}   (net of wear)")
+    print(f"  perfect-foresight     €{pf:>10,.2f}   (net of wear)")
+    print(f"  degradation priced    €{deg_ceiling:>10,.2f}   (ceiling; gross €{gross_pf:,.2f})")
     print(f"  rolling / ceiling     {report.pct_of_perfect_foresight:>10.1%}")
     print(f"  uplift vs greedy      €{report.uplift_vs_greedy_eur:>10,.2f}")
     print(f"  annualized ceiling    €{report.annualized_ceiling_per_mwh:>10,.0f} / MWh-yr")
@@ -81,10 +96,7 @@ def main() -> None:
     )  # fmt: skip
     fig_day.savefig(FIGURES / "example-dispatch-day.svg", bbox_inches="tight")
 
-    fig_base = plot_baselines(report, title=f"Backtest baselines — {tag}")
-    fig_base.savefig(FIGURES / "example-baselines.svg", bbox_inches="tight")
-
-    print(f"\nFigures written to {FIGURES}/")
+    print(f"\nFigure written to {FIGURES}/example-dispatch-day.svg")
 
 
 if __name__ == "__main__":

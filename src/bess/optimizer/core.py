@@ -98,24 +98,6 @@ def solve(
         raise RuntimeError(f"solve did not reach optimality: termination_condition={tc}")
     model.solutions.load_from(results)
 
-    # Enforce D_t >= 0 (R1.2): the degradation cost is a convex PWL through the
-    # origin, so it is non-negative at every solution. HiGHS presolve can return a
-    # sub-tolerance *negative* D_t for near-zero cost curves (the top segment's line
-    # back-extrapolated below 0 at tau=0); left unclamped, that slack inflates the
-    # objective above the no-degradation value. Clamp the numerical noise here; a
-    # materially negative D_t means the convex-PWL invariant is genuinely broken, so
-    # surface it rather than hide it.
-    if hasattr(model, "degradation_cost"):
-        for t in model.T:  # type: ignore[index]
-            d = pyo.value(model.degradation_cost[t])  # type: ignore[index]
-            if d < 0.0:  # type: ignore[operator]
-                if d < -1e-5:  # type: ignore[operator]
-                    raise RuntimeError(
-                        f"degradation_cost[{t}]={d!r} is materially negative — "
-                        "convex-PWL non-negativity (formulation §R1.2) violated"
-                    )
-                model.degradation_cost[t].set_value(0.0)  # type: ignore[index]
-
     idx = sorted(model.T)  # type: ignore[index]
     return Schedule(
         p_charge=[pyo.value(model.p_charge[t]) for t in idx],  # type: ignore[index]

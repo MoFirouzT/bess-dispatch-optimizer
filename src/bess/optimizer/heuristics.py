@@ -15,7 +15,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from bess.assets.battery import BatterySpec
+from bess.assets.battery import BatterySpec, schedule_degradation_cost
 from bess.optimizer.core import Schedule
 
 
@@ -80,7 +80,11 @@ def greedy_window(
     _liquidate(p_ch, p_dis, spec, dt, e_min)
 
     soc_list = _trajectory(p_ch, p_dis, spec, dt, e_min)
-    obj = sum(prices[t] * dt * (p_dis[t] - p_ch[t]) for t in range(m))
+    # Net objective (grid-side cash flow minus wear), on the same basis as the MILP
+    # baselines, so V_greedy ≤ V_roll holds once degradation is priced. No spec ⇒
+    # cost is 0 and this is exactly the R1.1 gross arbitrage revenue.
+    gross = sum(prices[t] * dt * (p_dis[t] - p_ch[t]) for t in range(m))
+    obj = gross - schedule_degradation_cost(spec, p_ch, p_dis, dt)
     return Schedule(p_ch, p_dis, soc_list, obj)
 
 

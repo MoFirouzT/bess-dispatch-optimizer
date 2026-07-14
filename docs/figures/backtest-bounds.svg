@@ -22,9 +22,9 @@
   <text x="158" y="194" font-size="11" fill="#1a7f37">full-horizon MILP</text>
 
   <!-- cross-day gap bracket between roll end (520) and ceiling end (620) -->
-  <line x1="520" y1="120" x2="520" y2="66" stroke="#8c959f" stroke-dasharray="4 3"/>
-  <line x1="620" y1="168" x2="620" y2="66" stroke="#8c959f" stroke-dasharray="4 3"/>
-  <line x1="520" y1="70" x2="620" y2="70" stroke="#8c959f"/>
-  <text x="570" y="60" text-anchor="middle" font-size="11.5" fill="#57606a">cross-day arbitrage</text>
-  <text x="570" y="48" text-anchor="middle" font-size="11.5" fill="#57606a">(R2 target)</text>
+  <line x1="520" y1="120" x2="520" y2="106" stroke="#8c959f" stroke-dasharray="4 3"/>
+  <line x1="620" y1="168" x2="620" y2="106" stroke="#8c959f" stroke-dasharray="4 3"/>
+  <line x1="520" y1="110" x2="620" y2="110" stroke="#8c959f"/>
+  <text x="570" y="106" text-anchor="middle" font-size="11.5" fill="#57606a">cross-day arbitrage)</text>
+  <text x="570" y="94" text-anchor="middle" font-size="11.5" fill="#57606a">(grows with duration</text>
 </svg>

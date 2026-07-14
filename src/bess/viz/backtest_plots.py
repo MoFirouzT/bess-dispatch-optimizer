@@ -250,3 +250,39 @@ def plot_scenario_reduction(
     fig.suptitle(title, fontsize=13)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     return fig
+
+
+def plot_duration_sweep(
+    durations_h: list[float],
+    pct_of_perfect_foresight: list[float],
+    annualized_per_mwh: list[float],
+    *,
+    title: str = "Storage duration sweep — capture ratio and per-MWh value",
+) -> Figure:
+    """The ADR-0022 duration axis (no new math): run the backtest across storage
+    durations and show the two effects a single-duration headline hides.
+
+    Left: rolling / ceiling capture ratio vs duration — falls as duration rises,
+    because cross-day carry (which a deterministic day-ahead agent cannot reach)
+    grows with duration. Right: annualized perfect-foresight ceiling per
+    MWh-installed vs duration — diminishing returns, each added hour arbitrages a
+    flatter slice of the daily spread. Drawn rather than asserted (the trend holds
+    for typical price shapes, not adversarially).
+    """
+    fig, (ax_pct, ax_val) = plt.subplots(1, 2, figsize=(11, 4.2))
+
+    ax_pct.plot(durations_h, [100.0 * p for p in pct_of_perfect_foresight], "-o", color=_METHOD)
+    ax_pct.set_xlabel("storage duration (h)")
+    ax_pct.set_ylabel("% of perfect foresight captured")
+    ax_pct.set_title("Capture ratio falls with duration")
+    ax_pct.grid(alpha=0.3)
+
+    ax_val.plot(durations_h, annualized_per_mwh, "-o", color=_METHOD)
+    ax_val.set_xlabel("storage duration (h)")
+    ax_val.set_ylabel("annualized ceiling (€/MWh-installed·yr)")
+    ax_val.set_title("Per-MWh value: diminishing returns")
+    ax_val.grid(alpha=0.3)
+
+    fig.suptitle(title, fontsize=13)
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    return fig

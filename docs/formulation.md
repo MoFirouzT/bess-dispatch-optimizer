@@ -6,7 +6,12 @@ This file holds the canonical mathematics of the optimizer.
 Specs, the README, and ADRs **point here**; they never restate equations.
 Each phase that changes the optimizer math appends a section; nothing is duplicated elsewhere.
 Pure engineering / data-reliability phases (R1.4c ingestion guard, R1.5 serving, R2.1b drift monitor) introduce no optimizer math and intentionally have no section here.
-Sections that introduce new theory name a **source reference** where one applies (see [references.md](references.md)); standard techniques and engineering phases carry none. Each section summarizes only the theory the project implements; **house notation here and in [conventions.md](conventions.md) takes precedence** for shared quantities.
+Most theory here is standard optimization / MILP technique and carries no reference.
+A few parts rest on a specific published method (see [references.md](references.md));
+those name a source purely for traceability, where it earns its place.
+References are the exception, not a per-section requirement.
+Each section summarizes only the theory the project implements;
+**house notation here and in [conventions.md](conventions.md) takes precedence** for shared quantities.
 
 *Assumes: the house notation in [Conventions](conventions.md) (grid-side power, per-unit SoC, `π / e / η / Δt`).
 Battery and power-market terms are defined in the [glossary](glossary.md); each section is self-contained, so read Conventions first.*
@@ -37,11 +42,16 @@ delivering 1 MWh to the grid ultimately costs $1/\eta^{rt}$ MWh drawn from the g
 
 ## Model at a glance
 
-*A compact, one-screen statement of the full model. This is an index, not a second source of truth: the per-phase sections below (R1.1, R1.2, R2.3) are canonical and carry the derivations, rationale, and evolving detail; if the two ever disagree, the section governs. Current through R2.3 (R2.4 adds explanation, no optimizer change).*
+*A compact, one-screen statement of the full model.
+This is an index, not a second source of truth:
+the per-phase sections below (R1.1, R1.2, R2.3) are canonical and carry the derivations, rationale, and evolving detail; if the two ever disagree, the section governs.
+Current through R2.3 (R2.4 adds explanation, no optimizer change).*
 
 All power is metered **grid-side**, so efficiency enters only the SoC balance, never the objective (see [Conventions](#conventions) above).
 
-**Periods and variables.** Periods $t\in\{1,\dots,T\}$, step $\Delta t$ in hours. Grid-side power $p^{ch}_t,p^{dis}_t\ge 0$; SoC $e_t\in[e_{\min},e_{\max}]$; charge indicator $u_t\in\{0,1\}$; degradation cost $D_t\ge 0$; net export $g_t\equiv p^{dis}_t-p^{ch}_t$.
+**Periods and variables.**
+Periods $t\in\{1,\dots,T\}$, step $\Delta t$ in hours.
+Grid-side power $p^{ch}_t,p^{dis}_t\ge 0$; SoC $e_t\in[e_{\min},e_{\max}]$; charge indicator $u_t\in\{0,1\}$; degradation cost $D_t\ge 0$; net export $g_t\equiv p^{dis}_t-p^{ch}_t$.
 
 **Objective** (R1.1 revenue minus R1.2 degradation):
 
@@ -58,7 +68,8 @@ $$\max\ \sum_{t}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]$$
 | (5) | $e_T=e^{\mathrm{tgt}}$ | terminal SoC |
 | (6) | $D_t = c^{\text{deg}}\,\tau_t$ | linear wear cost on throughput (R1.2) |
 
-with storage-side throughput $\tau_t=\eta^{ch}p^{ch}_t\Delta t+\tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$ and marginal wear cost $c^{\text{deg}}$ (€/MWh; the linear DoD-stress case of Xu 2018 / Shi 2017). At $c^{\text{deg}}=0$ the term vanishes and the model is exactly R1.1.
+with storage-side throughput $\tau_t=\eta^{ch}p^{ch}_t\Delta t+\tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$ and marginal wear cost $c^{\text{deg}}$ (€/MWh; the linear DoD-stress case).
+At $c^{\text{deg}}=0$ the term vanishes and the model is exactly R1.1.
 
 **Stochastic layer (R2.3).** Optimize over a scenario set $\{(\pi^{(s)},p_s)\}_{s=1}^S$ instead of one price path. A non-anticipative day-ahead commitment $g^{DA}$ (R1.1-feasible) and a per-scenario recourse dispatch $g^{(s)}$ (R1.1-feasible) are tied by a recourse budget
 
@@ -76,7 +87,9 @@ $\lambda=0$ is the risk-neutral recourse problem; sweeping $\lambda$ traces the 
 
 ## R1.1. Deterministic core
 
-*No governing reference: standard MILP modeling (mutual-exclusion binary, power-cap big-M). House notation ([conventions.md](conventions.md)) governs; see [references.md: R1.1](references.md#r11-deterministic-milp-dispatch) for domain context.*
+*No governing reference:
+standard MILP modeling.
+House notation ([conventions.md](conventions.md)) governs; see [references.md: R1.1](references.md#r11-deterministic-milp-dispatch) for domain context.*
 
 ### Sets
 
@@ -152,6 +165,7 @@ $$\boxed{\;e_{T} = e^{\mathrm{tgt}}\;}$$
     **Big-M structure:**
     Constraint (3) is a big-M switch: its right-hand side relaxes to a large constant when its binary is off.
     Here the constant is the tightest valid bound: the power cap itself ($\bar P^{ch}, \bar P^{dis}$), so no loose big-M is introduced and the relaxation remains tight.
+
 - **Ramp.**
     Defined on net power for generality / grid-connection.
     Batteries ramp near-instantly, so $R$ is typically non-binding; disable by setting $R \ge \bar P^{ch} + \bar P^{dis}$.
@@ -179,7 +193,8 @@ The full oracle set (including the lossy and no-trade cases) is the test contrac
 
 ## R1.2. Degradation cost
 
-*Governing reference: B. Xu, A. Oudalov, A. Ulbig, G. Andersson, D. Kirschen, "Modeling of Li-Ion Battery Degradation for Cell Life Assessment," IEEE Trans. Smart Grid 9(2), 2018; convexity from Y. Shi, B. Xu, Y. Tan, B. Zhang, "A Convex Cycle-based Degradation Model for Battery Energy Storage Planning and Operation," 2017 (arXiv:1703.07968); cycle depths from control actions from B. Xu, Y. Shi, D. Kirschen, B. Zhang, "Optimal Regulation Response of Batteries Under Cycle Aging Mechanisms," 2017 (arXiv:1703.07824). We adopt their **linear DoD-stress** case. See [references.md: R1.2](references.md#r12-degradation-cost).*
+*Governing reference:
+the **linear DoD-stress** case of the Xu/Shi cycle-aging degradation model (see [references.md: R1.2](references.md#r12-degradation-cost) for the source list and scope).*
 
 Extends R1.1 by subtracting a **degradation cost** from the objective.
 All R1.1 sets, variables, and constraints (1)–(5) are unchanged; the SoC balance and grid-side metering are untouched.
@@ -188,11 +203,13 @@ At zero wear cost the term vanishes and the model reduces to R1.1 exactly.
 
 ### Degradation measure and cost
 
-The project prices wear as a **linear cost on cell throughput**, the *linear power-based* degradation model (Shi 2017 §II-C-1). Define per-period **storage-side throughput**, the cell-side energy moved in both directions (the efficiency-weighted SoC increment of Xu 2017 Eq. 6, scaled by capacity):
+The project prices wear as a **linear cost on cell throughput**, the *linear power-based* degradation model (Shi 2017 §II-C-1).
+Define per-period **storage-side throughput**, the cell-side energy moved in both directions:
 
 $$\boxed{\;\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t\;}$$
 
-Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so at most one term is non-zero. The per-period degradation cost is linear in throughput:
+Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so at most one term is non-zero.
+The per-period degradation cost is linear in throughput:
 
 $$\boxed{\;D_t = c^{\text{deg}}\,\tau_t \qquad \forall t\in\mathcal T\;}$$
 
@@ -201,9 +218,15 @@ $$\boxed{\;D_t = c^{\text{deg}}\,\tau_t \qquad \forall t\in\mathcal T\;}$$
 | $c^{\text{deg}}$ | marginal wear cost per unit storage-side throughput (Shi 2017 §II-C-1) | €/MWh |
 | $D_t$ | degradation cost incurred in period $t$ | € |
 
-$c^{\text{deg}}$ is an operating parameter, set from the cell **replacement cost divided by lifetime energy throughput** (standard arbitrage practice); reported values sit in roughly **€7–15/MWh** of throughput. It is a cell-chemistry property: independent of the asset's power and energy ratings, and, because it multiplies a total-throughput sum, independent of the time step $\Delta t$. The linear cost is native to the LP: no auxiliary breakpoints, cuts, or special-ordered sets are needed.
+$c^{\text{deg}}$ is an operating parameter, set from the cell **replacement cost divided by lifetime energy throughput** (standard arbitrage practice); reported values sit in roughly **€7–15/MWh** of throughput.
+It is a cell-chemistry property:
+independent of the asset's power and energy ratings, and, because it multiplies a total-throughput sum, independent of the time step $\Delta t$.
+The linear cost is native to the LP: no auxiliary breakpoints, cuts, or special-ordered sets are needed.
 
-**Grounding (why this is the cited model, not a shortcut).** Xu (2018) and Shi (2017) model cell aging as a sum $c^{\text{rep}}\sum_i\Phi(d_i)$ over charge/discharge cycle depths $d_i$ (SoC ranges extracted by the **rainflow** algorithm), where $\Phi$ is the depth-of-discharge stress function and $c^{\text{rep}}$ the cell replacement cost. Shi (2017 §II-C-1) shows the **linear** stress $\Phi(d)=k_1 d$ "is equivalent to the linear power-based degradation model": the total cost then depends only on total throughput, independent of how it partitions into cycles, so rainflow drops out and the cost is exactly the $D_t=c^{\text{deg}}\tau_t$ above. The richer nonlinear-$\Phi$ case is more accurate but not LP-native; it is future work below.
+**Grounding (why this is the cited model, not a shortcut).**
+Xu (2018) and Shi (2017) model cell aging as a sum $c^{\text{rep}}\sum_i\Phi(d_i)$ over charge/discharge cycle depths $d_i$ (SoC ranges extracted by the **rainflow** algorithm), where $\Phi$ is the depth-of-discharge stress function and $c^{\text{rep}}$ the cell replacement cost.
+Shi (2017 §II-C-1) shows the **linear** stress $\Phi(d)=k_1 d$ "is equivalent to the linear power-based degradation model": the total cost then depends only on total throughput, independent of how it partitions into cycles, so rainflow drops out and the cost is exactly the $D_t=c^{\text{deg}}\tau_t$ above.
+The richer nonlinear-$\Phi$ case is more accurate but not LP-native; it is future work below.
 
 ### Modified objective
 
@@ -213,14 +236,24 @@ Revenue is unchanged and still carries **no efficiency term**; the only addition
 
 ### Properties (gate-relevant)
 
-- **$\Delta t$-invariant.** $\sum_t \tau_t$ is the total energy through the cell over the horizon, unchanged by the time discretization, so a fixed physical dispatch costs the same at hourly or quarter-hourly resolution (gate: equal total degradation at $\Delta t=1$ and $\Delta t=0.25$).
-- **Spec-invariant.** $c^{\text{deg}}$ is a €/MWh chemistry property; $c^{\text{rep}}$ scales with capacity, so the marginal cost is independent of the asset's power and energy ratings.
-- **Monotone.** $c^{\text{deg}}\ge0$, so more throughput never lowers cost.
+- **$\Delta t$-invariant.**
+    $\sum_t \tau_t$ is the total energy through the cell over the horizon, unchanged by the time discretization, so a fixed physical dispatch costs the same at hourly or quarter-hourly resolution (gate: equal total degradation at $\Delta t=1$ and $\Delta t=0.25$).
+- **Spec-invariant.**
+    $c^{\text{deg}}$ (€/MWh) is a chemistry property: replacement cost and lifetime throughput both scale with capacity, so their ratio does not.
+    The marginal wear cost is therefore independent of the asset's power and energy ratings.
+- **Monotone.**
+    $c^{\text{deg}}\ge0$, so more throughput never lowers cost.
 - **Reduces to R1.1** at $c^{\text{deg}}=0$.
 
 ### Out of scope (referenced future work)
 
-- **Nonlinear convex DoD stress (the more accurate model).** Real cells age faster per unit energy the deeper the cycle: an NMC cell loses roughly **ten times** more life at 100% depth-of-discharge than at 10% for the same charged energy (Shi 2017 §I; Xu 2017 §II). The linear cost above misses this deep-cycle penalty. Capturing it uses a convex nonlinear stress $\Phi(d)=k_2\,d\,e^{k_3 d}$ or $k_4\,d^{k_5}$ (Xu 2018), still convex in the SoC profile (Shi 2017, Thm 1) but requiring rainflow cycle identification, which has no closed form. It is therefore convex yet **not LP-representable**: solvable by Shi's subgradient method, or by a cycle-detection MILP in which a convex-PWL **epigraph** linearization of $\Phi$ (Williams; [references.md: R1.2](references.md#r12-degradation-cost)) embeds the segments. Deferred to keep the LP/MILP core; the linear case is the gate-testable stand-in.
+- **Nonlinear convex DoD stress (the more accurate model).**
+    Real cells age faster per unit energy the deeper the cycle:
+    an NMC cell loses roughly **ten times** more life at 100% depth-of-discharge than at 10% for the same charged energy (Shi 2017 §I; Xu 2017 §II).
+    The linear cost above misses this deep-cycle penalty.
+    Capturing it uses a convex nonlinear stress $\Phi(d)=k_2\,d\,e^{k_3 d}$ or $k_4\,d^{k_5}$ (Xu 2018), still convex in the SoC profile (Shi 2017, Thm 1) but requiring rainflow cycle identification, which has no closed form.
+    It is therefore convex yet **not LP-representable**: solvable by Shi's subgradient method, or by a cycle-detection MILP in which a convex-PWL **epigraph** linearization of $\Phi$ (Williams; [references.md: R1.2](references.md#r12-degradation-cost)) embeds the segments.
+    Deferred to keep the LP/MILP core; the linear case is the gate-testable stand-in.
 - **Calendar aging** (time-based capacity fade). Deferred.
 
 ### Worked example ($\eta=1$)
@@ -277,10 +310,12 @@ Pre-flight therefore tests the ramp-free condition only (a sound fast filter) an
 
 ---
 
-## R1.4. Backtest semantics (derived; no new model)
+## R1.4. Backtest semantics
 
-*Governing reference: López de Prado, *Advances in Financial Machine Learning* (walk-forward evaluation + look-ahead/leakage discipline, the only new methodology this part adds).
-See [references.md: R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band) for secondary sources and domain framing.*
+*No governing reference:
+walk-forward evaluation and the decision-time (no-look-ahead) information set are standard time-series backtesting practice, not a technique traceable to a single source.
+See [references.md: R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band) for domain-context pointers;
+the leakage-control machinery specific to a fitted model (purged CV, embargo) is deferred to R2.1.*
 
 This section adds **no constraints, variables, or objective terms**.
 It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey;
@@ -322,7 +357,7 @@ the resulting 1-to-2-hour offset from the market day is immaterial to a rolling 
 
 $$\boxed{\;V^{\mathrm{greedy}} \;\le\; V^{\mathrm{roll}} \;\le\; V^\star, \qquad 0 \;\le\; V^{\mathrm{roll}}.\;}$$
 
-![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The gap between rolling and ceiling is the cross-day arbitrage a deterministic agent cannot capture; the headline metric is rolling over ceiling.](figures/backtest-bounds.svg)
+![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The greedy-to-rolling gap is the value of optimization; the rolling-to-ceiling gap is cross-day arbitrage, small for a short-duration asset. The reported headline pairs both levels against the ceiling, since rolling-over-ceiling alone saturates near 1.](figures/backtest-bounds.svg)
 
 - $V^{\mathrm{roll}}\le V^\star$:
     the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem, the ceiling can only do at least as well.
@@ -332,8 +367,22 @@ $$\boxed{\;V^{\mathrm{greedy}} \;\le\; V^{\mathrm{roll}} \;\le\; V^\star, \qquad
     idle is feasible in every per-day solve, so each *optimal* per-day value is non-negative (likewise $0 \le V^\star$).
     $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed: greedy can trade at a loss, so the zero floor bounds the optimal quantities only.
 
-The gap $V^\star-V^{\mathrm{roll}}$ is exactly the **cross-day (overnight) arbitrage value** a deterministic agent provably cannot capture, the opportunity the R2 forecaster/recourse layer targets.
-The headline metric is $V^{\mathrm{roll}}/V^\star$ (% of perfect foresight captured).
+The two gaps in the ladder measure different things:
+
+- **$V^{\mathrm{roll}}-V^{\mathrm{greedy}}$** is the value of **optimization** over a naive percentile heuristic.
+    Both agents empty each day, so this is a clean same-horizon contrast; it is the informative R1 comparison.
+- **$V^\star-V^{\mathrm{roll}}$** is the value of **cross-day foresight**:
+    overnight-carry revenue a deterministic day-ahead agent cannot reach, having no information about $\Pi_{d+1}$ at the day-$d$ gate.
+    For a short-duration asset this gap is small by physics (a battery that empties nightly has little to carry overnight), so $V^{\mathrm{roll}}$ sits just under $V^\star$.
+    It widens with storage duration (a 1-hour asset shows almost none; a 4-hour asset shows more).
+
+This overnight gap is an upper bound on what any carry strategy could add; it is **not** what R2 targets.
+R2's payoff is handling price **uncertainty at decision time**, measured by the value of the stochastic solution (VSS) in R2.3, a quantity distinct from the deterministic overnight gap that does not vanish when that gap does.
+
+**Headline metric.**
+Report $V^{\mathrm{greedy}}/V^\star$ and $V^{\mathrm{roll}}/V^\star$ together (heuristic and optimal, as % of perfect foresight).
+$V^{\mathrm{roll}}/V^\star$ alone saturates near 1 for a short-duration asset and cannot discriminate; the greedy-to-rolling gap carries the R1 signal, and VSS (R2.3) carries the R2 signal.
+Because these ratios move with storage duration, they are reported across {1h, 2h, 4h} rather than for a single asset ([ADR-0022](decisions/0022-storage-duration-reported-axis.md)).
 
 ### Sanity band (gate D)
 
@@ -428,6 +477,8 @@ The deployable form of the recourse is receding-horizon control: execute the com
 - **WS**: wait-and-see $=\sum_s p_s\,V^\star(\pi^{(s)})$, the scenario-averaged perfect-foresight value; this is R1.4's ceiling averaged over scenarios (the $\rho\to 1$ / unbudgeted limit).
 - **VSS** $=\text{RP}-\text{EEV}\ge 0$;   **EVPI** $=\text{WS}-\text{RP}\ge 0$.
 
+**VSS is the R2 value metric, distinct from R1.4's overnight gap.** R1.4's $V^\star-V^{\mathrm{roll}}$ measures cross-day foresight under *certainty* (small for a short-duration asset, since prices are already known at the day-ahead gate); VSS measures the payoff of *handling uncertainty at decision time*, and can be positive even when that overnight gap is near zero. R1.4 is the deterministic-ceiling story; VSS is the stochastic-value story this section exists to measure.
+
 Ordering (a correctness gate, extending R1.4's $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$):
 
 $$\boxed{\;\text{EEV} \;\le\; \text{RP} \;\le\; \text{WS}.\;}$$
@@ -435,6 +486,8 @@ $$\boxed{\;\text{EEV} \;\le\; \text{RP} \;\le\; \text{WS}.\;}$$
 The gate is: measured VSS $> 0$ **out-of-sample** on the designed value-generating instance (held-out realized paths, R1.4 leakage discipline; [ADR-0021](decisions/0021-mpc-recourse-out-of-sample-vss.md)); the CVaR-averse solution reduces tail loss versus the risk-neutral one under $\pm 10\%$ price error; and the VSS $=0$ collapse is reproduced exactly at the $\rho$-limits (a golden oracle, proving the trap is understood, not papered over).
 
 **Considered but out of scope:** the Bertsimas-Sim $\Gamma$-budget robust counterpart (an alternative to CVaR, noted not built; [ADR-0020](decisions/0020-cvar-mean-risk-over-robust.md)); hard chance constraints as a separate mechanism (the soft CVaR objective stands in); multistage ($>2$-stage) trees; Benders / L-shaped decomposition (R2.4 / optional Julia); an explicit intraday order-book or imbalance-settlement market model (the recourse re-trades against a realized price, it does not model market microstructure; R3 scope).
+
+**Future work (forecast-value baseline).** The metrics above measure the value of *stochastic optimization* (VSS), but not the value of *forecast skill*: R2.1/R2.2 score the forecaster statistically (coverage, pinball loss), and R2.3 optimizes over whatever scenario set it is handed. A deferred baseline closes that loop. Run the same two-stage dispatch on scenarios built from a *naive* forecast (persistence, or seasonal-naive such as the same hour one week prior) and compare realized-price profit against the R2.1 conformal forecast, measuring in euros whether better forecasts yield better dispatch. It is distinct from EV/EEV, which use the scenario set's mean rather than contrasting forecast quality. Not built; recorded so the forecasting layer can later be justified in value terms, not statistical ones alone.
 
 ---
 

@@ -19,8 +19,8 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R1.1. Deterministic MILP dispatch
 
-- **No governing reference.** The R1.1 core is standard MILP modeling: the charge/discharge mutual-exclusion binary `u_t` and the "let the power cap be the big-M" idiom (constraint (3)) are textbook-ubiquitous techniques that need no cited authority. House notation ([conventions.md](conventions.md) + the [formulation.md](formulation.md) preamble) governs all shared quantities; the metering / efficiency placement is a house convention.
-- Domain context (pointer only, not required reading): day-ahead marginal pricing and storage arbitrage give the economic meaning of the objective. See Kirschen & Strbac, *Fundamentals of Power System Economics* (also secondary for R1.4 below); `docs/market_reference.md`.
+- **No governing reference.** Standard MILP modeling (mutual-exclusion binary, power-cap big-M); house notation governs.
+- Domain context (pointer only): Kirschen & Strbac, *Fundamentals of Power System Economics* (also secondary for R1.4); `docs/market_reference.md`.
 
 ---
 
@@ -38,17 +38,14 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R1.3. Pre-flight validation
 
-- **No governing reference; engineering phase.** R1.3 introduces no new theory. The pre-flight feasibility test (per-period SoC-increment bounds → terminal reachability) is an **algebraic corollary** of the R1.1 model; the derivation lives in [formulation.md: R1.3](formulation.md#r13-pre-flight-feasibility-derived-no-new-model).
-  - Reachability of a box-bounded single-integrator under bounded input is elementary; no controllability / reachable-set text is invoked. Were a ramp-aware (coupled) reachable-set check ever built, a control reference (e.g. an MPC / reachable-sets text; see the R2.3 MPC candidate) would be adopted then and recorded here.
-  - *Structured-error design* (typed `IssueCode` + accumulated `ValidationIssue`s) is a software-engineering choice, not a theory question, no reference needed.
+- **No governing reference; engineering phase.** No new theory: the pre-flight feasibility test is an **algebraic corollary** of the R1.1 model, derived in [formulation.md: R1.3](formulation.md#r13-pre-flight-feasibility-derived-no-new-model).
 
 ---
 
 ## R1.4. Backtest (walk-forward, baselines, sanity band)
 
-- **M. López de Prado, *Advances in Financial Machine Learning*, Wiley, 2018**: *governing reference* (the new methodology: walk-forward evaluation + look-ahead/leakage discipline).
-  - Walk-forward, never a random split on a time series; train/decide only on information available at decision time → the rolling backtest and the **leakage assertion** (gate C). *(Chapters on backtesting / cross-validation in finance; verify exact ch.)*
-  - **Considered but out of scope:** purged $k$-fold CV and the embargo. These guard against *label* leakage when training a supervised estimator; R1.4 has no trained model (the optimizer is deterministic), so only the bare walk-forward + decision-time-information principle is used. Purging/embargo become relevant in R2.1 when a forecaster is fit. *(Verify.)*
+- **No governing reference.** Walk-forward evaluation and the decision-time (no-look-ahead) information set are standard time-series backtesting practice: train/decide only on information available at gate closure, never a random split on a time series → the rolling backtest and the **leakage assertion** (gate C). The principle predates any single source (walk-forward analysis, look-ahead-bias avoidance) and needs no cited authority.
+  - *Deferred to R2.1:* purged $k$-fold CV and the embargo, the leakage-control machinery specific to a *fitted* estimator (López de Prado, *Advances in Financial Machine Learning*, Wiley, 2018). R1.4 has no trained model (the optimizer is deterministic), so only the bare walk-forward + decision-time principle applies; purging/embargo attach to the R2.1 forecaster.
   - Notation reconciliation: house style governs. The "information set at decision time" maps to the per-day price block $\Pi_d$ committed at gate closure (glossary: *gate closure*); no finance-specific notation is imported.
 - **R. Sioshansi, P. Denholm, T. Jenkin et al., storage-arbitrage-value studies (e.g. *Energy Economics*, 2009)**: *secondary (domain context, pointer only).*
   - The perfect-foresight-ceiling vs. realistic-value framing for electricity storage → the ceiling/floor interpretation and the [sanity band](formulation.md#sanity-band-gate-d). *(Verify exact paper/year before relying.)*
@@ -59,7 +56,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R1.4b. ENTSO-E data loader
 
-- **No new governing reference; engineering (data acquisition).** No new theory; R1.4's walk-forward/leakage methodology (López de Prado) still governs how the fetched data is used.
+- **No new governing reference; engineering (data acquisition).** No new theory; R1.4's walk-forward/leakage discipline (standard time-series practice) still governs how the fetched data is used.
 - **ENTSO-E Transparency Platform RESTful API user guide** (`transparency.entsoe.eu`, *Static content → web API*); *technical reference (not theory).* The authority for the request/response contract: host `web-api.tp.entsoe.eu/api`, `documentType=A44`, EIC domain codes, the `Publication_MarketDocument`/`TimeSeries`/`Period`/`Point` shape, and the A03 curve carry-forward. **Verified live** against an NL 2024 sample this session (R1.4b spec records the confirmed shape).
 - **`EnergieID/entsoe-py`**: the Python client wrapping the above (EIC mapping, XML parsing, A03 expansion, 15/60-min). Implementation tool, pinned in the spec.
 
@@ -75,7 +72,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
   - Notation reconciliation: house style wins. Target/price stays `π_t` (€/MWh, grid-side) on the UTC series; conformal `α` maps to `confidence_level = 1 − α`.
 - **R. Hyndman & G. Athanasopoulos, *Forecasting: Principles and Practice*** (OTexts, free); *secondary (methodology, pointer only).* Calendar/lag feature construction and honest time-series evaluation. *(Verify chapter.)*
 - **Hastie, Tibshirani & Friedman, *Elements of Statistical Learning*** (free); *secondary (the base learner, pointer only).* Gradient-boosted trees. *(Verify chapter.)*
-- **M. López de Prado, *Advances in Financial ML*** (R1.4 governing) still governs the *evaluation*: walk-forward, and now **purging/embargo** since a model is fit (the R1.4 entry flagged this becomes live at R2.1).
+- **M. López de Prado, *Advances in Financial Machine Learning*, Wiley, 2018**: *governing reference for the evaluation discipline* at R2.1. The walk-forward / decision-time principle is standard (used already in R1.4 without a citation); what makes López governing *here* is the leakage-control machinery a fitted model needs: **purged $k$-fold CV and the embargo**, flagged in the R1.4 entry as becoming live once a forecaster is trained. *(Verify the CV/embargo sections.)*
 - *Alternatives considered:* bare quantile regression (no finite-sample coverage guarantee), kept as the CQR base learner rather than the deliverable; bootstrap/Gaussian residual intervals; distribution-assuming, rejected for distribution-free conformal.
 - **MAPIE** (`scikit-learn-contrib/MAPIE`, 1.x); implementation tool for the conformal wrappers (`SplitConformalRegressor`, `ConformalizedQuantileRegressor`); pin the major version (API changed at 1.0).
 
@@ -83,7 +80,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R2.1b. Forecast-drift monitor
 
-- **No new governing reference; engineering / monitoring phase.** R2.1b introduces no new modelling theory; the R2.1 conformal reference (Angelopoulos & Bates) still governs the forecaster and López de Prado governs the walk-forward evaluation.
+- **No new governing reference; engineering / monitoring phase.** R2.1b introduces no new modelling theory; the R2.1 conformal reference (Angelopoulos & Bates) still governs the forecaster and López de Prado governs its evaluation discipline (walk-forward with purging/embargo).
 - **Population Stability Index (PSI)**: a standard population-stability metric from applied credit-scoring / model-monitoring practice (binned distribution divergence; the ≥0.2 "significant shift" convention). Cited as a standard statistic, not a governing textbook. The regime-shift-vs-staleness *framing* (staleness = worse-than-a-seasonal-naive baseline) is the project's design, recorded in [ADR-0015](decisions/0015-drift-staleness-before-regime.md).
 
 ---
@@ -94,7 +91,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 - **J. Dupačová, N. Gröwe-Kuska & W. Römisch, *Scenario reduction in stochastic programming: an approach using probability metrics* (Math. Programming, Ser. A, 2003)**, with **H. Heitsch & W. Römisch, *Scenario reduction algorithms in stochastic programming* (Comput. Optim. Appl. 24, 2003)**: *governing reference* (the new theory: probability-metric scenario reduction).
   - The Kantorovich (Wasserstein) distance between discrete distributions, its **closed form under optimal redistribution** (deleted mass to the nearest kept atom), and **fast forward selection** / backward reduction → the reduction distance and greedy algorithm in [formulation.md: R2.2](formulation.md#r22-scenario-generation--reduction-uncertainty-representation-no-optimizer-change). *(Verify the theorem/section numbering and year before relying.)*
-  - **Deviation from the textbook-first policy, stated explicitly** (as R1.4 did for López de Prado): the reduction method is paper-defined and has no textbook of equal precision; these two 2003 papers are *the* source, so they are named governing rather than a textbook. Reconciled to house style: a scenario is a price path $\pi^{(s)}$ (€/MWh, grid-side, UTC schema), probabilities $p_s$; the probability metric is written $D_\ell$.
+  - **Deviation from the textbook-first policy, stated explicitly** (as R2.1 does for the López de Prado evaluation discipline): the reduction method is paper-defined and has no textbook of equal precision; these two 2003 papers are *the* source, so they are named governing rather than a textbook. Reconciled to house style: a scenario is a price path $\pi^{(s)}$ (€/MWh, grid-side, UTC schema), probabilities $p_s$; the probability metric is written $D_\ell$.
 - **A. King & S. Wallace, *Modeling with Stochastic Programming*, Springer, 2012**: *secondary (scenario-generation framing, pointer only).* What a good scenario set must preserve and why reduction is stability-driven, not cosmetic. *(Verify chapter.)*
 - **Birge & Louveaux, *Introduction to Stochastic Programming*; Shapiro, Dentcheva & Ruszczyński, *Lectures on Stochastic Programming* (free):** *secondary (foundations, pointer only);* scope authority moves here for R2.3, not R2.2.
 - *Alternatives considered:* **moment matching** (match a chosen moment list by construction) couples scenario quality to that list and carries no distance-stability bound; kept as noted-not-built. **k-means** clustering of paths is retained as the pragmatic *baseline* the gate compares against ([ADR-0018](decisions/0018-forward-selection-over-kmeans.md)), not the governed method. **ARIMA/GARCH** parametric generation on raw prices is a deferred second generator path.

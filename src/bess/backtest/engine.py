@@ -45,6 +45,27 @@ class BacktestReport:
     constraint_satisfaction: bool
 
 
+@dataclass(frozen=True)
+class DurationResult:
+    """One backtest at a given storage duration (energy-to-power ratio, hours).
+
+    Reporting only (ADR-0022): the optimizer is scale-invariant in the ratings, so
+    each ``report`` is a plain ``run_backtest`` at ``capacity = power * duration_h``.
+    """
+
+    duration_h: float
+    capacity_mwh: float
+    report: BacktestReport
+
+    @property
+    def pct_of_perfect_foresight(self) -> float:
+        return self.report.pct_of_perfect_foresight
+
+    @property
+    def annualized_ceiling_per_mwh(self) -> float:
+        return self.report.annualized_ceiling_per_mwh
+
+
 def _to_windows(prices: Sequence[float] | pd.Series, window: int | str) -> list[list[float]]:
     """Split into decision windows. pandas Series + offset string ⇒ calendar-day
     grouping (UTC); plain sequence + int ⇒ fixed period count."""
@@ -176,3 +197,37 @@ def _satisfies(result: BaselineResult, spec: BatterySpec, dt: float, eps: float 
             return False
         start += size
     return True
+
+
+def run_duration_sweep(
+    prices: Sequence[float] | pd.Series,
+    base_spec: BatterySpec,
+    dt: float = 1.0,
+    *,
+    durations: Sequence[float] = (1.0, 2.0, 4.0),
+    **backtest_kwargs: object,
+) -> list[DurationResult]:
+    """Run ``run_backtest`` across storage durations, holding power fixed (ADR-0022).
+
+    Storage duration is the energy-to-power ratio in hours; for each ``d`` the
+    capacity is ``power * d`` where ``power = base_spec.p_discharge_max`` (the
+    per-unit SoC fields are duration-independent, so they carry over unchanged).
+    The optimizer is scale-invariant in the ratings, so each report is a plain
+    backtest; this only tabulates them so the capture ratio and per-MWh economics
+    are reported across durations rather than for a single asset. Correctness at
+    ``capacity != 1`` is covered by the backtest property tests, not re-asserted here.
+    """
+    power = base_spec.p_discharge_max
+    return [
+        DurationResult(
+            duration_h=float(d),
+            capacity_mwh=power * float(d),
+            report=run_backtest(
+                prices,
+                base_spec.model_copy(update={"capacity": power * float(d)}),
+                dt,
+                **backtest_kwargs,  # type: ignore[arg-type]
+            ),
+        )
+        for d in durations
+    ]

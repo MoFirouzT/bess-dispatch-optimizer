@@ -20,6 +20,20 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ---
 
+## Documentation + duration-axis pass (2026-07-14)
+
+Cross-cutting docs cleanup + one additive reporting feature; **no phase advance** (R2.3 stays current, R2.4 next), no formulation/optimizer change, no gate touched.
+
+- **Reference policy clarified.** `formulation.md` preamble reworded: references are the **exception, at the human's discretion**, not a per-section requirement (standard MILP/optimization technique carries none). Trimmed R1.1/R1.3 reference stubs to two-line ledger entries; collapsed R1.2's three-paper header block to a one-line pointer (full list stays in `references.md`); dropped a redundant Xu-2017-Eq.6 aside and reworded the R1.2 "spec-invariant" bullet (c_deg is a ratio, both numerator and denominator scale with capacity).
+- **López dropped from R1.4.** Walk-forward + no-look-ahead is standard time-series practice, so R1.4 now carries **no governing reference**; López de Prado's actual contribution (purged CV / embargo) moves to **R2.1** as the evaluation-discipline governing reference. Reconciled every downstream mention (R1.4b, R2.1, R2.1b, R2.2 in `references.md`; the R2.2 spec analogy).
+- **R1.4 metric/motivation reframed.** The rolling→ceiling gap is cross-day carry, **small for a short-duration asset** and *not* the R2 target; VSS (R2.3) is the R2 value metric. Headline now reports greedy/rolling/ceiling together (rolling/ceiling saturates near 1). `backtest-bounds.svg` caption + label updated; R2.3 gained a "VSS vs R1.4 overnight gap" cross-reference.
+- **Storage duration = reported axis ([ADR-0022], Accepted).** The math is scale-invariant but the economics are not: capture ratio and per-MWh value fall with duration, VSS grows with it, so a single-duration headline can misstate the general result. Duration notes added to `formulation.md` §R1.4, R1.4a spec, R2.3 spec, glossary.
+- **Implemented (additive, gate-safe):** `bess.backtest.run_duration_sweep` + `DurationResult` (thin wrapper: power fixed, capacity = power × duration), `bess.viz.plot_duration_sweep`, `examples/duration_sweep.py`, `tests/unit/test_duration_sweep.py` (shape + per-duration ordering validity; **not** monotonicity, which is honest-but-not-guaranteed). No change to `optimizer`/`assets` or any golden/property gate (cross-duration correctness already covered by the scale-invariant property strategy).
+- **Real-data result (NL 2024-Q2, committed figure `example-duration-sweep.svg`):** capture ratio **99.0 / 98.5 / 96.2%** and annualized ceiling **32.6k / 29.9k / 24.0k €/MWh-yr** across **1h / 2h / 4h**: capture falls and per-MWh value diminishes with duration, exactly as physics predicts. (Resolves the old open item "revisit if backtest targets a 2-hour asset.")
+- **Gates:** 121 passed (non-integration; 119 prior + 2 new); ruff / format / lint-imports (4 KEPT) / docs-lint all clean.
+
+---
+
 ## R1.2 degradation regrounded to linear (implemented 2026-07-13)
 
 Completes the migration the 2026-07-11 regrounding began (formulation §R1.2 went linear then; code/tests/docs lagged on the convex-PWL model). No phase advance; R2.3 stays the current phase, R2.4 next.
@@ -29,7 +43,7 @@ Completes the migration the 2026-07-11 regrounding began (formulation §R1.2 wen
 - **Tests (test-first):** `test_golden_degradation.py` rewritten to 4 **bang-bang** oracles (cheap→full-cycle 30, expensive→idle 0, storage-side lossy 20 vs grid-side 22, `None`→R1.1 40); `test_degradation.py` rewritten (invariants, **Δt-invariance**, objective-consistency, never-pays, reduces-to-R1.1, **scale-invariance**). Retired the PWL convexity test and the old presolve-clamp oracle 5. `test_backtest.py` degradation strategy → random linear `c_deg`.
 - **Docs / example / figure:** README prose (4 spots) and code docstrings PWL→linear; `worked_example.py` uses `DegradationSpec(cost_per_mwh=15.0)`; `backtest_plots.py` dispatch-day caption rewritten (the old "spread to lower per-period wear" is convex behavior the linear model does not have). Worked example re-run on **real 2024-Q2 NL**: greedy €4,441 (55%) ≤ rolling €8,056 (**99.0%**) ≤ ceiling €8,139; wear €3,504 (gross €11,643); annualized net ceiling ≈ €32.6k/MWh-yr. `example-dispatch-day.svg` regenerated. Test badge 125 → **126** (119 CI + 7 live).
 - **Gates:** full suite **126 passed** (119 non-integration + 7 token-gated live, run against ENTSO-E); ruff / format / lint-imports (4 KEPT) / docs-lint all clean. `architecture.md` and `glossary.md` already carried the linear framing from the 07-11 pass.
-- **Loose end (flagged, not actioned):** [`docs/figures/pwl-epigraph.svg`](figures/pwl-epigraph.svg) illustrated the retired convex-PWL upper-envelope and is now unreferenced. Delete, or repurpose as a future-work (nonlinear-convex) illustration; the human's call.
+- **Loose end (resolved 2026-07-14):** the retired convex-PWL `pwl-epigraph.svg` figure is gone (not on disk, not tracked); confirmed unreferenced across the repo.
 - **Also this session (governance):** the CLAUDE.md §1 "one governing reference per part" mandate was relaxed to the human's discretion; the R1.1 (Williams) reference was removed; formulation §R1.2 narrative now leads with the linear form (complex model moved to future work) and the Shi 2017 paper title was completed.
 
 ---
@@ -165,7 +179,7 @@ R1.4 was **split**: R1.4a (done) = engine + baselines + metrics + leakage + band
 
 ## Next (in order)
 
-1. **Release 1 is complete (R1.5 implemented, gate green).** Next is **Release 2** (forecasting → scenarios → stochastic/recourse → explainability). Start with **R2.1** (probabilistic price forecaster); draft `docs/specs/R2.1-*.md` from the master plan, human review before implementation. New theory gets a `formulation.md` delta; sourcing it to a reference (`references.md`) is the human's call, not a required step (CLAUDE.md §1, relaxed 2026-07-13).
+1. **Releases 1 and 2 are complete through R2.3 (gates green).** The one remaining phase is **R2.4, shadow-price / dual explainability** (the `explain/` module already reserved in the layering contract): surface the SoC-balance dual, the marginal *water value* of stored energy, so a trader sees *why* the battery charged, discharged, or sat idle. Draft `docs/specs/R2.4-*.md` spec-first, human review before implementation. **Design nuance to resolve in the spec:** the dispatch is a MILP (`u_t` binary), which has no clean duals, so meaningful shadow prices need the integers fixed at the optimum and the LP re-solved. Optional / deferred *within* R2.4 (master plan): a Julia/JuMP Benders-or-scale comparison, and slippage / transaction costs in the objective. New theory gets a `formulation.md` delta; sourcing it to a reference (`references.md`) is the human's call, not a required step (CLAUDE.md §1, relaxed 2026-07-13).
 
 ### R1.5: implemented (this session)
 - `bess.api`: `models` (Pydantic request/response, reuses `BatterySpec`), `service.dispatch` (the breaker, pure + injectable `solve_fn`/`greedy_fn`), `app` (FastAPI, `POST /dispatch` + `GET /health`, `PreflightError` → 422 handler). Operational settings (`BESS_LATENCY_BUDGET_S` default 2.0, greedy pcts) env-overridable; model params stay in the request body (conventions §5).
@@ -222,7 +236,7 @@ R1.4 was **split**: R1.4a (done) = engine + baselines + metrics + leakage + band
 - No blockers. R1.4b gate open/green; full suite 47 passed + 1 skipped (integration) with nothing deselected.
 - ~~Solver entry point~~; resolved: `appsi_highs`.
 - Confirm `dt` (Δt) stays a per-solve argument (hourly for R1.1 oracles; 15-min native deferred to R1.4 data layer).; spec says yes; carry forward.
-- Default battery: 1 MW / 1 MWh (1-hour) to match the §5 sanity band; revisit if backtest targets a 2-hour asset.
+- Default battery: 1 MW / 1 MWh (1-hour) to match the §5 sanity band. **Resolved (2026-07-14):** duration is now a reported axis ([ADR-0022]); `run_duration_sweep` reports {1h, 2h, 4h}. Gate D stays on the 1h reference (its `mean_daily_spread` is a 1h notion; see the R1.4a duration caveat).
 - Minor: uv's managed interpreter is 3.12 locally; CI pins 3.13. Both satisfy `requires-python >=3.11`. Add a `.python-version` if exact-match reproducibility is wanted.
 
 ## Notes

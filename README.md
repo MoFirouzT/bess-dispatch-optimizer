@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-126_(119_CI_%2B_7_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-128_(121_CI_%2B_7_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -58,7 +58,7 @@ The complete model, every constraint, and the governing references are in [docs/
 
 ## Example results
 
-**On real Dutch day-ahead prices, a rolling, no-look-ahead policy captures 99.4% of the perfect-foresight revenue ceiling.**
+**On real Dutch day-ahead prices, a rolling, no-look-ahead policy captures 99.0% of the perfect-foresight revenue ceiling.**
 Once the price curve is known, a myopic per-day policy is already near-optimal, so the deterministic problem is essentially solved. The value left on the table is not overnight foresight but *not knowing prices in advance*, which is what Release 2 addresses (and where a measured VSS shows up; see [Value under uncertainty](#value-under-uncertainty-release-2)).
 
 The numbers below are from a worked example over a 91-day 2024-Q2 ENTSO-E NL day-ahead window (1 MWh / 1 MW asset, η = 0.95), **net of a priced linear degradation cost** (R1.2, €15/MWh of throughput). No price data is committed; set an ENTSO-E token and run [`examples/worked_example.py`](examples/worked_example.py) to reproduce (without a token it falls back to a synthetic series):
@@ -70,6 +70,8 @@ The numbers below are from a worked example over a 91-day 2024-Q2 ENTSO-E NL day
 | Perfect-foresight ceiling | €8,139 | 100% |
 
 Rolling is each day's independent optimum (every day solved empty-to-empty with full knowledge of *that* day), so the whole €84 gap to the ceiling (1.0%) is pure cross-day carry: the overnight SoC a per-day agent cannot justify without tomorrow's prices, which is exactly what Release 2 targets. Wear is priced, not ignored: it removes nearly a third of gross ceiling revenue (€11,643 gross → €8,139 net) and cuts the naive greedy floor more, since greedy cycles without regard to degradation. Annualizing this volatile quarter (~9% negative-price hours) puts the net ceiling near €33k per MWh-installed per year; a calmer year sits lower. Because gate D derives its band from each window's own price spread, a volatile quarter legitimately lands high without tripping it.
+
+These figures are for a **1-hour** asset (1 MWh / 1 MW). Storage duration (energy-to-power ratio) is a reported axis, not a fixed choice: both the capture ratio and the per-MWh value fall as duration grows, because a longer asset arbitrages a flatter slice of the daily spread and leaves more cross-day carry on the table. On the same real quarter, the annualized ceiling drops from ~€33k/MWh·yr at 1h to ~€24k at 4h. Run [`examples/duration_sweep.py`](examples/duration_sweep.py) for the {1h, 2h, 4h} sweep ([ADR-0022](docs/decisions/0022-storage-duration-reported-axis.md)).
 
 ![Optimal dispatch on the widest-spread real day (2024-05-01): the battery charges through the cheap overnight hours and a deeply negative-priced midday, then discharges into the morning and evening price peaks, returning to empty by end of day.](docs/figures/example-dispatch-day.svg)
 
@@ -109,7 +111,7 @@ Start with [docs/architecture.md](docs/architecture.md) for the map, then dive i
 | [docs/conventions.md](docs/conventions.md) | Locked conventions: units, sign/metering, time, naming |
 | [docs/glossary.md](docs/glossary.md) | Domain + optimization terms, each with a common-error note |
 | [docs/market_reference.md](docs/market_reference.md) | How the BE/NL day-ahead market actually works |
-| [docs/references.md](docs/references.md) | The governing textbook reference for each phase |
+| [docs/references.md](docs/references.md) | Source references, for the phases that use one |
 | [docs/specs/](docs/specs/) | Per-phase work orders |
 
 Assumes some familiarity with linear/integer programming; battery and power-market terms are defined in the [glossary](docs/glossary.md).

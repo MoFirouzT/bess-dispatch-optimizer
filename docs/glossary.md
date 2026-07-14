@@ -64,6 +64,11 @@ max charge or discharge power (MW).
 charge/discharge power relative to capacity (1C = full energy in 1 h).
 *Why here:* a 1 MWh/1 MW battery is 1C; duration = 1/C-rate.
 
+**Storage duration**:
+usable energy divided by rated power, in hours (a 1 MWh / 1 MW asset is 1-hour; 4 MWh / 1 MW is 4-hour).
+*Why here:* the optimizer math is scale-invariant in duration, but the *economics* are not: per-MWh revenue and the rolling/ceiling capture ratio fall as duration rises, while the value of the R2 stochastic layer grows with it.
+*Gotcha:* a single-duration headline can misstate the general result, so duration is a reported axis ([ADR-0022](decisions/0022-storage-duration-reported-axis.md)), not a fixed asset.
+
 **Depth of discharge (DoD) / cycle**:
 how deep a discharge goes / one full charge-discharge.
 *Why here:* drives degradation.

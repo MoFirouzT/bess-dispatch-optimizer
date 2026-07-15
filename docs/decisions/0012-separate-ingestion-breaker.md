@@ -55,10 +55,16 @@ battery window), or fail R1.4c (stuck feed) while being structurally solvable.
 - `bess.data` stays a **leaf** (import-linter): the guard imports nothing else in
   `bess`; consumers read its result, the guard never reaches upward. Enforced by the
   existing "data is a leaf" forbidden-imports contract.
-- Enforced mechanically by R1.4c's golden oracles (a hand-built feed with a known
-  stuck-zero block and a known gap must be caught and correctly labeled) and a
+- Enforced mechanically by R1.4c's golden oracles (a hand-built feed frozen at an
+  arbitrary price, and a known gap, must be caught and correctly labeled) and a
   property test (no corrupted series ever classifies `healthy`; no false positive on
-  legitimate varying negatives/zeros).
+  legitimate negatives/zeros, whether they vary or sit bit-identical at €0.00).
+
+  Note the stuck-feed check keys on the *price*, not the run length: a bit-identical
+  run at a structural focal point (€0.00, the band edges) is market behaviour, not a
+  freeze, so a **stuck-zero block must classify `healthy`**. Real NL and BE both
+  cleared at €0.00 for 8 consecutive hours on 2024-03-24. See the R1.4c spec,
+  "Why the stuck-feed check keys on the price, not the run length".
 
 ## Failure mode
 

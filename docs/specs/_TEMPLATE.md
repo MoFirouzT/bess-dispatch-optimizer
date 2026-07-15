@@ -18,18 +18,21 @@
 ## Build tasks
 - [ ] &lt;task&gt;
 
-## Golden oracles (exact expected values)
+## Golden oracles
 | # | inputs | expected objective | expected schedule | why this case |
 |---|--------|--------------------|-------------------|---------------|
 | 1 | &lt;…&gt; | &lt;…&gt; | &lt;…&gt; | &lt;what it pins down&gt; |
 
-## Property tests (invariants that hold for any valid input)
+## Property tests
 - &lt;invariant&gt;
 
-## Acceptance gate (all must pass before the next phase)
+## Acceptance gate
+
+*Blocks:* &lt;the phase this gate blocks&gt;. Every box must pass.
+
 - [ ] &lt;condition&gt;
 
-## Out of scope (explicit; do not build here)
+## Out of scope
 - &lt;item&gt;
 
 ## Open questions

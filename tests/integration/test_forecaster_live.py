@@ -27,6 +27,7 @@ pytest.importorskip("mapie")
 import pandas as pd  # noqa: E402
 
 from bess.data.entsoe import fetch_day_ahead  # noqa: E402
+from bess.data.ingestion_guard import FeedStatus, guarded_fetch  # noqa: E402
 from bess.forecaster import walk_forward_coverage  # noqa: E402
 
 pytestmark = pytest.mark.integration
@@ -44,12 +45,24 @@ _FAST = dict(n_estimators=60, random_state=0)
 def test_coverage_gate_on_real_prices(method):
     # ~4 months of real NL hourly day-ahead prices — enough history for the CQR
     # calibration split plus a 3-fold walk-forward. Fetched live, never committed.
-    prices = fetch_day_ahead(
-        "NL", pd.Timestamp("2024-02-01", tz="UTC"), pd.Timestamp("2024-06-01", tz="UTC")
+    #
+    # The fetch goes through the R1.4c guard (ADR-0013: the consumer wires the guard,
+    # the guard never reaches up), so the forecaster cannot be calibrated on a feed
+    # that silently lied. `last_known_good=None` is deliberate: this test asserts
+    # coverage *on real prices*, so a degraded feed must hard-stop with
+    # `IngestionGuardError` rather than quietly substitute a fallback series and let
+    # the gate report real-data coverage it never measured.
+    result = guarded_fetch(
+        lambda: fetch_day_ahead(
+            "NL", pd.Timestamp("2024-02-01", tz="UTC"), pd.Timestamp("2024-06-01", tz="UTC")
+        ),
+        last_known_good=None,
     )
+    assert result.status is FeedStatus.HEALTHY, f"real NL feed classified {result.status.value}"
+    assert result.degraded is False
 
     coverage, width = walk_forward_coverage(
-        prices, confidence_level=0.9, method=method, n_folds=3, test_days=5, **_FAST
+        result.prices, confidence_level=0.9, method=method, n_folds=3, test_days=5, **_FAST
     )
 
     # The conformal marginal-coverage guarantee holds on real prices too: empirical

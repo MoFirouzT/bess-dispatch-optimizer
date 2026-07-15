@@ -1,8 +1,10 @@
-"""Smoke test for the worked-example figures (bess.viz).
+"""Smoke test for the plotting functions (bess.viz).
 
 matplotlib is an optional dependency (the ``examples`` group), so this skips when
-it is absent — which is the case in CI. When present it checks both figures build
+it is absent — which is the case in CI. When present it checks the figures build
 on a tiny synthetic series without error; it does not assert pixels.
+
+The `examples/` scripts that *call* these live in ``test_examples_smoke.py``.
 """
 
 import pytest

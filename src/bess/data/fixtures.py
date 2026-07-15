@@ -19,7 +19,7 @@ import pandas as pd
 PRICE_COL = "price_eur_mwh"
 
 
-def synthetic_day_ahead(days: int = 90, seed: int = 42) -> pd.Series:
+def synthetic_day_ahead(days: int = 90, seed: int = 42, spread_scale: float = 1.0) -> pd.Series:
     """Deterministic, copyright-clean NL-like hourly day-ahead series.
 
     A single dominant daily cycle (cheap nights, morning ramp, evening peak) with
@@ -28,6 +28,13 @@ def synthetic_day_ahead(days: int = 90, seed: int = 42) -> pd.Series:
     market data is committed (conventions / the no-committed-data rule). Used by the
     structural sanity gate (``tests/golden/test_sanity_band.py``) and the worked
     example (``examples/worked_example.py``) so both share one source.
+
+    ``spread_scale`` stretches the daily cycle about its own mean, widening the
+    peak-to-trough spread without shifting the price level: ``2.0`` is a volatile
+    month, the default ``1.0`` the calm one. It lets the band gate run across
+    volatility regimes token-free (a *real* volatile slice cannot be committed;
+    see ADR-0005). At the default the arithmetic is untouched, so the series is
+    bit-identical to before the parameter existed.
     """
     rng = np.random.default_rng(seed)
     shape = np.array(
@@ -35,6 +42,8 @@ def synthetic_day_ahead(days: int = 90, seed: int = 42) -> pd.Series:
          47, 45, 46, 50, 57, 66, 78, 90, 94, 84, 64, 44],
         dtype=float,
     )  # fmt: skip
+    if spread_scale != 1.0:
+        shape = shape.mean() + (shape - shape.mean()) * spread_scale
     idx = pd.date_range("2024-01-01", periods=days * 24, freq="1h", tz="UTC")
     out = []
     for _ in range(days):

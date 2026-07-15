@@ -144,14 +144,22 @@ def main() -> None:
 
     from bess.viz.stochastic_plots import plot_risk_return_frontier, plot_vss_curve
 
+    # The `tag` goes into the titles so each committed figure states its own
+    # provenance. Without it a real-data figure and its synthetic fallback are
+    # visually indistinguishable, and a README claiming "real" can go stale
+    # invisibly — which is exactly what happened to these two.
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    f1 = plot_risk_return_frontier(exp_profit, cvar_loss, lambdas)
+    f1 = plot_risk_return_frontier(
+        exp_profit, cvar_loss, lambdas, title=f"Risk-return frontier (mean-CVaR) — {tag}"
+    )
     p1 = FIG_DIR / "example-risk-return-frontier.svg"
     f1.savefig(p1, format="svg", bbox_inches="tight")
-    f2 = plot_vss_curve(rhos, vss)
+    f2 = plot_vss_curve(
+        rhos, vss, title=f"Value of the stochastic solution vs recourse budget — {tag}"
+    )
     p2 = FIG_DIR / "example-vss-curve.svg"
     f2.savefig(p2, format="svg", bbox_inches="tight")
-    print(f"\nwrote {p1.name} and {p2.name} to docs/figures/")
+    print(f"\nwrote {p1.name} and {p2.name} to docs/figures/ ({tag})")
 
 
 if __name__ == "__main__":

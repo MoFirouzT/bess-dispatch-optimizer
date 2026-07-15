@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-128_(121_CI_%2B_7_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-154_(143_CI_%2B_11_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -146,9 +146,9 @@ To run the live loader (and its token-gated integration test, skipped without a 
 
 A dispatch is only as trustworthy as the price it was computed from, so the data feed gets its own circuit breaker, distinct from the solver breaker above. `bess.data.ingestion_guard` classifies every fetch as **healthy**, **outage** (timeout / 5xx, i.e. no data), or **anomalous-but-present** (a frozen/stuck feed, a grid gap, a duplicate timestamp, or a value outside the EPEX SDAC clearing-price limits), and on either failure falls back to the last-known-good series rather than letting corrupt data reach the optimizer. A stale-but-present price is treated as *more* dangerous than an obvious outage because it fails silently, so a schedule solved on fallback data is reported as degraded, not healthy.
 
-The checks key on feed *pathology*, not price *level*: zero and negative day-ahead prices are legitimate in BE/NL (high-renewable windows), so a real solar-glut day is never mistaken for corruption. The anomaly signal is the *repetition* of a bit-identical value, not the value itself.
+The checks key on feed *pathology*, not price *level*: zero and negative day-ahead prices are legitimate in BE/NL (high-renewable windows), so a real solar-glut day is never mistaken for corruption. The discriminator is the **value** a bit-identical run repeats, not the run's length. Excess supply collapses the clearing price onto the natural zero bid, so the market really does clear at exactly €0.00 for hours on end (NL and BE both did for 8 straight hours on 2024-03-24); it does not clear at an arbitrary cent repeatedly, and that is a frozen feed. Keying on the value rather than the length is what lets the guard both leave a genuine zero-price day alone and catch a freeze three times faster.
 
-![Ingestion guard: a frozen feed carrying a stuck €0.00 block is rejected, and the dispatch runs on the trustworthy last-known-good series instead, so the overall provenance is reported as degraded rather than a silent optimal.](docs/figures/example-ingestion-guard.svg)
+![Ingestion guard: a feed frozen at an arbitrary price is rejected, and the dispatch runs on the trustworthy last-known-good series instead, so the overall provenance is reported as degraded rather than a silent optimal.](docs/figures/example-ingestion-guard.svg)
 
 Reproduce with `uv run --group examples python examples/ingestion_guard_demo.py`.
 

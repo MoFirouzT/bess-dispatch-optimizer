@@ -17,8 +17,26 @@ from bess.backtest.engine import run_backtest
 from bess.data.fixtures import synthetic_day_ahead
 
 # §5 leakage red flag: a 1-hour asset cannot exceed the perfect-foresight ceiling
-# band; > ~€50k/MWh-yr means look-ahead leakage, not alpha.
+# band; > ~€50k/MWh-yr means look-ahead leakage, not alpha. Calibrated on the *calm*
+# series: a genuinely volatile month legitimately annualizes above it (see the
+# volatility test below), so it is an absolute bound only where volatility is calm.
 RED_FLAG_EUR_PER_MWH_YR = 50_000.0
+
+
+def _report(prices, spec):
+    """Backtest + the ordering assertions every band check rides on."""
+    rep = run_backtest(prices, spec, dt=1.0, window="1D")
+    assert rep.greedy.revenue_eur <= rep.rolling.revenue_eur + 1e-6
+    assert rep.rolling.revenue_eur <= rep.perfect_foresight.revenue_eur + 1e-6
+    assert rep.constraint_satisfaction
+    return rep
+
+
+def _heuristic(rep, spec):
+    """The 1-cycle/day mean-spread anchor: c = η_rt · cycles/day · 365, recomputed
+    from the spec, never hard-coded. `annualized` is already per MWh usable, so
+    E_usable must NOT reappear here (formulation §R1.4 sanity band)."""
+    return spec.eta_charge * spec.eta_discharge * 365.0 * rep.mean_daily_spread_eur
 
 
 def test_structural_sanity_band_on_synthetic_series():
@@ -45,3 +63,47 @@ def test_structural_sanity_band_on_synthetic_series():
     assert annualized < RED_FLAG_EUR_PER_MWH_YR
     # Spread is in a plausible day-ahead range.
     assert 30.0 < rep.mean_daily_spread_eur < 200.0
+
+
+def test_band_shifts_up_with_volatility():
+    """The band tracks the series' own volatility: a wider daily spread lifts the
+    ceiling, and each slice sits in the band derived from its *own* statistics.
+
+    This is the token-free half of the seasonal-shift check. It gates the **engine's
+    mechanism** (wider spread ⇒ proportionally higher ceiling, each inside its own
+    band) across volatility regimes in CI, where no real volatile slice can be
+    committed (ADR-0005). It does **not** prove the real-world claim that NL summer
+    is more volatile than NL Q1 — that is a fact about the market, not the code, and
+    stays in the token-gated `tests/integration/test_entsoe_live.py`.
+    """
+    spec = BatterySpec()  # 1 MWh / 1 MW, η=0.95
+    calm_prices = synthetic_day_ahead()
+    volatile_prices = synthetic_day_ahead(spread_scale=2.0)
+    calm = _report(calm_prices, spec)
+    volatile = _report(volatile_prices, spec)
+
+    # Each ceiling sits in the band derived from its own spread. The 1-cycle/day
+    # heuristic is a *lower* anchor; perfect foresight exceeds it by exploiting the
+    # best hours rather than the mean, by ~1.2x in both regimes.
+    for rep in (calm, volatile):
+        heuristic = _heuristic(rep, spec)
+        assert 0.8 * heuristic < rep.annualized_ceiling_per_mwh < 1.6 * heuristic
+
+    # The shift itself: more volatility ⇒ wider spread ⇒ higher ceiling.
+    assert volatile.mean_daily_spread_eur > calm.mean_daily_spread_eur
+    assert volatile.annualized_ceiling_per_mwh > calm.annualized_ceiling_per_mwh
+
+    # Stretching about the cycle's own mean changes amplitude, not level: the two
+    # series share a mean *exactly* (identical noise draws, and the scaled deviation
+    # sums to zero). Without this, the higher ceiling could be a price-level shift
+    # rather than the volatility the test claims to vary. The daily spread itself is
+    # deliberately not asserted to double: the per-hour noise and the solar dip are
+    # not scaled, so it grows sub-linearly (71 → 135, not 142).
+    assert volatile_prices.mean() == calm_prices.mean()
+    assert volatile_prices.std() > 1.7 * calm_prices.std()
+
+    # The calm-calibrated red flag does not apply here: the volatile ceiling
+    # legitimately clears €50k/MWh-yr while staying inside its own band. Only gross
+    # leakage (an order of magnitude) is caught absolutely.
+    assert volatile.annualized_ceiling_per_mwh > RED_FLAG_EUR_PER_MWH_YR
+    assert volatile.annualized_ceiling_per_mwh < 2.0 * RED_FLAG_EUR_PER_MWH_YR

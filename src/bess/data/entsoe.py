@@ -42,6 +42,29 @@ def _normalize(raw: pd.Series) -> pd.Series:
     return s
 
 
+def _assert_spans_window(
+    s: pd.Series, start: pd.Timestamp, end: pd.Timestamp, *, source: str
+) -> pd.Series:
+    """Reject a series that does not cover the whole requested window.
+
+    ``validate_price_series`` only sees the series, so it catches an *interior* hole
+    (a day ENTSO-E never published shows up as an irregular step) but not a series
+    truncated at either end: that stays perfectly regular and validates clean. The
+    requested window is the only reference that reveals it, so it is checked here.
+    ENTSO-E treats ``end`` as inclusive, so a full fetch spans exactly ``[start, end]``.
+    """
+    if len(s) == 0:
+        raise ValueError(f"{source}: no price points returned for the requested window")
+    first, last = s.index[0], s.index[-1]
+    if first > start or last < end:
+        raise ValueError(
+            f"{source}: returned {first}..{last}, which does not cover the requested "
+            f"{start.tz_convert('UTC')}..{end.tz_convert('UTC')} — ENTSO-E published no "
+            f"data for part of the window"
+        )
+    return s
+
+
 def _cache_path(cache_dir: Path, zone: str, start: pd.Timestamp, end: pd.Timestamp) -> Path:
     """Deterministic parquet cache filename for one (zone, window) fetch."""
     fmt = "%Y%m%dT%H%MZ"
@@ -82,7 +105,8 @@ def fetch_day_ahead(
     parquet without an API call (and a fresh fetch is written there).
 
     Raises ``ValueError`` for an unsupported zone, ``RuntimeError`` if no token is
-    available, and ``ValueError`` if the fetched series fails the schema check.
+    available, and ``ValueError`` if the fetched series fails the schema check or
+    does not cover the whole requested window.
     """
     zone = zone.upper()
     if zone not in _SUPPORTED_ZONES:
@@ -95,7 +119,8 @@ def fetch_day_ahead(
         if cache_file.exists():
             cached = pd.read_parquet(cache_file)[PRICE_COL].astype(float)
             cached.name = PRICE_COL
-            return validate_price_series(cached, source=f"{source} (cache)")
+            validate_price_series(cached, source=f"{source} (cache)")
+            return _assert_spans_window(cached, start, end, source=f"{source} (cache)")
 
     token = api_token or os.environ.get("ENTSOE_API_TOKEN")
     if not token:
@@ -107,6 +132,7 @@ def fetch_day_ahead(
     client = EntsoePandasClient(api_key=token)
     raw = client.query_day_ahead_prices(zone, start=start, end=end)
     series = validate_price_series(_normalize(raw), source=source)
+    _assert_spans_window(series, start, end, source=source)
 
     if cache_file is not None:
         cache_file.parent.mkdir(parents=True, exist_ok=True)

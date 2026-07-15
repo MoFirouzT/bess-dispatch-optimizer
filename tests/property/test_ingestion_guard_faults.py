@@ -4,10 +4,11 @@ Spec: ``docs/specs/R1.4c-ingestion-guard.md`` § "Property tests". The same
 "inputs the implementation did not choose" discipline the MILP invariants apply
 to constraints, applied to data:
 
-- no corrupted series ever passes as HEALTHY (injected zeros-block, gap,
-  duplicate, out-of-band, NaN);
+- no corrupted series ever passes as HEALTHY (injected freeze at an arbitrary
+  price, over-long freeze at a focal price, gap, duplicate, out-of-band, NaN);
 - no false positive: a schema-valid, fault-free series with arbitrary in-band
-  prices (including legitimate negatives/zeros) is always HEALTHY;
+  prices (including legitimate negatives/zeros) is always HEALTHY, **and** neither
+  is a bit-identical run at the €0.00 focal price of any legitimate length;
 - transport failures classify OUTAGE, content faults classify ANOMALY — the two
   never collide.
 """
@@ -23,11 +24,22 @@ from bess.data.fixtures import PRICE_COL
 from bess.data.ingestion_guard import FeedStatus, classify_series, guarded_fetch
 
 BAND = (-600.0, 5000.0)
-MAX_REPEAT = 8
+MAX_REPEAT = 8  # explicit non-focal allowance (independent of the config default)
+MAX_FOCAL_REPEAT = 24  # explicit focal allowance
+
+# An arbitrary cent the market would not clear at repeatedly — a genuine frozen feed.
+# Freezing at €0.00 instead would inject *legitimate market data*, not a fault.
+NONFOCAL_FREEZE = 73.07
 
 
 def _classify(s: pd.Series):
-    return classify_series(s, sanity_band=BAND, max_repeat=MAX_REPEAT, expected_slots_per_day=None)
+    return classify_series(
+        s,
+        sanity_band=BAND,
+        max_repeat=MAX_REPEAT,
+        max_focal_repeat=MAX_FOCAL_REPEAT,
+        expected_slots_per_day=None,
+    )
 
 
 @st.composite
@@ -60,13 +72,23 @@ def test_clean_varying_series_never_flagged(s: pd.Series):
     assert status is FeedStatus.HEALTHY, f"false positive: reason={reason}"
 
 
-@given(clean_series(), st.sampled_from(["stuck", "gap", "dup", "band", "nan"]))
+@given(clean_series(), st.sampled_from(["stuck", "stuck_focal", "gap", "dup", "band", "nan"]))
 @settings(max_examples=120)
 def test_injected_fault_never_passes_as_healthy(s: pd.Series, fault: str):
     mid = len(s) // 2
     if fault == "stuck":
+        # A freeze at an *arbitrary* price. Injecting a zero block here would inject
+        # legitimate market data rather than a fault (real NL and BE both cleared at
+        # €0.00 for 8 h on 2024-03-24), which is the false positive the shape check
+        # exists to remove — see test_zero_run_under_focal_allowance_never_flagged.
         s = s.copy()
-        s.iloc[0:MAX_REPEAT] = 0.0
+        s.iloc[0:MAX_REPEAT] = NONFOCAL_FREEZE
+        expected, prefix = "stuck_feed", False
+    elif fault == "stuck_focal":
+        # Focal is not a licence to freeze forever: a run at €0.00 past the focal
+        # allowance is an all-zeros feed, not a market.
+        s = s.copy()
+        s.iloc[0:MAX_FOCAL_REPEAT] = 0.0
         expected, prefix = "stuck_feed", False
     elif fault == "gap":
         s = s.drop(s.index[mid])
@@ -89,6 +111,26 @@ def test_injected_fault_never_passes_as_healthy(s: pd.Series, fault: str):
         assert reason.startswith(expected)
     else:
         assert reason == expected
+
+
+@given(clean_series(), st.integers(min_value=2, max_value=MAX_FOCAL_REPEAT - 1))
+@settings(max_examples=75)
+def test_zero_run_under_focal_allowance_never_flagged(s: pd.Series, run_len: int):
+    """The R1.4c domain trap as a property: a bit-identical run at the €0.00 focal
+    price, of *any* length inside the focal allowance, is legitimate market clearing
+    and must never be flagged.
+
+    This is the exact case the retired length-only rule got wrong: real NL and BE both
+    cleared at €0.00 for 8 consecutive hours on 2024-03-24, and an 8 h threshold called
+    it `stuck_feed`. The counterpart to the `stuck` fault above, which freezes at an
+    arbitrary price and *must* fire at the same lengths.
+    """
+    s = s.copy()
+    s.iloc[0:run_len] = 0.0
+    status, reason = _classify(s)
+    assert status is FeedStatus.HEALTHY, (
+        f"false positive on a legitimate {run_len}-slot run at €0.00: reason={reason}"
+    )
 
 
 @given(st.sampled_from(["timeout", "conn", "other"]))

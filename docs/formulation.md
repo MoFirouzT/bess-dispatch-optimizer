@@ -31,7 +31,7 @@ Efficiency therefore appears in the state-of-charge balance, and **never in the 
 
 This is exactly the property-test invariant:
 
-$$e_t = e_{t-1} + \eta^{ch}\, p^{ch}_t\, \Delta t \;-\; \frac{p^{dis}_t}{\eta^{dis}}\, \Delta t$$
+$$e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \frac{p^{dis}_t}{\eta^{dis}} \Delta t$$
 
 The round-trip efficiency $\eta^{rt}=\eta^{ch}\eta^{dis}$ is **emergent**, not a separate term:
 delivering 1 MWh to the grid ultimately costs $1/\eta^{rt}$ MWh drawn from the grid, enforced entirely by the balance above.
@@ -55,7 +55,7 @@ Grid-side power $p^{ch}_t,p^{dis}_t\ge 0$; SoC $e_t\in[e_{\min},e_{\max}]$; char
 
 **Objective** (R1.1 revenue minus R1.2 degradation):
 
-$$\max\ \sum_{t}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]$$
+$$\max\ \sum_{t}\Bigl[\pi_t \Delta t (p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]$$
 
 **Constraints** ($\forall t\in\mathcal T$):
 
@@ -63,21 +63,21 @@ $$\max\ \sum_{t}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ D_t\Bigr]$$
 | --- | --- | --- |
 | (1) | $e_t = e_{t-1} + \eta^{ch}p^{ch}_t\Delta t - \tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$ | SoC balance (efficiency lives here) |
 | (2) | $e_{\min}\le e_t\le e_{\max}$ | SoC bounds |
-| (3) | $0\le p^{ch}_t\le \bar P^{ch}u_t$, $\;0\le p^{dis}_t\le \bar P^{dis}(1-u_t)$ | power caps + no simultaneous charge/discharge |
+| (3) | $0\le p^{ch}_t\le \bar P^{ch}u_t$, $0\le p^{dis}_t\le \bar P^{dis}(1-u_t)$ | power caps + no simultaneous charge/discharge |
 | (4) | $-R\le g_t-g_{t-1}\le R$ ($t\ge 2$) | ramp on net power |
 | (5) | $e_T=e^{\mathrm{tgt}}$ | terminal SoC |
-| (6) | $D_t = c^{\text{deg}}\,\tau_t$ | linear wear cost on throughput (R1.2) |
+| (6) | $D_t = c^{\text{deg}} \tau_t$ | linear wear cost on throughput (R1.2) |
 
 with storage-side throughput $\tau_t=\eta^{ch}p^{ch}_t\Delta t+\tfrac{p^{dis}_t}{\eta^{dis}}\Delta t$ and marginal wear cost $c^{\text{deg}}$ (€/MWh; the linear DoD-stress case).
 At $c^{\text{deg}}=0$ the term vanishes and the model is exactly R1.1.
 
 **Stochastic layer (R2.3).** Optimize over a scenario set $\{(\pi^{(s)},p_s)\}_{s=1}^S$ instead of one price path. A non-anticipative day-ahead commitment $g^{DA}$ (R1.1-feasible) and a per-scenario recourse dispatch $g^{(s)}$ (R1.1-feasible) are tied by a recourse budget
 
-$$\lvert g^{(s)}_t-g^{DA}_t\rvert\ \le\ \rho\,\bar P\qquad \rho\in[0,1],$$
+$$\lvert g^{(s)}_t-g^{DA}_t\rvert\ \le\ \rho \bar P\qquad \rho\in[0,1],$$
 
-under a CVaR mean-risk objective (risk weight $\lambda\in[0,1]$, tail level $\alpha$; loss $L_s=-\,\text{profit}_s$):
+under a CVaR mean-risk objective (risk weight $\lambda\in[0,1]$, tail level $\alpha$; loss $L_s=- \text{profit}_s$):
 
-$$\max\ (1-\lambda)\sum_s p_s\,\text{profit}_s\ -\ \lambda\,\mathrm{CVaR}_\alpha(L).$$
+$$\max\ (1-\lambda)\sum_s p_s \text{profit}_s\ -\ \lambda \mathrm{CVaR}_\alpha(L).$$
 
 $\lambda=0$ is the risk-neutral recourse problem; sweeping $\lambda$ traces the mean-CVaR frontier. The program reduces to the deterministic MILP at $S=1$, and reports VSS $=\mathrm{RP}-\mathrm{EEV}$ and EVPI $=\mathrm{WS}-\mathrm{RP}$ with the ordering $\mathrm{EEV}\le\mathrm{RP}\le\mathrm{WS}$.
 
@@ -123,53 +123,53 @@ Both endpoint parameters must lie inside the SoC bounds (config validation enfor
 
 Maximize day-ahead arbitrage revenue (grid-side cash flow, no efficiency term):
 
-$$\boxed{\;\max \;\; \sum_{t \in \mathcal{T}} \pi_t\, \Delta t \,\bigl(p^{dis}_t - p^{ch}_t\bigr)\;}$$
+$$\boxed{ \max \sum_{t \in \mathcal{T}} \pi_t \Delta t \bigl(p^{dis}_t - p^{ch}_t\bigr) }$$
 
 ### Constraints
 
 **(1) State-of-charge balance** (with $e_0$ given as initial condition):
 
-$$\boxed{\;e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \frac{p^{dis}_t}{\eta^{dis}} \Delta t \qquad \forall t \in \mathcal{T}\;}$$
+$$\boxed{ e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \frac{p^{dis}_t}{\eta^{dis}} \Delta t \qquad \forall t \in \mathcal{T} }$$
 
 **(2) SoC bounds:**
 
-$$\boxed{\;e_{\min} \le e_t \le e_{\max} \qquad \forall t \in \mathcal{T}\;}$$
+$$\boxed{ e_{\min} \le e_t \le e_{\max} \qquad \forall t \in \mathcal{T} }$$
 
 **(3) Power limits with mutual exclusion** (no simultaneous charge and discharge):
 
-$$\boxed{\;0 \le p^{ch}_t \le \bar P^{ch} u_t, \qquad 0 \le p^{dis}_t \le \bar P^{dis} (1 - u_t) \qquad \forall t \in \mathcal{T}\;}$$
+$$\boxed{ 0 \le p^{ch}_t \le \bar P^{ch} u_t, \qquad 0 \le p^{dis}_t \le \bar P^{dis} (1 - u_t) \qquad \forall t \in \mathcal{T} }$$
 
 **(4) Ramp on net power** (for $t \ge 2$; $p^{net}_t \equiv p^{dis}_t - p^{ch}_t$):
 
-$$\boxed{\;-R \le p^{net}_t - p^{net}_{t-1} \le R \qquad \forall t \in \mathcal{T},\, t \ge 2\;}$$
+$$\boxed{ -R \le p^{net}_t - p^{net}_{t-1} \le R \qquad \forall t \in \mathcal{T}, t \ge 2 }$$
 
 **(5) Terminal SoC:**
 
-$$\boxed{\;e_{T} = e^{\mathrm{tgt}}\;}$$
+$$\boxed{ e_{T} = e^{\mathrm{tgt}} }$$
 
 ### Modeling notes
 
 - **Mutual-exclusion binary $u_t$.**
 
-    **When prices are non-negative** ($\pi_t \ge 0$):
-    The *LP relaxation* (integrality of $u_t$ dropped) self-enforces mutual exclusion automatically whenever $\eta^{rt}<1$.
+ **When prices are non-negative** ($\pi_t \ge 0$):
+ The *LP relaxation* (integrality of $u_t$ dropped) self-enforces mutual exclusion automatically whenever $\eta^{rt}<1$.
     A simultaneous charge–discharge round trip loses energy with no revenue upside, so the relaxed *dispatch* is already exclusion-feasible without branching.
-    ($u_t$ itself may relax to a fractional value; what matters is that the dispatch it gates is integral in its own right.)
+ ($u_t$ itself may relax to a fractional value; what matters is that the dispatch it gates is integral in its own right.)
 
-    **When prices turn negative** ($\pi_t < 0$, a *recurring* BE/NL condition):
+ **When prices turn negative** ($\pi_t < 0$, a *recurring* BE/NL condition):
     The binary becomes a first-class correctness requirement, not a nicety.
     At negative prices, simultaneous charging and discharging looks profitable to the LP: it burns grid energy, and a negative price means the market pays the battery to do so.
     But this round trip holds SoC fixed while drawing energy through the cell, which the balance constraint forbids: it is infeasible, and only the binary rules it out.
-    Most sub-zero hours still relax cleanly, so $u_t$ rarely binds, but enough do not that it is essential, chiefly when a negative price coincides with a saturated SoC (no room left to store the cheap energy).
+ Most sub-zero hours still relax cleanly, so $u_t$ rarely binds, but enough do not that it is essential, chiefly when a negative price coincides with a saturated SoC (no room left to store the cheap energy).
 
     **Big-M structure:**
     Constraint (3) is a big-M switch: its right-hand side relaxes to a large constant when its binary is off.
-    Here the constant is the tightest valid bound: the power cap itself ($\bar P^{ch}, \bar P^{dis}$), so no loose big-M is introduced and the relaxation remains tight.
+ Here the constant is the tightest valid bound: the power cap itself ($\bar P^{ch}, \bar P^{dis}$), so no loose big-M is introduced and the relaxation remains tight.
 
 - **Ramp.**
     Defined on net power for generality / grid-connection.
-    Batteries ramp near-instantly, so $R$ is typically non-binding; disable by setting $R \ge \bar P^{ch} + \bar P^{dis}$.
-    Note that a tight $R$ constrains the charge→discharge *transition* (a flip from $-\bar P^{ch}$ to $+\bar P^{dis}$ is a swing of $\bar P^{ch}+\bar P^{dis}$), so keep $R$ disabled for the R1.1 oracles unless a transition profile is being tested explicitly.
+ Batteries ramp near-instantly, so $R$ is typically non-binding; disable by setting $R \ge \bar P^{ch} + \bar P^{dis}$.
+ Note that a tight $R$ constrains the charge→discharge *transition* (a flip from $-\bar P^{ch}$ to $+\bar P^{dis}$ is a swing of $\bar P^{ch}+\bar P^{dis}$), so keep $R$ disabled for the R1.1 oracles unless a transition profile is being tested explicitly.
 - **Physics fidelity (deliberately shallow).**
     The cell model is kept LP/MILP-friendly on purpose:
     constant charge/discharge efficiency, no self-discharge, no temperature or SoC-dependent effects, and (in R1.2) a throughput *proxy* for wear rather than a fatigue model.
@@ -206,12 +206,12 @@ At zero wear cost the term vanishes and the model reduces to R1.1 exactly.
 The project prices wear as a **linear cost on cell throughput**, the *linear power-based* degradation model (Shi 2017 §II-C-1).
 Define per-period **storage-side throughput**, the cell-side energy moved in both directions:
 
-$$\boxed{\;\tau_t = \eta^{ch} p^{ch}_t\,\Delta t \;+\; \frac{p^{dis}_t}{\eta^{dis}}\,\Delta t\;}$$
+$$\boxed{ \tau_t = \eta^{ch} p^{ch}_t \Delta t + \frac{p^{dis}_t}{\eta^{dis}} \Delta t }$$
 
 Charge and discharge are mutually exclusive in a period (R1.1 binary $u_t$), so at most one term is non-zero.
 The per-period degradation cost is linear in throughput:
 
-$$\boxed{\;D_t = c^{\text{deg}}\,\tau_t \qquad \forall t\in\mathcal T\;}$$
+$$\boxed{ D_t = c^{\text{deg}} \tau_t \qquad \forall t\in\mathcal T }$$
 
 | Symbol | Meaning | Unit |
 | --- | --- | --- |
@@ -230,19 +230,19 @@ The richer nonlinear-$\Phi$ case is more accurate but not LP-native; it is futur
 
 ### Modified objective
 
-$$\boxed{\;\max\ \sum_{t\in\mathcal T}\Bigl[\pi_t\,\Delta t\,(p^{dis}_t-p^{ch}_t)\ -\ c^{\text{deg}}\,\tau_t\Bigr]\;}$$
+$$\boxed{ \max\ \sum_{t\in\mathcal T}\Bigl[\pi_t \Delta t (p^{dis}_t-p^{ch}_t)\ -\ c^{\text{deg}} \tau_t\Bigr] }$$
 
 Revenue is unchanged and still carries **no efficiency term**; the only addition is the subtracted linear wear cost.
 
 ### Properties (gate-relevant)
 
 - **$\Delta t$-invariant.**
-    $\sum_t \tau_t$ is the total energy through the cell over the horizon, unchanged by the time discretization, so a fixed physical dispatch costs the same at hourly or quarter-hourly resolution (gate: equal total degradation at $\Delta t=1$ and $\Delta t=0.25$).
+ $\sum_t \tau_t$ is the total energy through the cell over the horizon, unchanged by the time discretization, so a fixed physical dispatch costs the same at hourly or quarter-hourly resolution (gate: equal total degradation at $\Delta t=1$ and $\Delta t=0.25$).
 - **Spec-invariant.**
-    $c^{\text{deg}}$ (€/MWh) is a chemistry property: replacement cost and lifetime throughput both scale with capacity, so their ratio does not.
+ $c^{\text{deg}}$ (€/MWh) is a chemistry property: replacement cost and lifetime throughput both scale with capacity, so their ratio does not.
     The marginal wear cost is therefore independent of the asset's power and energy ratings.
 - **Monotone.**
-    $c^{\text{deg}}\ge0$, so more throughput never lowers cost.
+ $c^{\text{deg}}\ge0$, so more throughput never lowers cost.
 - **Reduces to R1.1** at $c^{\text{deg}}=0$.
 
 ### Out of scope (referenced future work)
@@ -251,8 +251,8 @@ Revenue is unchanged and still carries **no efficiency term**; the only addition
     Real cells age faster per unit energy the deeper the cycle:
     an NMC cell loses roughly **ten times** more life at 100% depth-of-discharge than at 10% for the same charged energy (Shi 2017 §I; Xu 2017 §II).
     The linear cost above misses this deep-cycle penalty.
-    Capturing it uses a convex nonlinear stress $\Phi(d)=k_2\,d\,e^{k_3 d}$ or $k_4\,d^{k_5}$ (Xu 2018), still convex in the SoC profile (Shi 2017, Thm 1) but requiring rainflow cycle identification, which has no closed form.
-    It is therefore convex yet **not LP-representable**: solvable by Shi's subgradient method, or by a cycle-detection MILP in which a convex-PWL **epigraph** linearization of $\Phi$ (Williams; [references.md: R1.2](references.md#r12-degradation-cost)) embeds the segments.
+ Capturing it uses a convex nonlinear stress $\Phi(d)=k_2 d e^{k_3 d}$ or $k_4 d^{k_5}$ (Xu 2018), still convex in the SoC profile (Shi 2017, Thm 1) but requiring rainflow cycle identification, which has no closed form.
+ It is therefore convex yet **not LP-representable**: solvable by Shi's subgradient method, or by a cycle-detection MILP in which a convex-PWL **epigraph** linearization of $\Phi$ (Williams; [references.md: R1.2](references.md#r12-degradation-cost)) embeds the segments.
     Deferred to keep the LP/MILP core; the linear case is the gate-testable stand-in.
 - **Calendar aging** (time-based capacity fade). Deferred.
 
@@ -280,10 +280,10 @@ If the code and this derivation ever disagree, this governs.
 
 ### Per-period SoC increment bounds
 
-From balance (1), each step changes SoC by $\,\Delta e_t \equiv e_t - e_{t-1} = \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$.
+From balance (1), each step changes SoC by $\Delta e_t \equiv e_t - e_{t-1} = \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \Delta t$.
 Power limits (3) with mutual exclusion (one direction per period) bound it by
 
-$$\boxed{\;-\Delta^- \le \Delta e_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}.\;}$$
+$$\boxed{ -\Delta^- \le \Delta e_t \le \Delta^+, \qquad \Delta^+ \equiv \eta^{ch}\bar P^{ch}\Delta t, \quad \Delta^- \equiv \frac{\bar P^{dis}\Delta t}{\eta^{dis}}. }$$
 
 The efficiency placement mirrors the SoC balance (1);
 $\Delta e_t$ is the *cell-side* increment, so charging multiplies by $\eta^{ch}$ (only part of the grid-side power reaches the cell) while discharging divides by $\eta^{dis}$ (more must leave the cell than reaches the grid).
@@ -295,7 +295,7 @@ With $e_0$ given and the terminal condition (5) $e_T = e^{\mathrm{tgt}}$, write 
 Summing the increment bounds over the $T$ periods, and noting the endpoint box bounds $e_0, e^{\mathrm{tgt}} \in [e_{\min}, e_{\max}]$ hold by construction, a feasible
 trajectory through (1)–(3),(5) exists **iff**
 
-$$\boxed{\;-\,T\,\Delta^- \;\le\; \Delta \;\le\; T\,\Delta^+ \qquad\text{(ramp-free).}\;}$$
+$$\boxed{ - T \Delta^- \le \Delta \le T \Delta^+ \qquad\text{(ramp-free).} }$$
 
 *Sufficiency:*
 charge (or discharge) at the per-period extreme until $e^{\mathrm{tgt}}$ is hit, then idle, a monotone path that never leaves $[e_{\min}, e_{\max}]$ because both endpoints lie inside it.
@@ -314,7 +314,7 @@ Pre-flight therefore tests the ramp-free condition only (a sound fast filter) an
 
 *No governing reference:
 walk-forward evaluation and the decision-time (no-look-ahead) information set are standard time-series backtesting practice, not a technique traceable to a single source.
-See [references.md: R1.4](references.md#r14--backtest-walk-forward-baselines-sanity-band) for domain-context pointers;
+See [references.md: R1.4](references.md#r14-backtest-walk-forward-baselines-sanity-band) for domain-context pointers;
 the leakage-control machinery specific to a fitted model (purged CV, embargo) is deferred to R2.1.*
 
 This section adds **no constraints, variables, or objective terms**.
@@ -331,16 +331,16 @@ The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d
 
 ### Three revenue quantities
 
-Let $V(\boldsymbol\pi;\,e_0,e^{\mathrm{tgt}})$ be the optimal objective of the R1.1/R1.2 MILP on price vector $\boldsymbol\pi$ with the given SoC endpoints, over a horizon that starts and ends empty unless stated.
+Let $V(\boldsymbol\pi; e_0,e^{\mathrm{tgt}})$ be the optimal objective of the R1.1/R1.2 MILP on price vector $\boldsymbol\pi$ with the given SoC endpoints, over a horizon that starts and ends empty unless stated.
 All three quantities are **net of degradation**: each is the R1.2 objective (grid-side cash flow minus $\sum_t D_t$), so when wear is priced the greedy floor is scored net of its own $D_t$ too, on the same $\tau_{\max}$ basis, keeping the ordering below valid (with no degradation, $D_t\equiv 0$ and each reduces to gross arbitrage).
 
 - **Perfect-foresight ceiling** $V^\star$:
-    one **full-horizon** solve over the entire concatenated series with $e_0=e_{\text{end}}=0$ and SoC free to carry **across** day boundaries.
+ one **full-horizon** solve over the entire concatenated series with $e_0=e_{\text{end}}=0$ and SoC free to carry **across** day boundaries.
     This is the theoretical maximum; nothing can exceed it.
 - **Rolling deployable value**
-    $V^{\mathrm{roll}}=\sum_d V(\Pi_d;\,0,0)$: **per-day** solves, each starting and ending empty.
-    In a *deterministic* day-ahead setting the agent has no information about $\Pi_{d+1}$ at the day-$d$ gate, so it has no basis to carry SoC overnight;
-    per-day independence (terminal SoC $=0$) is the honest myopic model.
+ $V^{\mathrm{roll}}=\sum_d V(\Pi_d; 0,0)$: **per-day** solves, each starting and ending empty.
+ In a *deterministic* day-ahead setting the agent has no information about $\Pi_{d+1}$ at the day-$d$ gate, so it has no basis to carry SoC overnight;
+ per-day independence (terminal SoC $=0$) is the honest myopic model.
     Each day's solve is still **intraday-optimal**.
 - **Greedy floor** $V^{\mathrm{greedy}}$:
     a percentile rule (charge below the day's 20th price-percentile, discharge above the 80th), defined fully in the spec.
@@ -355,25 +355,25 @@ the resulting 1-to-2-hour offset from the market day is immaterial to a rolling 
 
 ### Provable ordering (a correctness gate)
 
-$$\boxed{\;V^{\mathrm{greedy}} \;\le\; V^{\mathrm{roll}} \;\le\; V^\star, \qquad 0 \;\le\; V^{\mathrm{roll}}.\;}$$
+$$\boxed{ V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star, \qquad 0 \le V^{\mathrm{roll}}. }$$
 
 ![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The greedy-to-rolling gap is the value of optimization; the rolling-to-ceiling gap is cross-day arbitrage, small for a short-duration asset. The reported headline pairs both levels against the ceiling, since rolling-over-ceiling alone saturates near 1.](figures/backtest-bounds.svg)
 
 - $V^{\mathrm{roll}}\le V^\star$:
-    the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem, the ceiling can only do at least as well.
+ the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem, the ceiling can only do at least as well.
 - $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}$:
     the greedy schedule is feasible for each day's MILP (it too ends the day empty), and the per-day MILP is optimal over all such schedules.
 - $0 \le V^{\mathrm{roll}}$:
-    idle is feasible in every per-day solve, so each *optimal* per-day value is non-negative (likewise $0 \le V^\star$).
-    $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed: greedy can trade at a loss, so the zero floor bounds the optimal quantities only.
+ idle is feasible in every per-day solve, so each *optimal* per-day value is non-negative (likewise $0 \le V^\star$).
+ $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed: greedy can trade at a loss, so the zero floor bounds the optimal quantities only.
 
 The two gaps in the ladder measure different things:
 
 - **$V^{\mathrm{roll}}-V^{\mathrm{greedy}}$** is the value of **optimization** over a naive percentile heuristic.
     Both agents empty each day, so this is a clean same-horizon contrast; it is the informative R1 comparison.
 - **$V^\star-V^{\mathrm{roll}}$** is the value of **cross-day foresight**:
-    overnight-carry revenue a deterministic day-ahead agent cannot reach, having no information about $\Pi_{d+1}$ at the day-$d$ gate.
-    For a short-duration asset this gap is small by physics (a battery that empties nightly has little to carry overnight), so $V^{\mathrm{roll}}$ sits just under $V^\star$.
+ overnight-carry revenue a deterministic day-ahead agent cannot reach, having no information about $\Pi_{d+1}$ at the day-$d$ gate.
+ For a short-duration asset this gap is small by physics (a battery that empties nightly has little to carry overnight), so $V^{\mathrm{roll}}$ sits just under $V^\star$.
     It widens with storage duration (a 1-hour asset shows almost none; a 4-hour asset shows more).
 
 This overnight gap is an upper bound on what any carry strategy could add; it is **not** what R2 targets.
@@ -387,7 +387,7 @@ Because these ratios move with storage duration, they are reported across {1h, 2
 ### Sanity band (gate D)
 
 The annualized ceiling per MWh-installed must sit inside a band **derived from the fixture's own price statistics** (not hard-coded):
-$V^\star_{\text{annual}}/E_{\text{usable}} \approx c\cdot\overline{\text{spread}}_{\text{daily}}$, where $\overline{\text{spread}}_{\text{daily}}$ is the mean over days of that day's max-minus-min price and $c=\eta^{rt}\,(\text{cycles/day})\cdot 365$ is recomputed from the spec.
+$V^\star_{\text{annual}}/E_{\text{usable}} \approx c\cdot\overline{\text{spread}}_{\text{daily}}$, where $\overline{\text{spread}}_{\text{daily}}$ is the mean over days of that day's max-minus-min price and $c=\eta^{rt} (\text{cycles/day})\cdot 365$ is recomputed from the spec.
 ($E_{\text{usable}}$ already divides the left side, so it must not reappear in $c$; both sides are €/MWh-installed per year.)
 A result above the ceiling band is a leakage red flag, not alpha.
 
@@ -403,7 +403,7 @@ R2.1 replaces a point price $\pi_t$ with an **interval** $[\underline{\pi}_t, \o
 
 **Split conformal.** With calibration residuals $R_i = |y_i - \hat\mu(x_i)|$ for $i\in\mathcal C$, let $\hat s$ be the $\lceil(1-\alpha)(n+1)\rceil/n$ empirical quantile of $\{R_i\}$. The interval $\hat\mu(x)\pm\hat s$ then satisfies the **marginal coverage** bound
 
-$$ \boxed{\;\mathbb P\big(y \in [\hat\mu(x)-\hat s,\ \hat\mu(x)+\hat s]\big) \ \ge\ 1-\alpha\;} $$
+$$ \boxed{ \mathbb P\big(y \in [\hat\mu(x)-\hat s,\ \hat\mu(x)+\hat s]\big) \ \ge\ 1-\alpha } $$
 
 for exchangeable data, in finite samples, *independent of the model's accuracy*: the property the coverage gate checks empirically. Width is **constant** in $x$.
 
@@ -425,9 +425,9 @@ R2.2 turns the R2.1 interval forecast into a **discrete probability distribution
 
 **Reduction distance.** For a fine distribution $P$ (support $\{\pi^{(i)}\}$, mass $p_i$) and a coarse one $Q$ supported on a *subset* of $P$'s atoms (the kept scenarios), the Wasserstein-$\ell$ (Kantorovich) distance under optimal redistribution has a closed form: each deleted atom's mass moves to its nearest kept atom, giving
 
-$$ \boxed{\;D_\ell(P, Q) \;=\; \Big(\sum_{i \in J} p_i \,\min_{j \notin J}\, \lVert \pi^{(i)} - \pi^{(j)} \rVert^{\ell}\Big)^{1/\ell}\;}, $$
+$$ \boxed{ D_\ell(P, Q) = \Big(\sum_{i \in J} p_i \min_{j \notin J} \lVert \pi^{(i)} - \pi^{(j)} \rVert^{\ell}\Big)^{1/\ell} }, $$
 
-where $J$ is the deleted index set and $\lVert\cdot\rVert$ is the Euclidean ground metric on paths (default $\ell = 2$). The kept atom $j$ receives $q_j = p_j + \sum_{i \in J:\, j\, =\, \arg\min_{k \notin J}\lVert\pi^{(i)}-\pi^{(k)}\rVert} p_i$, so $Q$ stays a valid probability measure. (The same assignment-cost expression, with representatives that need not be original atoms, scores the k-means baseline whose centroids are not atoms; there it is an upper bound on the true $W_\ell$, used consistently so the two methods compare fairly.)
+where $J$ is the deleted index set and $\lVert\cdot\rVert$ is the Euclidean ground metric on paths (default $\ell = 2$). The kept atom $j$ receives $q_j = p_j + \sum_{i \in J: j = \arg\min_{k \notin J}\lVert\pi^{(i)}-\pi^{(k)}\rVert} p_i$, so $Q$ stays a valid probability measure. (The same assignment-cost expression, with representatives that need not be original atoms, scores the k-means baseline whose centroids are not atoms; there it is an upper bound on the true $W_\ell$, used consistently so the two methods compare fairly.)
 
 **Fast forward selection ([ADR-0018](decisions/0018-forward-selection-over-kmeans.md)).** Choosing the size-$k$ subset that minimizes $D_\ell$ is combinatorial; forward selection is the standard greedy surrogate. Start with all atoms deleted; repeatedly add to the kept set the atom $u$ that most reduces $D_\ell$ (equivalently, minimizes $\sum_i p_i \min_{j \in \text{kept}\cup\{u\}} \lVert\pi^{(i)}-\pi^{(j)}\rVert^{\ell}$), until $|\text{kept}| = k$; then redistribute as above. k-means on the paths (centroids as representatives, cluster mass as probability) is the pragmatic baseline the gate compares against.
 
@@ -443,25 +443,25 @@ where $J$ is the deleted index set and $\lVert\cdot\rVert$ is the Euclidean grou
 
 R2.3 optimizes dispatch over R2.2's scenario set $\{(\pi^{(s)}, p_s)\}_{s=1}^{S}$ instead of a single price path, and reports the **value of the stochastic solution (VSS)** so the layer is measured, not assumed ([ADR-0007](decisions/0007-stochastic-value-requires-risk-or-recourse.md)).
 
-**The VSS-collapse trap (the design driver).** If the whole 24-hour dispatch is one here-and-now decision $x$, the risk-neutral stochastic objective is $\max_x \mathbb E_s[\pi^{(s)}\!\cdot x] = \bar\pi\cdot x$ (with $\bar\pi = \sum_s p_s \pi^{(s)}$), *identical* to the mean-value problem, so VSS $= 0$: linear objective $\times$ price-independent feasible set. R2.3 escapes it two ways ([ADR-0019](decisions/0019-day-ahead-intraday-two-stage.md), [ADR-0020](decisions/0020-cvar-mean-risk-over-robust.md)): genuine, *limited* recourse; and a risk term that is not linear in the outcomes.
+**The VSS-collapse trap (the design driver).** If the whole 24-hour dispatch is one here-and-now decision $x$, the risk-neutral stochastic objective is $\max_x \mathbb E_s[\pi^{(s)}\cdot x] = \bar\pi\cdot x$ (with $\bar\pi = \sum_s p_s \pi^{(s)}$), *identical* to the mean-value problem, so VSS $= 0$: linear objective $\times$ price-independent feasible set. R2.3 escapes it two ways ([ADR-0019](decisions/0019-day-ahead-intraday-two-stage.md), [ADR-0020](decisions/0020-cvar-mean-risk-over-robust.md)): genuine, *limited* recourse; and a risk term that is not linear in the outcomes.
 
 ### Two-stage structure (day-ahead commitment + intraday recourse)
 
 The house R1.1 net-export power is $g_t \equiv p^{dis}_t - p^{ch}_t$ (grid-side, MW). A **first-stage** day-ahead schedule $g^{DA}$ is committed before the intraday price is known; it is itself R1.1-feasible (its own SoC trajectory $e^{DA}$). A **second-stage** per-scenario dispatch $g^{(s)}$ re-optimizes against the realized price $\pi^{(s)}$, also R1.1-feasible (SoC balance, bounds, mutual-exclusion binary $u^{(s)}_t$, ramp, terminal), and is tied to the commitment by a **recourse budget**:
 
-$$\boxed{\;\lvert g^{(s)}_t - g^{DA}_t\rvert \;\le\; \Delta\bar P \;=\; \rho\,\bar P \qquad \forall t,\ \forall s, \qquad \rho \in [0,1].\;}$$
+$$\boxed{ \lvert g^{(s)}_t - g^{DA}_t\rvert \le \Delta\bar P = \rho \bar P \qquad \forall t,\ \forall s, \qquad \rho \in [0,1]. }$$
 
 $g^{DA}$ is **non-anticipative** (one schedule, shared across all scenarios); each $g^{(s)}$ adapts within $\Delta\bar P$ of it. Settlement: the day-ahead volume clears at the known day-ahead price $\pi^{DA}$ (default $\pi^{DA}=\bar\pi$), the intraday deviation at the realized price:
 
-$$\boxed{\;\text{profit}_s \;=\; \sum_{t}\Delta t\,\big[\pi^{DA}_t\,g^{DA}_t \;+\; \pi^{(s)}_t\,(g^{(s)}_t - g^{DA}_t)\big].\;}$$
+$$\boxed{ \text{profit}_s = \sum_{t}\Delta t \big[\pi^{DA}_t g^{DA}_t + \pi^{(s)}_t (g^{(s)}_t - g^{DA}_t)\big]. }$$
 
-With $\pi^{DA}=\bar\pi$ this reduces to $\mathbb E_s[\text{profit}_s] = \mathbb E_s\big[\sum_t\Delta t\,\pi^{(s)}_t g^{(s)}_t\big]$, so $g^{DA}$ enters **only** through the budget constraint: it is the central commitment each scenario deviates from within $\Delta\bar P$. This is what makes the mean schedule a *suboptimal center* for a spread of scenarios, so VSS $> 0$ at intermediate $\rho$; the two limits $\rho\to 0$ (no recourse) and $\rho\to 1$ (unlimited recourse) both collapse to VSS $= 0$, a sanity check the gate uses.
+With $\pi^{DA}=\bar\pi$ this reduces to $\mathbb E_s[\text{profit}_s] = \mathbb E_s\big[\sum_t\Delta t \pi^{(s)}_t g^{(s)}_t\big]$, so $g^{DA}$ enters **only** through the budget constraint: it is the central commitment each scenario deviates from within $\Delta\bar P$. This is what makes the mean schedule a *suboptimal center* for a spread of scenarios, so VSS $> 0$ at intermediate $\rho$; the two limits $\rho\to 0$ (no recourse) and $\rho\to 1$ (unlimited recourse) both collapse to VSS $= 0$, a sanity check the gate uses.
 
 ### Risk-aware objective (CVaR mean-risk; Rockafellar-Uryasev)
 
-Let $L_s = -\,\text{profit}_s$, tail level $\alpha\in(0,1)$, risk weight $\lambda\in[0,1]$. Introduce the VaR auxiliary $\eta$ and tail slacks $z_s\ge 0$:
+Let $L_s = - \text{profit}_s$, tail level $\alpha\in(0,1)$, risk weight $\lambda\in[0,1]$. Introduce the VaR auxiliary $\eta$ and tail slacks $z_s\ge 0$:
 
-$$\boxed{\;\max_{g^{DA},\,g^{(s)},\,\eta,\,z_s} \ (1-\lambda)\sum_s p_s\,\text{profit}_s \;-\; \lambda\underbrace{\Big(\eta + \tfrac{1}{1-\alpha}\sum_s p_s\, z_s\Big)}_{\text{CVaR}_\alpha(L)} \quad\text{s.t.}\quad z_s \ge L_s - \eta,\ \ z_s\ge 0.\;}$$
+$$\boxed{ \max_{g^{DA}, g^{(s)}, \eta, z_s} \ (1-\lambda)\sum_s p_s \text{profit}_s - \lambda\underbrace{\Big(\eta + \tfrac{1}{1-\alpha}\sum_s p_s z_s\Big)}_{\text{CVaR}_\alpha(L)} \quad\text{s.t.}\quad z_s \ge L_s - \eta,\ \ z_s\ge 0. }$$
 
 The bracket is $\text{CVaR}_\alpha$ of the loss; at the optimum $\eta$ recovers the Value-at-Risk. $\lambda=0$ is the risk-neutral expectation (the RP objective below); sweeping $\lambda$ traces the **mean-CVaR frontier**. Every term is LP-representable, so the program stays a MILP (the only integrality is the per-scenario $u^{(s)}_t$) solved by HiGHS, no new dependency.
 
@@ -474,14 +474,14 @@ The deployable form of the recourse is receding-horizon control: execute the com
 - **EV**: mean-value solve at $\bar\pi$, first-stage $\bar g$.
 - **RP**: recourse-problem value (the risk-neutral two-stage optimum, $\lambda=0$).
 - **EEV**: fix $g^{DA}=\bar g$, evaluate its expected value with optimal within-budget recourse.
-- **WS**: wait-and-see $=\sum_s p_s\,V^\star(\pi^{(s)})$, the scenario-averaged perfect-foresight value; this is R1.4's ceiling averaged over scenarios (the $\rho\to 1$ / unbudgeted limit).
-- **VSS** $=\text{RP}-\text{EEV}\ge 0$;   **EVPI** $=\text{WS}-\text{RP}\ge 0$.
+- **WS**: wait-and-see $=\sum_s p_s V^\star(\pi^{(s)})$, the scenario-averaged perfect-foresight value; this is R1.4's ceiling averaged over scenarios (the $\rho\to 1$ / unbudgeted limit).
+- **VSS** $=\text{RP}-\text{EEV}\ge 0$; **EVPI** $=\text{WS}-\text{RP}\ge 0$.
 
 **VSS is the R2 value metric, distinct from R1.4's overnight gap.** R1.4's $V^\star-V^{\mathrm{roll}}$ measures cross-day foresight under *certainty* (small for a short-duration asset, since prices are already known at the day-ahead gate); VSS measures the payoff of *handling uncertainty at decision time*, and can be positive even when that overnight gap is near zero. R1.4 is the deterministic-ceiling story; VSS is the stochastic-value story this section exists to measure.
 
 Ordering (a correctness gate, extending R1.4's $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}\le V^\star$):
 
-$$\boxed{\;\text{EEV} \;\le\; \text{RP} \;\le\; \text{WS}.\;}$$
+$$\boxed{ \text{EEV} \le \text{RP} \le \text{WS}. }$$
 
 The gate is: measured VSS $> 0$ **out-of-sample** on the designed value-generating instance (held-out realized paths, R1.4 leakage discipline; [ADR-0021](decisions/0021-mpc-recourse-out-of-sample-vss.md)); the CVaR-averse solution reduces tail loss versus the risk-neutral one under $\pm 10\%$ price error; and the VSS $=0$ collapse is reproduced exactly at the $\rho$-limits (a golden oracle, proving the trap is understood, not papered over).
 

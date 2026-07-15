@@ -118,6 +118,18 @@ Math and theory discipline live in [`CLAUDE.md`](../CLAUDE.md) §1; doc-tier gov
 This section is about the *writing*.
 A line that must break a per-line check (for instance, to quote a banned word) can end with a `<!-- lint-ok -->` comment, used sparingly.
 
+**Prose about code must be checkable, or not written.**
+A sentence asserting a fact about the code is not executable, so nothing fails when the code moves underneath it and the claim rots invisibly.
+`scripts/lint_docs.py` therefore also binds the checkable subset: a spec's `bess.x.y` references must name real modules and attributes; `Depends on:` IDs must name real specs and form an acyclic graph; `file.md#anchor` links must resolve to a real heading; specs must carry no instruction that was already carried out ("to be recorded as ADRs", "when the module lands"); and math must render on GitHub.
+The rule generalizes: **if a doc claim about code cannot be checked mechanically, either make it checkable or leave it out.**
+Counts, module paths restated from memory, and prose duplicating a table are the usual offenders.
+
+**Math renders through GitHub's Markdown first.**
+GitHub treats a backslash before ASCII punctuation as a Markdown escape and drops the backslash *before* MathJax runs, so spacing control symbols (`\,`, `\;`, `\:`, `\!`) render as literal commas and semicolons inside formulas. <!-- lint-ok -->
+Control *words* (`\quad`, `\Bigl`, `\sum`) are unaffected.
+Spacing is cosmetic: delete it rather than reach for a workaround.
+Inline math must not start or end with a space (`$ x$`), which can stop GitHub parsing the span as math at all. <!-- lint-ok -->
+
 ### Structure
 
 1. **One source of truth; point, don't restate.**

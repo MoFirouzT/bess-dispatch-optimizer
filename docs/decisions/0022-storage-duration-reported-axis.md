@@ -26,7 +26,7 @@ duration-dependent, and the qualitative conclusions flip across the 1h–4h rang
 - **R2 value** (VSS, forecast value, overnight carry) scales with duration:
   near-zero headroom at 1h, real headroom at 4h. Reporting VSS at a single
   duration understates or overstates R2's general applicability.
-- **Gate-D sanity band** uses $c=\eta^{rt}\,(\text{cycles/day})\cdot 365$, and
+- **Gate-D sanity band** uses $c=\eta^{rt}(\text{cycles/day})\cdot 365$, and
   cycles/day depends on duration.
 
 A single-duration headline is therefore not merely incomplete: it can state a

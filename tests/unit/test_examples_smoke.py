@@ -47,6 +47,7 @@ SCRIPTS: dict[str, tuple[str | None, dict]] = {
     "worked_example": ("FIGURES", {}),
     "duration_sweep": ("FIGURES", {"DURATIONS": (1.0, 2.0)}),
     "scenario_reduction_demo": ("FIG", {"N_GENERATE": 20, "KEPT_COUNTS": [5, 10]}),
+    "explain_demo": ("FIGURES", {}),
     "stochastic_demo": (
         "FIG_DIR",
         {"N_SCENARIOS": 12, "LAMBDAS": [0.0, 0.5], "RHOS": [0.0, 0.3]},

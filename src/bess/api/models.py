@@ -37,6 +37,39 @@ class DispatchResponse(BaseModel):
     solver_termination: str  # "optimal" | "fallback"
 
 
+class RunOut(BaseModel):
+    """A flat run of periods sharing one water value (R2.4)."""
+
+    periods: list[int]
+    water_value_eur_mwh: float
+    pinned: bool
+
+
+class PeriodOut(BaseModel):
+    """Per-period explanation. Band edges and breakeven are null where not defined
+    (band on an unpinned run; breakeven at an idle period)."""
+
+    action: str  # "charge" | "discharge" | "idle"
+    price_eur_mwh: float
+    water_value_eur_mwh: float
+    degradation_cost_eur: float
+    run: int
+    reason: str
+    band_low_eur_mwh: float | None
+    band_high_eur_mwh: float | None
+    breakeven_slippage_eur_mwh: float | None
+
+
+class ExplainResponse(BaseModel):
+    """Dispatch schedule plus its shadow-price explanation (R2.4). No fallback mode:
+    the endpoint carries no circuit breaker, so a schedule here is always optimal."""
+
+    objective_eur: float
+    schedule: ScheduleOut
+    runs: list[RunOut]
+    periods: list[PeriodOut]
+
+
 class IssueOut(BaseModel):
     """One structured pre-flight issue (conventions §6: typed errors, no raw traces)."""
 

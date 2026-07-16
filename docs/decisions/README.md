@@ -65,5 +65,6 @@ The other options and why they were rejected.
 | 0020 | [Risk model is a CVaR mean-risk frontier, not a robust budget](0020-cvar-mean-risk-over-robust.md) | Accepted |
 | 0021 | [Recourse is a receding-horizon MPC policy; VSS measured out-of-sample](0021-mpc-recourse-out-of-sample-vss.md) | Accepted |
 | 0022 | [Storage duration is a reported axis for economic and value comparisons](0022-storage-duration-reported-axis.md) | Accepted |
+| 0023 | [The re-solve rule for MILP duals (fix-and-resolve with a relaxed idle tie-break)](0023-milp-dual-resolve-rule.md) | Accepted |
 
 Write each as its own file when the decision is locked. Keep this index in sync.

@@ -76,6 +76,50 @@ def _schedule_feasible(schedule: dict, spec: dict, dt: float, eps: float = 1e-6)
     return abs(prev - e_min) <= eps
 
 
+# R2.4: the money instance (1 MW / 2 MWh, idle through the 100 spike, water value 100).
+EXPLAIN_SPEC = {**SPEC, "capacity": 2.0}
+
+
+def test_explain_returns_schedule_and_water_value():
+    """POST /explain returns the optimal schedule plus per-period water values, bands,
+    and breakeven slippage (R2.4 oracle 1, served over HTTP)."""
+    body = {"prices_eur_mwh": [10.0, 100.0, 200.0], "dt_hours": 1.0, "battery": EXPLAIN_SPEC}
+    r = client.post("/explain", json=body)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["objective_eur"] == pytest.approx(190.0, abs=1e-6)
+    assert [p["action"] for p in data["periods"]] == ["charge", "idle", "discharge"]
+    for p in data["periods"]:
+        assert p["water_value_eur_mwh"] == pytest.approx(100.0, abs=1e-6)
+        assert p["band_low_eur_mwh"] == pytest.approx(100.0, abs=1e-6)
+    assert data["periods"][0]["breakeven_slippage_eur_mwh"] == pytest.approx(90.0, abs=1e-6)
+    assert data["periods"][1]["breakeven_slippage_eur_mwh"] is None  # idle
+    assert data["periods"][2]["breakeven_slippage_eur_mwh"] == pytest.approx(100.0, abs=1e-6)
+    assert len(data["runs"]) == 1 and data["runs"][0]["pinned"] is True
+
+
+def test_explain_invalid_input_is_422():
+    """Invalid input is the shared pre-flight 422, not a 503 or a hollow 200."""
+    body = {"prices_eur_mwh": [], "dt_hours": 1.0, "battery": EXPLAIN_SPEC}
+    r = client.post("/explain", json=body)
+    assert r.status_code == 422
+    assert any(i["code"] == "empty_horizon" for i in r.json()["issues"])
+
+
+def test_explain_solve_failure_is_503(monkeypatch):
+    """A solve that does not reach optimality is a 503 (decision 5): no faithful
+    explanation, and never a greedy fallback (which has no duals)."""
+    from bess.api import app as app_module
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("solve did not reach optimality")
+
+    monkeypatch.setattr(app_module, "explain_schedule", _boom)
+    body = {"prices_eur_mwh": [10.0, 100.0, 200.0], "dt_hours": 1.0, "battery": EXPLAIN_SPEC}
+    r = client.post("/explain", json=body)
+    assert r.status_code == 503
+
+
 def test_breaker_trips_via_http_returns_feasible_fallback(monkeypatch):
     """Master-plan R1.5 gate: under stress the breaker trips and the API still returns
     a constraint-satisfying schedule. Force a tiny latency budget so the wall-clock

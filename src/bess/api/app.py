@@ -1,11 +1,12 @@
-"""FastAPI app for the dispatch service (R1.5).
+"""FastAPI app for the dispatch service (R1.5, R2.4).
 
-One synchronous endpoint (``POST /dispatch``) wraps ``solve()`` behind the circuit
-breaker (``bess.api.service.dispatch``); ``GET /health`` reports solver availability.
-Invalid input becomes a structured **422** (the pre-flight issue list), never a raw
-solver trace (conventions §6). Operational knobs (latency budget, greedy
-percentiles) are env-overridable settings with R1.5 defaults; model parameters live
-in the request body.
+``POST /dispatch`` wraps ``solve()`` behind the circuit breaker
+(``bess.api.service.dispatch``); ``POST /explain`` (R2.4) returns the same solve plus
+its shadow-price explanation, **without** the breaker (decision 5); ``GET /health``
+reports solver availability. Invalid input becomes a structured **422** (the pre-flight
+issue list), never a raw solver trace (conventions §6). Operational knobs (latency
+budget, greedy percentiles) are env-overridable settings with R1.5 defaults; model
+parameters live in the request body.
 
 Run: ``uvicorn bess.api.app:app``.
 """
@@ -22,12 +23,16 @@ from pydantic import BaseModel
 from bess.api.models import (
     DispatchRequest,
     DispatchResponse,
+    ExplainResponse,
     HealthResponse,
     IssueOut,
     IssuesResponse,
+    PeriodOut,
+    RunOut,
     ScheduleOut,
 )
 from bess.api.service import dispatch
+from bess.explain.duals import DualityError, explain_schedule
 from bess.validation.preflight import PreflightError
 
 SOLVER = "appsi_highs"
@@ -92,6 +97,53 @@ def post_dispatch(request: DispatchRequest) -> DispatchResponse:
         ),
         solve_seconds=result.solve_seconds,
         solver_termination=result.solver_termination,
+    )
+
+
+@app.post("/explain", response_model=ExplainResponse)
+def post_explain(request: DispatchRequest) -> ExplainResponse:
+    """Dispatch schedule plus its shadow-price explanation (R2.4, decision 5).
+
+    Deliberately **not** behind the circuit breaker: the breaker's greedy fallback is
+    a heuristic with no duals, so there is nothing to explain about it. Invalid input
+    is a 422 (the shared pre-flight handler); a solve that does not reach optimality is
+    a **503** (no faithful explanation), never a hollow 200 or a greedy schedule.
+    """
+    try:
+        exp = explain_schedule(request.prices_eur_mwh, request.battery, dt=request.dt_hours)
+    except DualityError as exc:  # a re-solve broke the invariant: an internal defect
+        return JSONResponse(status_code=500, content={"detail": str(exc)})
+    except RuntimeError as exc:  # solver missed optimality (e.g. ramp-coupled infeasible)
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
+    return ExplainResponse(
+        objective_eur=exp.schedule.objective,
+        schedule=ScheduleOut(
+            p_charge_mw=exp.schedule.p_charge,
+            p_discharge_mw=exp.schedule.p_discharge,
+            soc_mwh=exp.schedule.soc,
+        ),
+        runs=[
+            RunOut(
+                periods=list(r.periods),
+                water_value_eur_mwh=r.water_value_eur_mwh,
+                pinned=r.pinned,
+            )
+            for r in exp.runs
+        ],
+        periods=[
+            PeriodOut(
+                action=p.action,
+                price_eur_mwh=p.price_eur_mwh,
+                water_value_eur_mwh=p.water_value_eur_mwh,
+                degradation_cost_eur=p.degradation_cost_eur,
+                run=p.run,
+                reason=p.reason,
+                band_low_eur_mwh=p.band_low_eur_mwh,
+                band_high_eur_mwh=p.band_high_eur_mwh,
+                breakeven_slippage_eur_mwh=p.breakeven_slippage_eur_mwh,
+            )
+            for p in exp.periods
+        ],
     )
 
 

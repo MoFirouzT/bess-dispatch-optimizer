@@ -115,8 +115,15 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.4. Shadow-price explainability
+
+- **No governing reference.** LP duality, shadow prices, and fix-and-resolve for MILP duals are standard optimization technique (the same category as R1.1's big-M mutual exclusion). The substantive content, the water value, the no-trade band, the interior-SoC flatness, is an **algebraic corollary** of the R1.1/R1.2 stationarity conditions, derived in [formulation.md: R2.4](formulation.md#r24-shadow-price-explainability-derived-no-optimizer-change), not imported.
+- **Terminology origin (context, not a source relied on):** "water value" is borrowed from **hydro-thermal / reservoir scheduling**, where the shadow price of the storage balance is the marginal value of water held behind a dam. The metaphor is exact (stored energy in place of stored water), and the term is used here for that lineage, not to ground any claim; verify edition + section before citing a specific hydro-scheduling text.
+
+---
+
 ## Planned (not yet adopted)
 
 Chosen when the phase starts, then reconciled and recorded here. Candidates only; **not yet governing**:
 
-- **R2.4 decomposition (Benders):** Conejo, Castillo, Mínguez & García-Bertrand, *Decomposition Techniques in Mathematical Programming*.
+- **R2.4 decomposition (Benders), out of scope in the R2.4 spec:** Conejo, Castillo, Mínguez & García-Bertrand, *Decomposition Techniques in Mathematical Programming*. Only relevant if the optional Benders / Julia comparison is ever built.

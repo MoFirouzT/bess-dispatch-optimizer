@@ -16,6 +16,10 @@ from bess.backtest.baselines import solve_window  # noqa: E402
 from bess.data.fixtures import synthetic_day_ahead  # noqa: E402
 from bess.viz.backtest_plots import plot_dispatch_day  # noqa: E402
 from bess.viz.explain_plots import plot_water_value  # noqa: E402
+from bess.viz.forecast_plots import (  # noqa: E402
+    plot_drift_regions,
+    plot_forecast_intervals,
+)
 from bess.viz.stochastic_plots import (  # noqa: E402
     plot_risk_return_frontier,
     plot_vss_curve,
@@ -43,6 +47,35 @@ def test_stochastic_figures_build_without_error():
 
     fig_vss = plot_vss_curve(rhos=[0.0, 0.2, 0.5, 1.0, 2.0], vss=[0.0, 3.0, 6.0, 2.0, 0.0])
     assert fig_vss.axes
+
+
+def test_forecast_interval_figure_builds_without_error():
+    # The plot takes raw sequences (no LightGBM), so it needs no forecast group.
+    hours = list(range(6))
+    fig = plot_forecast_intervals(
+        hours=hours,
+        point=[10.0, 12.0, 40.0, 38.0, 15.0, 11.0],
+        lower=[5.0, 7.0, 30.0, 28.0, 9.0, 6.0],
+        upper=[16.0, 18.0, 52.0, 49.0, 22.0, 17.0],
+        realized=[9.0, 13.0, 44.0, 33.0, 60.0, 10.0],  # one point outside the band
+        confidence_level=0.9,
+        coverage=0.9,
+    )
+    assert fig.axes
+
+
+def test_drift_regions_figure_builds_without_error():
+    # A 2x2 status grid (codes) with a legend and a couple of example windows.
+    codes = [[0, 0], [1, 2]]
+    legend = [(0, "healthy", "#2a9d8f"), (1, "regime", "#e9c46a"), (2, "staleness", "#e76f51")]
+    fig = plot_drift_regions(
+        ratios=[0.8, 1.6],
+        psis=[0.05, 0.35],
+        status_codes=codes,
+        legend=legend,
+        points=[(0.9, 0.05, "healthy"), (1.5, 0.1, "staleness")],
+    )
+    assert fig.axes
 
 
 def test_water_value_figure_builds_without_error():

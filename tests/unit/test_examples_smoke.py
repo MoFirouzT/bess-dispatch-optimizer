@@ -47,6 +47,8 @@ SCRIPTS: dict[str, tuple[str | None, dict]] = {
     "worked_example": ("FIGURES", {}),
     "duration_sweep": ("FIGURES", {"DURATIONS": (1.0, 2.0)}),
     "scenario_reduction_demo": ("FIG", {"N_GENERATE": 20, "KEPT_COUNTS": [5, 10]}),
+    "forecast_demo": ("FIG", {"N_ESTIMATORS": 25, "N_DAYS": 30}),
+    "drift_demo": ("FIG", {"GRID_N": 12}),
     "explain_demo": ("FIGURES", {}),
     "stochastic_demo": (
         "FIG_DIR",
@@ -66,6 +68,12 @@ def _load(script: str):
 @pytest.mark.parametrize("script", sorted(SCRIPTS))
 def test_example_script_runs(script: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     fig_attr, consts = SCRIPTS[script]
+
+    # forecast_demo needs the optional `forecast` group (LightGBM/MAPIE); skip where
+    # matplotlib is present but that group is not.
+    if script == "forecast_demo":
+        pytest.importorskip("lightgbm")
+        pytest.importorskip("mapie")
 
     # Force the token-free synthetic path: deterministic, no network, no quota.
     monkeypatch.delenv("ENTSOE_API_TOKEN", raising=False)

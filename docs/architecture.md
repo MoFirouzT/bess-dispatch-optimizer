@@ -14,7 +14,7 @@ this file maps the system's layers to the code's packages and points to [formula
 
 The optimizer takes a **day-ahead price curve** and a **battery spec** (power, energy, efficiency, ramp, SoC window) and returns the revenue-maximizing charge/discharge schedule, formulated as a deterministic MILP and solved with HiGHS.
 Release 1 builds this deterministic core and a leakage-safe backtest around it.
-Release 2 is in progress: probabilistic price forecasting with conformal intervals (R2.1) and a forecast-drift monitor (R2.1b) are implemented; scenario generation, stochastic/recourse optimization, and explainability are planned.
+Release 2 is complete: probabilistic price forecasting with conformal intervals (R2.1) and a forecast-drift monitor (R2.1b), scenario generation and reduction (R2.2), risk-aware two-stage optimization with intraday recourse (R2.3), and dual-based explainability (R2.4) are all implemented.
 
 ---
 
@@ -45,12 +45,12 @@ forecaster → scenarios ┘
 | `assets` | Physical battery model: `BatterySpec`, the SoC balance and physics constraints it registers on a Pyomo model. |
 | `validation` | Pre-flight feasibility checks (R1.3); structured, typed errors before the solver runs. |
 | `optimizer` | Builds the objective, owns the solve, returns a `Schedule`. The deterministic core (R1.1/R1.2). |
-| `recourse` | Rolling-horizon / MPC re-optimization (R2, planned). |
-| `stochastic` | Scenario-based and risk-aware optimization (R2, planned). |
-| `explain` | Shadow prices and dispatch explanations (R2, planned). |
+| `recourse` | Rolling-horizon / MPC re-optimization (R2.3). |
+| `stochastic` | Scenario-based and risk-aware optimization (R2.3). |
+| `explain` | Shadow prices and dispatch explanations (R2.4). |
 | `api` | The serving entry point. |
-| `forecaster` | Probabilistic price forecasting (conformal intervals) and a forecast-drift monitor (R2.1/R2.1b, implemented). |
-| `scenarios` | Scenario generation from forecasts, feeding `stochastic` (R2, planned). |
+| `forecaster` | Probabilistic price forecasting (conformal intervals) and a forecast-drift monitor (R2.1/R2.1b). |
+| `scenarios` | Scenario generation from forecasts, feeding `stochastic` (R2.2). |
 
 Two layers sit deliberately **outside** the serving chain:
 

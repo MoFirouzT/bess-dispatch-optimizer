@@ -5,6 +5,18 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ---
 
+## Gate hardening: η band decided (option a), weekly-scale pin, stochastic benchmark, README diet; second solver defect fixed (2026-07-22, later session)
+
+User decisions executed: **option (a)** for the R1.2/HiGHS artifact, plus the three deferred reviewer items (scale-tier test, stochastic benchmark axis, README diet). CI confirmed green on the pushed R2.5 commits.
+
+- **Option (a) applied repo-wide, not just where it fired.** `eta_solver = st.one_of(st.floats(0.8, 0.9999), st.just(1.0))` in `test_degradation.py` (full rationale comment: solver-numerics guard, not a physics claim; the ~0.99999 band makes HiGHS return a (1−η)·|obj| ≈ 1e-5-suboptimal vertex while claiming a 1e-9 gap) and mirrored with a pointer comment in the other five solver-backed property files (`test_invariants`, `test_api`, `test_backtest`, `test_explain`, `test_validation`): every cross-solve comparison there had the same latent exposure. Exact η=1.0 stays covered (coefficients then exact). The stored falsifying example now passes; the follow-up task chip is superseded. `test_delta_t_invariance` keeps [0.8, 1.0] (pure arithmetic, no solver).
+- **Weekly-scale invariants pin (reviewer item 4).** The R1.1 invariant block refactored into `assert_core_invariants` (shared, unweakened) + `test_core_invariants_weekly_scale`: T=168 seeded random curve, so a pathology visible only at production horizon can't hide behind the Hypothesis sweep's T≤6. Badge 196 → **197 (181 CI + 16 live)**.
+- **Stochastic benchmark axis (reviewer item 5).** `benchmark_scaling.py` gains the two-stage program at fixed 24 h vs scenario count (the real cost axis): measured S=10 ~0.46 s, S=30 ~0.97 s, S=50 ~2.05 s (264/744/1224 binaries). README solve-time section now carries both tables and ties S-growth to why the R2.2 reduction (~300→~50) matters. Smoke shrink const added.
+- **README diet (reviewer item 6).** Results block: 4 paragraphs → 2 (Gate D aside dropped as internal test detail; duration compressed to the ~€33k→~€24k contrast + ADR-0022). Drift and R2.1b prose tightened; FV paragraph tail deduplicated; Data reliability 3 paragraphs → 2 with the focal-value rule kept to one sentence + the 2024-03-24 fact, detail delegated to the R1.4c spec. No number or figure removed.
+- **Second solver-accuracy defect caught by a gate and FIXED in code (not a test change).** Hypothesis drew `([0,3,0], η_ch=0.875, dt=0.5)` and the R2.4 objective-equality guard raised `DualityError`: the MILP returned 0.656251 for a true optimum of exactly 0.65625, via an incumbent that discharged 3.3e-7 MWh the cell never held. Root cause: `_HIGHS_TOLERANCES` tightened the LP tolerances but not **`mip_feasibility_tolerance` (HiGHS default 1e-6)**, which is what MIP incumbents are checked against, so a schedule violating the SoC balance by up to ~1e-6 MWh could book phantom revenue. Fixed by adding `mip_feasibility_tolerance: 1e-9` to the shared dict (all three solve sites: core, twostage, duals). Verified identical on 1.13.1 and 1.14.0 before the fix (so unrelated to the pin), exact after. Committed study numbers are unaffected at their reported precision (perturbation ≤ micro-euros; live gates re-verify on next token run). Full suite **186 passed**; ruff/format/mypy/lint-imports (4 KEPT)/docs-lint clean.
+
+---
+
 ## R2.5 amendment: FV as a distribution; highspy 1.14 regression caught + pinned (2026-07-22)
 
 Follow-up session on user instruction. Two things happened: the planned FV-per-window study, and an unplanned solver-regression catch by an R1.2 gate mid-session.

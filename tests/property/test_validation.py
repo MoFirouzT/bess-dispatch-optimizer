@@ -36,6 +36,9 @@ def _raw_termination(prices, spec, dt):
     return results.solver.termination_condition
 
 
+_eta_solver = st.one_of(st.floats(min_value=0.8, max_value=0.9999), st.just(1.0))
+
+
 @st.composite
 def reachability_case(draw, ramp_enabled=False):
     """A clean (finite, non-empty, dt>0) instance with independent initial/terminal
@@ -59,8 +62,9 @@ def reachability_case(draw, ramp_enabled=False):
         soc_min=soc_min,
         p_charge_max=draw(st.floats(min_value=0.3, max_value=1.5)),
         p_discharge_max=draw(st.floats(min_value=0.3, max_value=1.5)),
-        eta_charge=draw(st.floats(min_value=0.8, max_value=1.0)),
-        eta_discharge=draw(st.floats(min_value=0.8, max_value=1.0)),
+        # η clear of the ~0.99999 solver band; see the note on eta_solver in test_degradation.py
+        eta_charge=draw(_eta_solver),
+        eta_discharge=draw(_eta_solver),
         ramp=ramp,
         soc_initial=soc_initial,
         soc_terminal=soc_terminal,

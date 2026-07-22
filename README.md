@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-196_(180_CI_%2B_16_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-197_(181_CI_%2B_16_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -50,7 +50,7 @@ The complete model, every constraint, and the governing references are in [docs/
 **Release 2 (forecasting → stochastic optimization), complete**, gated by golden + property tests:
 
 - **R2.1**: probabilistic price forecaster: LightGBM quantile models wrapped in conformal prediction (MAPIE) for calibrated day-ahead price *intervals*; on real NL prices the nominal 90% interval achieves **~89% empirical coverage** under a leakage-safe walk-forward (see [Value under uncertainty](#value-under-uncertainty-release-2))
-- **R2.1b**: rolling drift monitor: attributes a degrading forecast to a *regime shift* (market moved; a naive baseline degrades too), *model staleness* (decayed relative to a seasonal-naive), or *miscalibration* (intervals under-cover), so the flag is actionable (wait / retrain / recalibrate)
+- **R2.1b**: rolling drift monitor: attributes a degrading forecast to a *regime shift* (wait), *model staleness* (retrain), or *miscalibration* (recalibrate), so the flag is actionable
 - **R2.2**: scenario generation and reduction: residual-path bootstrap into probability-weighted price paths, reduced ~300 → ~50 within a Kantorovich tolerance
 - **R2.3**: risk-aware two-stage dispatch with intraday MPC recourse: a CVaR mean-risk MILP with a measured **value of the stochastic solution (VSS) > 0** out-of-sample, plus a risk/return frontier (see [Value under uncertainty](#value-under-uncertainty-release-2))
 - **R2.4**: dual-based explainability: the state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades (see [Why it holds](#why-it-holds-release-2))
@@ -71,13 +71,9 @@ The numbers below are from a worked example over a 91-day 2024-Q2 ENTSO-E NL day
 | Rolling deployable (per-day optimal) | €8,056 | **99.0%** |
 | Perfect-foresight ceiling | €8,139 | 100% |
 
-Rolling is each day's independent optimum: every day is solved empty-to-empty with full knowledge of *that* day. So the whole €84 gap to the ceiling (1.0%) is pure cross-day carry, the overnight SoC a per-day agent cannot justify without tomorrow's prices, which is exactly what Release 2 targets.
+Rolling is each day's independent optimum (solved empty-to-empty with full knowledge of that day only), so the whole €84 gap to the ceiling (1.0%) is pure cross-day carry: overnight SoC a per-day agent cannot justify without tomorrow's prices. Wear is priced, not ignored: it removes nearly a third of gross ceiling revenue (€11,643 gross → €8,139 net) and cuts the degradation-blind greedy floor harder. Annualized, this volatile quarter puts the net ceiling near €33k per MWh-installed per year; a calmer year sits lower.
 
-Wear is priced, not ignored. It removes nearly a third of gross ceiling revenue (€11,643 gross → €8,139 net), and cuts the naive greedy floor more, since greedy cycles without regard to degradation.
-
-Annualizing this volatile quarter (~9% negative-price hours) puts the net ceiling near €33k per MWh-installed per year; a calmer year sits lower. Gate D derives its band from each window's own price spread, so a volatile quarter legitimately lands high without tripping it.
-
-These figures are for a **1-hour** asset (1 MWh / 1 MW). Storage duration (energy-to-power ratio) is a reported axis, not a fixed choice: both the capture ratio and the per-MWh value fall as duration grows, because a longer asset arbitrages a flatter slice of the daily spread and leaves more cross-day carry on the table. On the same real quarter, the annualized ceiling drops from ~€33k/MWh·yr at 1h to ~€24k at 4h. Run [`examples/duration_sweep.py`](examples/duration_sweep.py) for the {1h, 2h, 4h} sweep ([ADR-0022](docs/decisions/0022-storage-duration-reported-axis.md)).
+Storage duration (energy-to-power ratio) is a reported axis, not a fixed choice: a longer asset arbitrages a flatter slice of the daily spread, so on the same real quarter the annualized ceiling falls from ~€33k/MWh·yr at 1 h to ~€24k at 4 h ([ADR-0022](docs/decisions/0022-storage-duration-reported-axis.md); run [`examples/duration_sweep.py`](examples/duration_sweep.py) for the {1h, 2h, 4h} sweep).
 
 ![Optimal dispatch on the widest-spread real day (2024-05-01): the battery charges through the cheap overnight hours and a deeply negative-priced midday, then discharges into the morning and evening price peaks, returning to empty by end of day.](docs/figures/example-dispatch-day.svg)
 
@@ -91,7 +87,7 @@ The forecaster (R2.1) predicts each price as a *calibrated interval*, not a poin
 
 Reproduce with `uv run --group forecast --group examples python examples/forecast_demo.py` (token, synthetic fallback otherwise).
 
-A forecaster deployed against a live market decays, so the drift monitor (R2.1b) watches its trailing accuracy and, when it degrades, attributes *why*: a **regime shift** (the market moved and even a naive baseline degrades, so wait), **staleness** (the model fell behind a seasonal-naive, so retrain), or **miscalibration** (the point forecast is fine but the intervals stopped covering, so recalibrate). Separating these makes the alarm actionable rather than a bare "accuracy dropped." The decision is a map over two axes, with interval coverage as an orthogonal third trigger.
+A forecaster deployed against a live market decays, so the drift monitor (R2.1b) watches its trailing accuracy and attributes *why* it degraded: a **regime shift** (the market moved; even a naive baseline degrades, so wait), **staleness** (the model fell behind a seasonal-naive, so retrain), or **miscalibration** (the intervals stopped covering, so recalibrate): an actionable alarm rather than a bare "accuracy dropped."
 
 ![Drift attribution map: the monitor's decision regions over the error ratio (forecaster vs. seasonal-naive MAE) and the input shift (PSI), each region coloured by what the real classifier returns there. Staleness (retrain) owns the whole high-ratio half regardless of input shift; regime shift (wait) is the high-PSI, low-ratio corner; miscalibration sits inside the healthy region because coverage is a third axis this map cannot show.](docs/figures/example-drift-regions.svg)
 
@@ -107,7 +103,7 @@ That machinery only earns its place if it beats simply optimizing against the me
 
 Reproduce with `uv run --group examples python examples/vss_study.py` (token, synthetic fallback otherwise).
 
-The forecast layer is also held to a euro standard, not just a statistical one. The R2.5 **forecast-value baseline** feeds the same two-stage dispatch two scenario sets that differ only in the forecast behind them (conformal vs. seasonal-naive, forecaster refit walk-forward) and compares realized-path profit per window. Over the same 63 real windows the answer is a null, and it is reported as one: the FV distribution is **centred on zero** (median −0.9 EUR/window, 49% of windows positive, quartiles −41 to +31), despite the forecaster's clear statistical skill above. Single windows swing ±180 EUR either way, which is exactly why no single-window number is quoted. On this market and asset, the scenario spread plus intraday recourse hedge day-shape error well enough that point-forecast accuracy adds little further dispatch value; where the stochastic *structure* (the VSS above) earns real money, the fancier *forecast* does not yet, and the honest claim is exactly that.
+The forecast layer is also held to a euro standard, not just a statistical one. The R2.5 **forecast-value baseline** feeds the same two-stage dispatch two scenario sets that differ only in the forecast behind them (conformal vs. seasonal-naive, forecaster refit walk-forward) and compares realized-path profit per window. Over the same 63 real windows the answer is a null, and it is reported as one: the FV distribution is **centred on zero** (median −0.9 EUR/window, 49% of windows positive, quartiles −41 to +31), despite the forecaster's clear statistical skill above. Single windows swing ±180 EUR either way, which is why no single-window number is quoted: the scenario spread plus intraday recourse already hedge day-shape error, so point-forecast accuracy adds little further dispatch value. The stochastic *structure* (the VSS above) earns real money; the fancier *forecast* does not yet, and the honest claim is exactly that.
 
 ![Per-window forecast value on real NL 2024-Q2 days: a histogram of 63 windows straddling zero with its median at roughly zero; conformal-forecast scenarios and seasonal-naive scenarios lead to plans of nearly equal realized value.](docs/figures/example-fv-distribution.svg)
 
@@ -122,13 +118,19 @@ The mechanism behind the VSS is the intraday recourse budget ρ: the value **ris
 
 The VSS and frontier figures are built from real NL day-ahead prices reshaped into daily scenarios; reproduce with `examples/stochastic_demo.py` (token, synthetic fallback otherwise). (The reduction figure above is synthetic by design: it demonstrates the algorithm's trade-off, not a market result.)
 
-Solve time scales benignly with horizon (one binary plus a few continuous variables per period); [`examples/benchmark_scaling.py`](examples/benchmark_scaling.py) reports it (numbers are from a local run, so treat them as relative):
+Solve time scales benignly on both axes; [`examples/benchmark_scaling.py`](examples/benchmark_scaling.py) reports it (numbers are from a local run, so treat them as relative). The deterministic MILP grows with the horizon (one binary plus a few continuous variables per period); the two-stage program grows with the scenario count (S + 1 coupled copies of the physics), which is exactly the cost the R2.2 reduction (~300 → ~50 paths) keeps bounded:
 
-| Horizon | Periods | Median solve |
+| Deterministic | Periods | Median solve |
 | --- | --- | --- |
 | 1 day | 24 | ~9 ms |
 | 1 week | 168 | ~29 ms |
 | 1 month | 720 | ~120 ms |
+
+| Two-stage, 24 h | Binaries | Median solve |
+| --- | --- | --- |
+| 10 scenarios | 264 | ~0.5 s |
+| 30 scenarios | 744 | ~1.0 s |
+| 50 scenarios | 1,224 | ~2.0 s |
 
 The plotting dependency is optional: `uv sync --group examples` installs it.
 
@@ -204,11 +206,9 @@ To run the live loader (and its token-gated integration test, skipped without a 
 
 ### Data reliability
 
-A dispatch is only as trustworthy as the price it was computed from, so the data feed gets its own circuit breaker, distinct from the solver breaker above. `bess.data.ingestion_guard` classifies every fetch as **healthy**, **outage** (timeout / 5xx, i.e. no data), or **anomalous-but-present** (a frozen/stuck feed, a grid gap, a duplicate timestamp, or a value outside the EPEX SDAC clearing-price limits), and on either failure falls back to the last-known-good series rather than letting corrupt data reach the optimizer. A stale-but-present price is treated as *more* dangerous than an obvious outage because it fails silently, so a schedule solved on fallback data is reported as degraded, not healthy.
+A dispatch is only as trustworthy as the price it was computed from, so the data feed gets its own circuit breaker, distinct from the solver breaker above. `bess.data.ingestion_guard` classifies every fetch as **healthy**, **outage** (no data), or **anomalous-but-present** (a frozen feed, a grid gap, a duplicate timestamp, an out-of-band value), and on either failure falls back to the last-known-good series, reporting the schedule as degraded rather than silently optimal; a stale-but-present price is treated as *more* dangerous than an obvious outage because it fails silently.
 
-The checks key on feed *pathology*, not price *level*. Zero and negative day-ahead prices are legitimate in BE/NL (high-renewable windows), so a real solar-glut day is never mistaken for corruption.
-
-The discriminator is the **value** a bit-identical run repeats, not the run's length. Excess supply collapses the clearing price onto the natural zero bid, so the market really does clear at exactly €0.00 for hours on end (NL and BE both did for 8 straight hours on 2024-03-24). It does not clear at an *arbitrary* cent repeatedly; that is a frozen feed. Keying on the value rather than the length lets the guard both leave a genuine zero-price day alone and catch a freeze three times faster.
+The checks key on feed *pathology*, never price *level*: zero and negative prices are legitimate in BE/NL, and the market really does clear at exactly €0.00 for hours on end (8 straight hours on 2024-03-24), so the stuck-feed check fires on a repeated *arbitrary* value, not a repeated focal one. The full classification rules are in [docs/specs/R1.4c-ingestion-guard.md](docs/specs/R1.4c-ingestion-guard.md).
 
 ![Ingestion guard: a feed frozen at an arbitrary price is rejected, and the dispatch runs on the trustworthy last-known-good series instead, so the overall provenance is reported as degraded rather than a silent optimal.](docs/figures/example-ingestion-guard.svg)
 

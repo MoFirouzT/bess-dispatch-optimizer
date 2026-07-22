@@ -24,6 +24,12 @@ _HIGHS_TOLERANCES = {
     "mip_abs_gap": 1e-9,
     "primal_feasibility_tolerance": 1e-9,
     "dual_feasibility_tolerance": 1e-9,
+    # MIP incumbents are checked against this one, not the primal tolerance above
+    # (HiGHS default 1e-6): without it the solver can accept a schedule that
+    # violates the SoC balance by up to ~1e-6 MWh and report the phantom revenue
+    # of the unbacked discharge (caught by the R2.4 objective-equality guard on a
+    # Hypothesis instance, 2026-07-22).
+    "mip_feasibility_tolerance": 1e-9,
 }
 
 

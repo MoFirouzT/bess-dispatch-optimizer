@@ -9,6 +9,7 @@ all-idle schedule (SoC held constant, net power 0) is always feasible — the
 solver therefore always returns an optimal schedule, never Infeasible.
 """
 
+import numpy as np
 import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
@@ -19,7 +20,8 @@ from bess.optimizer.core import solve
 EPS = 1e-6
 
 _prices = st.floats(min_value=-50.0, max_value=200.0, allow_nan=False, allow_infinity=False)
-_eta = st.floats(min_value=0.8, max_value=1.0)
+# η clear of the ~0.99999 solver band; see the note on eta_solver in test_degradation.py
+_eta = st.one_of(st.floats(min_value=0.8, max_value=0.9999), st.just(1.0))
 _power = st.floats(min_value=0.5, max_value=5.0)
 
 
@@ -46,11 +48,8 @@ def problem(draw, ramp_enabled=False):
     return prices, spec, dt
 
 
-@settings(max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow])
-@given(problem())
-def test_core_invariants(case):
-    prices, spec, dt = case
-    sched = solve(prices, spec, dt=dt)
+def assert_core_invariants(sched, prices, spec, dt):
+    """The R1.1 invariant block, shared by the Hypothesis sweep and the weekly-scale pin."""
     n = len(prices)
 
     # Per-unit config -> absolute MWh (the schedule's soc is in MWh).
@@ -87,6 +86,34 @@ def test_core_invariants(case):
 
     # Objective floor: idle is always feasible, so the optimum is never negative.
     assert sched.objective >= -EPS
+
+
+@settings(max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(problem())
+def test_core_invariants(case):
+    prices, spec, dt = case
+    assert_core_invariants(solve(prices, spec, dt=dt), prices, spec, dt)
+
+
+def test_core_invariants_weekly_scale():
+    """The same invariants once at a realistic weekly horizon (T = 168).
+
+    The Hypothesis sweep stays at T ≤ 6 so 200 examples run fast; this pins the
+    invariant block at production scale on a seeded random curve, so a pathology
+    that only appears on long horizons (accumulating SoC drift, a binary pattern
+    the small instances never reach) cannot hide behind the toy sizes."""
+    rng = np.random.default_rng(42)
+    prices = rng.uniform(-50.0, 200.0, size=168).tolist()
+    spec = BatterySpec(
+        capacity=2.0,
+        p_charge_max=1.0,
+        p_discharge_max=1.0,
+        eta_charge=0.95,
+        eta_discharge=0.95,
+        soc_initial=0.5,
+        soc_terminal=0.5,
+    )
+    assert_core_invariants(solve(prices, spec, dt=1.0), prices, spec, dt=1.0)
 
 
 @settings(max_examples=100, deadline=None, suppress_health_check=[HealthCheck.too_slow])

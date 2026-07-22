@@ -21,6 +21,9 @@ from bess.optimizer.core import solve
 EPS = 1e-6
 
 
+_eta_solver = st.one_of(st.floats(min_value=0.8, max_value=0.9999), st.just(1.0))
+
+
 @st.composite
 def problem(draw):
     n = draw(st.integers(min_value=2, max_value=6))
@@ -38,8 +41,9 @@ def problem(draw):
         soc_min=0.0,
         p_charge_max=draw(st.floats(min_value=0.5, max_value=2.0)),
         p_discharge_max=draw(st.floats(min_value=0.5, max_value=2.0)),
-        eta_charge=draw(st.floats(min_value=0.8, max_value=1.0)),
-        eta_discharge=draw(st.floats(min_value=0.8, max_value=1.0)),
+        # η clear of the ~0.99999 solver band; see the note on eta_solver in test_degradation.py
+        eta_charge=draw(_eta_solver),
+        eta_discharge=draw(_eta_solver),
         ramp=None,
         soc_initial=anchor,
         soc_terminal=anchor,

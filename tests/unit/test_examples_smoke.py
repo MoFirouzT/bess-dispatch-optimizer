@@ -42,7 +42,7 @@ EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 #   do use three different names, and `scenario_reduction_demo`'s is a full file path
 #   rather than a directory.
 SCRIPTS: dict[str, tuple[str | None, dict]] = {
-    "benchmark_scaling": (None, {"HORIZONS_H": [24], "REPEATS": 1}),
+    "benchmark_scaling": (None, {"HORIZONS_H": [24], "STOCH_SCENARIOS": [4], "REPEATS": 1}),
     "ingestion_guard_demo": ("FIGURES", {}),
     "worked_example": ("FIGURES", {}),
     "duration_sweep": ("FIGURES", {"DURATIONS": (1.0, 2.0)}),

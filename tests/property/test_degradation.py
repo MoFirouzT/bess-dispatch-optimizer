@@ -14,6 +14,16 @@ from bess.optimizer.core import solve
 
 EPS = 1e-6
 
+# Solver-numerics guard, not a physics claim (decided 2026-07-22, option recorded in
+# STATE.md): when η·Δt sits within ~2.5e-6 of Δt (η ≈ 0.99999 at dt=0.25), HiGHS
+# misses a vertex that needs a ~1e-6 MW micro-charge and returns an objective exactly
+# (1−η)·|obj| ≈ 1e-5 below the true optimum while claiming a 1e-9 gap (measured on
+# 1.12.0–1.13.1; formulation and code verified correct by hand). Cross-solve
+# comparisons at 1e-5/1e-6 tolerances cannot survive that, so η is drawn away from
+# the degenerate band. Exact 1.0 is kept: the coefficients are then exact and the
+# lossless analytic case stays covered. Real cells sit at 0.85–0.98.
+eta_solver = st.one_of(st.floats(min_value=0.8, max_value=0.9999), st.just(1.0))
+
 
 def throughput(spec: BatterySpec, p_ch: float, p_dis: float, dt: float) -> float:
     return spec.eta_charge * p_ch * dt + p_dis / spec.eta_discharge * dt
@@ -39,8 +49,8 @@ def problem_deg(draw):
         soc_min=0.0,
         p_charge_max=draw(st.floats(min_value=0.5, max_value=5.0)),
         p_discharge_max=draw(st.floats(min_value=0.5, max_value=5.0)),
-        eta_charge=draw(st.floats(min_value=0.8, max_value=1.0)),
-        eta_discharge=draw(st.floats(min_value=0.8, max_value=1.0)),
+        eta_charge=draw(eta_solver),
+        eta_discharge=draw(eta_solver),
         ramp=None,
         soc_initial=anchor,
         soc_terminal=anchor,

@@ -140,6 +140,42 @@ def test_oracle_4b_identical_days_give_zero_vss() -> None:
 # ---------------------------------------------------------- forecast value
 
 
+def test_oracle_6_fv_windows_loop_adds_no_value() -> None:
+    """`fv_windows_from_sets` bookkeeping (R2.5 amendment 2026-07-22): identical
+    set pairs give exactly zero FV per window, window starts pass through in
+    order, and the loop equals per-item `forecast_value_from_sets` calls — the
+    distribution machinery adds no value of its own."""
+    from bess.scenarios import ScenarioSet
+    from bess.stochastic.study import fv_windows_from_sets
+
+    rng = np.random.default_rng(3)
+    idx = pd.date_range("2024-03-01", periods=24, freq="h", tz="UTC")
+
+    def scen(seed: int) -> ScenarioSet:
+        r = np.random.default_rng(seed)
+        return ScenarioSet(
+            paths=np.asarray([_designed_day(r) for _ in range(5)]),
+            probs=np.full(5, 0.2),
+            index=idx,
+        )
+
+    a, b = scen(10), scen(11)
+    realized = rng.uniform(0.0, 60.0, 24)
+    starts = [pd.Timestamp("2024-03-10", tz="UTC"), pd.Timestamp("2024-03-11", tz="UTC")]
+    items = [(starts[0], a, a, realized), (starts[1], a, b, realized)]
+
+    windows = fv_windows_from_sets(items, _BATT, rho=0.4)
+
+    assert [w.window_start for w in windows] == starts
+    # Identical pair: exactly null.
+    assert windows[0].fv_eur == pytest.approx(0.0, abs=1e-9)
+    # Distinct pair: equals the single-item scoring, component by component.
+    direct = forecast_value_from_sets(a, b, realized, _BATT, rho=0.4)
+    assert windows[1].profit_conformal_eur == pytest.approx(direct.profit_conformal_eur, abs=1e-9)
+    assert windows[1].profit_naive_eur == pytest.approx(direct.profit_naive_eur, abs=1e-9)
+    assert windows[1].fv_eur == pytest.approx(direct.fv_eur, abs=1e-9)
+
+
 def test_oracle_5_forecast_value_null_on_identical_sets() -> None:
     """With identical scenario sets on both sides the comparison is exactly
     null: same commitment, same score, FV = 0."""

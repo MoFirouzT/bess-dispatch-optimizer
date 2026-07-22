@@ -125,6 +125,28 @@ def main() -> None:
     print(f"tau={skill.tau_upper:.3f}: conformal {skill.conformal_upper:.2f}"
           f" vs naive {skill.naive_upper:.2f}  -> skill {skill.skill_upper:.2f}")  # fmt: skip
 
+    from bess.stochastic import fv_across_windows
+
+    fv_windows = fv_across_windows(
+        prices, BATTERY, history_days=HISTORY_DAYS, n_scenarios=N_SCENARIOS, rho=RHO
+    )
+    fvs = np.array([w.fv_eur for w in fv_windows])
+    fq1, fmed, fq3 = np.percentile(fvs, [25, 50, 75])
+    print(f"\nForecast-value distribution ({len(fvs)} windows, forecaster refit weekly)")
+    print(f"median FV       {fmed:8.2f} EUR/window")
+    print(f"quartiles       [{fq1:.2f}, {fq3:.2f}]")
+    print(f"share > 0       {np.mean(fvs > 0):8.0%}")
+    print(f"min / max       {fvs.min():.2f} / {fvs.max():.2f}")
+
+    fig_fv = plot_vss_distribution(
+        fvs,
+        title=f"Per-window forecast value, conformal vs seasonal-naive — {tag}",
+        xlabel="FV = conformal-plan profit − naive-plan profit, per window (EUR)",
+    )
+    fv_path = FIG_DIR / "example-fv-distribution.svg"
+    fig_fv.savefig(fv_path, format="svg", bbox_inches="tight")
+    print(f"\nwrote {fv_path.name} to docs/figures/ ({tag})")
+
 
 if __name__ == "__main__":
     main()

@@ -53,6 +53,16 @@ class ForecastValue:
     fv_eur: float  # profit_conformal − profit_naive; reported, not sign-asserted
 
 
+@dataclass(frozen=True)
+class WindowFV:
+    """One window's forecast-value result (EUR; spec amendment 2026-07-22)."""
+
+    window_start: pd.Timestamp
+    profit_conformal_eur: float
+    profit_naive_eur: float
+    fv_eur: float  # per-window; the distribution's center is the finding
+
+
 def _complete_day_matrix(prices: pd.Series) -> tuple[list[pd.Timestamp], np.ndarray]:
     """Split an hourly series into complete UTC days: (day starts, (D, 24) matrix).
 
@@ -164,6 +174,125 @@ def forecast_value_from_sets(
     profit_conformal = score(conformal)
     profit_naive = score(naive)
     return ForecastValue(profit_conformal, profit_naive, profit_conformal - profit_naive)
+
+
+def fv_windows_from_sets(
+    items: list[tuple[pd.Timestamp, ScenarioSet, ScenarioSet, Any]],
+    battery: BatterySpec,
+    *,
+    dt: float = 1.0,
+    rho: float = 0.5,
+) -> list[WindowFV]:
+    """Score a sequence of (start, conformal set, naive set, realized) windows.
+
+    The token-free loop core of the FV distribution (spec amendment 2026-07-22):
+    each item is scored by :func:`forecast_value_from_sets` unchanged, so the
+    distribution machinery adds no value of its own. One :class:`WindowFV` per
+    item, in order.
+    """
+    out: list[WindowFV] = []
+    for start, conformal, naive, realized in items:
+        r = forecast_value_from_sets(conformal, naive, realized, battery, dt=dt, rho=rho)
+        out.append(WindowFV(start, r.profit_conformal_eur, r.profit_naive_eur, r.fv_eur))
+    return out
+
+
+# The forecaster's week-scale lags plus its train/calibration split need this much
+# history before the first scoreable window.
+_MIN_LAG_DAYS = 9
+
+
+def fv_across_windows(
+    prices: pd.Series,
+    battery: BatterySpec,
+    *,
+    history_days: int = 28,
+    n_scenarios: int = 30,
+    rho: float = 0.5,
+    seed: int = 0,
+    refit_days: int = 7,
+) -> list[WindowFV]:
+    """The forecast-value distribution over every scoreable UTC-day window.
+
+    The per-window form of :func:`forecast_value` (spec amendment 2026-07-22),
+    under the R2.1 walk-forward discipline: the forecaster is refit on data
+    strictly before each ``refit_days`` block of windows, and each window's
+    residual histories use days strictly before it. Per-window scenario seeds
+    derive from ``seed`` plus the window ordinal (deterministic, distinct).
+    Windows either predictor cannot fully cover are skipped, not padded.
+    Needs the optional ``forecast`` group.
+    """
+    try:
+        from bess.forecaster.forecast import IntervalForecast, PriceForecaster
+    except ImportError as exc:  # pragma: no cover - exercised only without the group
+        raise ImportError(
+            "fv_across_windows needs the forecast group: `uv sync --group forecast`"
+        ) from exc
+    from bess.forecaster.evaluate import seasonal_naive
+    from bess.scenarios import generate_scenarios
+
+    if refit_days < 1:
+        raise ValueError(f"refit_days must be >= 1; got {refit_days}")
+    starts, mat = _complete_day_matrix(prices)
+    first = max(history_days, _MIN_LAG_DAYS)
+    if len(starts) <= first:
+        raise ValueError(f"need more than {first} complete days; got {len(starts)}")
+    idx_norm = pd.DatetimeIndex(prices.index).normalize()
+    naive_series = seasonal_naive(prices)
+    naive_days = pd.DatetimeIndex(naive_series.index).normalize()
+
+    def complete_path(
+        series: pd.Series, days: pd.DatetimeIndex, day: pd.Timestamp
+    ) -> np.ndarray | None:
+        path = series[days == day].to_numpy(dtype=float)
+        return path if len(path) == _HOURS else None
+
+    def residuals_before(series: pd.Series, days: pd.DatetimeIndex, upto: int) -> np.ndarray | None:
+        rows = []
+        for j in range(upto - 1, -1, -1):
+            pred = complete_path(series, days, starts[j])
+            if pred is not None:
+                rows.append(mat[j] - pred)
+            if len(rows) == history_days:
+                break
+        return np.asarray(rows) if len(rows) >= 2 else None
+
+    items: list[tuple[pd.Timestamp, ScenarioSet, ScenarioSet, Any]] = []
+    for block_start in range(first, len(starts), refit_days):
+        block = range(block_start, min(block_start + refit_days, len(starts)))
+        # Walk-forward: fit strictly before the block, predict through its end.
+        forecaster = PriceForecaster(random_state=seed)
+        forecaster.fit(prices[idx_norm < starts[block_start]])
+        fc = forecaster.predict_interval(prices[idx_norm <= starts[block[-1]]])
+        fc_days = pd.DatetimeIndex(fc.point.index).normalize()
+        for i in block:
+            day = starts[i]
+            point = complete_path(fc.point, fc_days, day)
+            lower = complete_path(fc.lower, fc_days, day)
+            upper = complete_path(fc.upper, fc_days, day)
+            npath = complete_path(naive_series, naive_days, day)
+            c_res = residuals_before(fc.point, fc_days, i)
+            n_res = residuals_before(naive_series, naive_days, i)
+            if point is None or lower is None or upper is None or npath is None:
+                continue  # a predictor does not fully cover this window
+            if c_res is None or n_res is None:
+                continue  # not enough covered history for a residual bootstrap
+            window_index = pd.date_range(day, periods=_HOURS, freq="h")
+            conf_fc = IntervalForecast(
+                point=pd.Series(point, index=window_index),
+                lower=pd.Series(lower, index=window_index),
+                upper=pd.Series(upper, index=window_index),
+                confidence_level=fc.confidence_level,
+            )
+            naive_path = pd.Series(npath, index=window_index)
+            naive_fc = IntervalForecast(
+                point=naive_path, lower=naive_path, upper=naive_path,
+                confidence_level=fc.confidence_level,
+            )  # fmt: skip
+            conf_set = generate_scenarios(conf_fc, c_res, n=n_scenarios, seed=seed + i)
+            naive_set = generate_scenarios(naive_fc, n_res, n=n_scenarios, seed=seed + i)
+            items.append((day, conf_set, naive_set, mat[i]))
+    return fv_windows_from_sets(items, battery, rho=rho)
 
 
 def forecast_value(

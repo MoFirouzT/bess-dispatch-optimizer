@@ -8,7 +8,13 @@ license = { file = "LICENSE" }
 authors = [{ name = "MO FIROUZ", email = "mohammadhamedft@gmail.com" }]
 dependencies = [
     "pyomo>=6.7",
-    "highspy>=1.7",        # HiGHS solver; backs Pyomo's appsi_highs interface
+    # HiGHS solver; backs Pyomo's appsi_highs interface. Capped below 1.14: highspy
+    # 1.14.0 mis-solves a small MILP the R1.2 scale-invariance gate generates
+    # (eta_charge=0.99999, dt=0.25, small caps: presolve declares a provably
+    # feasible model infeasible; presolve-off returns a suboptimal "optimum").
+    # Verified correct on 1.12.0/1.13.0 with the same instance; lift the cap only
+    # after re-running that gate against the new version.
+    "highspy>=1.7,<1.14",
     "pydantic>=2.6",
     "pandas>=3.0.3",
     "pyarrow>=24.0.0",

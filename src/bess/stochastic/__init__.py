@@ -12,9 +12,12 @@ from __future__ import annotations
 from bess.stochastic.risk import cvar_from_losses
 from bess.stochastic.study import (
     ForecastValue,
+    WindowFV,
     WindowVSS,
     forecast_value,
     forecast_value_from_sets,
+    fv_across_windows,
+    fv_windows_from_sets,
     vss_across_windows,
     window_sets,
 )
@@ -31,10 +34,13 @@ __all__ = [
     "OutOfSampleVSS",
     "StochasticSchedule",
     "VSSResult",
+    "WindowFV",
     "WindowVSS",
     "cvar_from_losses",
     "forecast_value",
     "forecast_value_from_sets",
+    "fv_across_windows",
+    "fv_windows_from_sets",
     "out_of_sample_vss",
     "solve_stochastic",
     "value_of_stochastic_solution",

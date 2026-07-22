@@ -81,12 +81,14 @@ def plot_vss_distribution(
     vss: Sequence[float],
     *,
     title: str = "Per-window out-of-sample VSS",
+    xlabel: str = "VSS = RP − EEV, scored out-of-sample per window (EUR)",
 ) -> Figure:
-    """Histogram of per-window VSS with the median and the zero line (R2.5).
+    """Histogram of a per-window value metric with median and zero line (R2.5).
 
     The distribution is the claim: each observation is one UTC-day window's
-    out-of-sample VSS (no sign guarantee), so the honest summary is the median
-    and the share of windows above zero, both annotated.
+    value (no sign guarantee), so the honest summary is the median and the
+    share of windows above zero, both annotated. Serves both R2.5 per-window
+    studies (VSS by default; pass ``xlabel`` for the FV variant).
     """
     values = np.asarray(vss, dtype=float)
     median = float(np.median(values))
@@ -97,7 +99,7 @@ def plot_vss_distribution(
     ax.axvline(0.0, color="#e76f51", lw=1.2, ls="--", alpha=0.8, label="zero")
     ax.axvline(median, color="#264653", lw=1.6, label=f"median = {median:.2f} EUR")
 
-    ax.set_xlabel("VSS = RP − EEV, scored out-of-sample per window (EUR)")
+    ax.set_xlabel(xlabel)
     ax.set_ylabel("windows")
     ax.set_title(f"{title}\n{len(values)} windows, {share_pos:.0%} above zero")
     ax.legend()

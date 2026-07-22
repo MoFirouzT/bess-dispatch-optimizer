@@ -562,6 +562,7 @@ With $g^{\text{conf}}$ and $g^{\text{naive}}$ the risk-neutral two-stage commitm
 $$\boxed{ \mathrm{FV} = v\bigl(g^{\text{conf}}\bigr) - v\bigl(g^{\text{naive}}\bigr). }$$
 
 FV is distinct from EV/EEV (which use one set's mean rather than contrasting forecasters) and is **reported with provenance, not asserted positive**: whether forecast skill converts to dispatch euros on a given window is the finding the protocol exists to measure.
+Like the VSS above, FV is reported **per window as a distribution** (median, quartiles, share $>0$) over all scoreable UTC days, with the forecaster refit walk-forward (fit strictly before each block of windows); a single window's sign is noise, the distribution's center is the finding.
 
 ### Pinball (quantile) loss and skill
 

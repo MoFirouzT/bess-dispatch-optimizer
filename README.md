@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-193_(178_CI_%2B_15_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-196_(180_CI_%2B_16_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -54,7 +54,7 @@ The complete model, every constraint, and the governing references are in [docs/
 - **R2.2**: scenario generation and reduction: residual-path bootstrap into probability-weighted price paths, reduced ~300 → ~50 within a Kantorovich tolerance
 - **R2.3**: risk-aware two-stage dispatch with intraday MPC recourse: a CVaR mean-risk MILP with a measured **value of the stochastic solution (VSS) > 0** out-of-sample, plus a risk/return frontier (see [Value under uncertainty](#value-under-uncertainty-release-2))
 - **R2.4**: dual-based explainability: the state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades (see [Why it holds](#why-it-holds-release-2))
-- **R2.5**: value evaluation hardening: the VSS re-measured as a **per-window distribution** over real NL days (median positive, ~62% of windows), a **forecast-value baseline** in euros (conformal vs. seasonal-naive scenarios feeding the same dispatch), and **pinball skill** reported beside coverage (see [Value under uncertainty](#value-under-uncertainty-release-2))
+- **R2.5**: value evaluation hardening: the VSS re-measured as a **per-window distribution** over real NL days (median positive, ~62% of windows), a **forecast-value baseline** in euros whose per-window distribution comes out centred on zero (a null reported as a null), and **pinball skill** reported beside coverage (see [Value under uncertainty](#value-under-uncertainty-release-2))
 
 ## Example results
 
@@ -107,7 +107,9 @@ That machinery only earns its place if it beats simply optimizing against the me
 
 Reproduce with `uv run --group examples python examples/vss_study.py` (token, synthetic fallback otherwise).
 
-The forecast layer is also held to a euro standard, not just a statistical one: on the last study window, the plan built from conformal scenarios out-earned the seasonal-naive plan by **about +47 EUR** (the R2.5 forecast-value baseline; reported per window with provenance, not guaranteed positive).
+The forecast layer is also held to a euro standard, not just a statistical one. The R2.5 **forecast-value baseline** feeds the same two-stage dispatch two scenario sets that differ only in the forecast behind them (conformal vs. seasonal-naive, forecaster refit walk-forward) and compares realized-path profit per window. Over the same 63 real windows the answer is a null, and it is reported as one: the FV distribution is **centred on zero** (median −0.9 EUR/window, 49% of windows positive, quartiles −41 to +31), despite the forecaster's clear statistical skill above. Single windows swing ±180 EUR either way, which is exactly why no single-window number is quoted. On this market and asset, the scenario spread plus intraday recourse hedge day-shape error well enough that point-forecast accuracy adds little further dispatch value; where the stochastic *structure* (the VSS above) earns real money, the fancier *forecast* does not yet, and the honest claim is exactly that.
+
+![Per-window forecast value on real NL 2024-Q2 days: a histogram of 63 windows straddling zero with its median at roughly zero; conformal-forecast scenarios and seasonal-naive scenarios lead to plans of nearly equal realized value.](docs/figures/example-fv-distribution.svg)
 
 The mechanism behind the VSS is the intraday recourse budget ρ: the value **rises then falls with ρ** (zero recourse and unlimited recourse both collapse to the mean-value plan; the value lives in between). Trading expected profit for downside protection traces a mean-CVaR frontier.
 

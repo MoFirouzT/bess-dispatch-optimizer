@@ -87,6 +87,30 @@ def test_pinball_skill_beats_seasonal_naive_live():
 
 
 @requires_token
+def test_fv_distribution_reports_on_real_weeks():
+    pytest.importorskip("lightgbm")
+    pytest.importorskip("mapie")
+    from bess.stochastic import fv_across_windows
+
+    prices = _real_prices()
+    windows = fv_across_windows(prices, _BATT, **_KW, rho=0.5)
+
+    # At least four disjoint weeks of scored windows survive coverage skipping.
+    assert len(windows) >= 28
+    fvs = np.array([w.fv_eur for w in windows])
+    assert np.isfinite(fvs).all()
+    for w in windows:
+        assert w.fv_eur == pytest.approx(w.profit_conformal_eur - w.profit_naive_eur, abs=TOL)
+    # The median is the finding, reported with provenance, not sign-asserted
+    # (formulation §R2.5, amendment 2026-07-22).
+    print(
+        f"\nFV distribution (real NL, {len(windows)} windows): "
+        f"median {np.median(fvs):+.2f} EUR, {np.mean(fvs > 0):.0%} > 0, "
+        f"range [{fvs.min():.2f}, {fvs.max():.2f}]"
+    )
+
+
+@requires_token
 def test_forecast_value_reports_on_real_window(capsys):
     pytest.importorskip("lightgbm")
     pytest.importorskip("mapie")

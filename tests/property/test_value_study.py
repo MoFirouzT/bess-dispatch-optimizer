@@ -152,3 +152,30 @@ def test_forecast_value_antisymmetric_and_deterministic() -> None:
 
     again = forecast_value_from_sets(a, b, realized, _BATT, rho=0.4)
     assert again.fv_eur == pytest.approx(ab.fv_eur, abs=1e-9)
+
+
+def test_fv_windows_bookkeeping_and_determinism() -> None:
+    """One output per input item, in order; bit-identical on repeat (amendment
+    2026-07-22)."""
+    from bess.scenarios import ScenarioSet
+    from bess.stochastic.study import fv_windows_from_sets
+
+    rng = np.random.default_rng(6)
+    idx = pd.date_range("2024-03-01", periods=24, freq="h", tz="UTC")
+    items = []
+    for d in range(3):
+        conf = ScenarioSet(rng.uniform(0.0, 60.0, (4, 24)), np.full(4, 0.25), index=idx)
+        naive = ScenarioSet(rng.uniform(0.0, 60.0, (4, 24)), np.full(4, 0.25), index=idx)
+        start = pd.Timestamp("2024-03-10", tz="UTC") + pd.Timedelta(days=d)
+        items.append((start, conf, naive, rng.uniform(0.0, 60.0, 24)))
+
+    first = fv_windows_from_sets(items, _BATT, rho=0.4)
+    second = fv_windows_from_sets(items, _BATT, rho=0.4)
+
+    assert len(first) == len(items)
+    assert [w.window_start for w in first] == [i[0] for i in items]
+    for w in first:
+        assert w.fv_eur == pytest.approx(w.profit_conformal_eur - w.profit_naive_eur, abs=TOL)
+    assert [(w.profit_conformal_eur, w.fv_eur) for w in first] == [
+        (w.profit_conformal_eur, w.fv_eur) for w in second
+    ]

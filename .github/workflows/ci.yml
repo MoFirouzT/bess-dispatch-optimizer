@@ -26,6 +26,9 @@ jobs:
       - name: Format check (ruff)
         run: uv run ruff format --check .
 
+      - name: Types (mypy)
+        run: uv run mypy src
+
       - name: Import layers (import-linter)
         run: uv run lint-imports
 

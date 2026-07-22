@@ -65,10 +65,10 @@ def _build(
     m = pyo.ConcreteModel(name="r23_two_stage")
 
     # First-stage day-ahead block (its own R1.1 physics; prices set the length only).
-    m.da = pyo.Block(rule=lambda b: Battery(battery).register(b, pi_da, dt))
+    m.da = pyo.Block(rule=lambda b: Battery(battery).register(b, pi_da.tolist(), dt))
     # Per-scenario recourse blocks (full R1.1 physics at each realised path).
     m.S = pyo.RangeSet(0, s_n - 1)
-    m.scen = pyo.Block(m.S, rule=lambda b, s: Battery(battery).register(b, paths[s], dt))
+    m.scen = pyo.Block(m.S, rule=lambda b, s: Battery(battery).register(b, paths[s].tolist(), dt))
 
     if fix_da is not None:  # EEV: pin the first stage to a given schedule
         pch, pdis = fix_da

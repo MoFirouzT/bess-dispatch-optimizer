@@ -10,6 +10,14 @@ solution. Imports ``recourse`` / ``optimizer``; fed by ``forecaster`` /
 from __future__ import annotations
 
 from bess.stochastic.risk import cvar_from_losses
+from bess.stochastic.study import (
+    ForecastValue,
+    WindowVSS,
+    forecast_value,
+    forecast_value_from_sets,
+    vss_across_windows,
+    window_sets,
+)
 from bess.stochastic.twostage import StochasticSchedule, solve_stochastic
 from bess.stochastic.vss import (
     OutOfSampleVSS,
@@ -19,11 +27,17 @@ from bess.stochastic.vss import (
 )
 
 __all__ = [
+    "ForecastValue",
     "OutOfSampleVSS",
     "StochasticSchedule",
     "VSSResult",
+    "WindowVSS",
     "cvar_from_losses",
+    "forecast_value",
+    "forecast_value_from_sets",
     "out_of_sample_vss",
     "solve_stochastic",
     "value_of_stochastic_solution",
+    "vss_across_windows",
+    "window_sets",
 ]

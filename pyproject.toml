@@ -25,6 +25,8 @@ dev = [
     "pytest-cov>=5.0",
     "import-linter>=2.0",
     "httpx>=0.28.1",
+    "mypy>=2.3.0",
+    "pandas-stubs>=3.0.3.260530",
 ]
 # Plotting for the worked example (bess.viz / examples/). Not installed by default
 # or in CI; the figure smoke test skips when matplotlib is absent.
@@ -55,6 +57,32 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 # E/F pycodestyle+pyflakes, I import-sort, UP pyupgrade, B bugbear, SIM simplify
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+# --- types -------------------------------------------------------------------
+# `uv run mypy src` — CI gate. Scope is src/ (the shipped package); tests are
+# exercised by pytest and stay unchecked. Untyped third-party stacks (Pyomo,
+# entsoe-py, the optional forecast/plotting groups) are silenced per-module
+# below so every remaining error is ours.
+[tool.mypy]
+files = ["src"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pyomo.*",
+    "entsoe.*",
+    "highspy.*",
+    "lightgbm.*",
+    "mapie.*",
+    "sklearn.*",
+    "holidays.*",
+    "matplotlib.*",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 # --- tests -------------------------------------------------------------------
 [tool.pytest.ini_options]

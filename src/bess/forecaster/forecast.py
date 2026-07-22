@@ -86,14 +86,14 @@ class PriceForecaster:
             verbose=-1,
             **lgb_params,
         )
-        self._mapie: object | None = None
+        self._mapie: ConformalizedQuantileRegressor | SplitConformalRegressor | None = None
 
     def _lgbm(self, **extra: object) -> LGBMRegressor:
         return LGBMRegressor(**{**self._lgb, **extra})
 
     def _matrix(self, prices: pd.Series) -> tuple[np.ndarray, pd.DatetimeIndex]:
         feats = make_features(prices, lags=self.lags, calendar=self.calendar, country=self.country)
-        return feats.to_numpy(), feats.index
+        return feats.to_numpy(), pd.DatetimeIndex(feats.index)
 
     def fit(self, prices: pd.Series) -> PriceForecaster:
         feats = make_features(prices, lags=self.lags, calendar=self.calendar, country=self.country)

@@ -27,6 +27,7 @@ try:
 
     matplotlib.use("Agg")  # headless: write files, never open a window
     import matplotlib.pyplot as plt
+    from matplotlib.artist import Artist
     from matplotlib.figure import Figure
     from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, VPacker
 except ImportError as exc:  # pragma: no cover - exercised only without the extra
@@ -69,7 +70,7 @@ def _set_flow_ylabel(ax) -> None:
         ("■ charge", _CHARGE),
         ("   (MW)", "#333333"),
     ]
-    boxes = [
+    boxes: list[Artist] = [
         TextArea(
             t, textprops={"color": c, "rotation": 90, "ha": "left", "va": "bottom", "fontsize": 9}
         )

@@ -45,7 +45,7 @@ delivering 1 MWh to the grid ultimately costs $1/\eta^{rt}$ MWh drawn from the g
 *A compact, one-screen statement of the full model.
 This is an index, not a second source of truth:
 the per-phase sections below (R1.1, R1.2, R2.3) are canonical and carry the derivations, rationale, and evolving detail; if the two ever disagree, the section governs.
-Current through R2.3 (R2.4 adds explanation, no optimizer change).*
+Current through R2.3 (R2.4 adds explanation and R2.5 adds evaluation protocols; neither changes the optimizer).*
 
 All power is metered **grid-side**, so efficiency enters only the SoC balance, never the objective (see [Conventions](#conventions) above).
 
@@ -487,7 +487,7 @@ The gate is: measured VSS $> 0$ **out-of-sample** on the designed value-generati
 
 **Considered but out of scope:** the Bertsimas-Sim $\Gamma$-budget robust counterpart (an alternative to CVaR, noted not built; [ADR-0020](decisions/0020-cvar-mean-risk-over-robust.md)); hard chance constraints as a separate mechanism (the soft CVaR objective stands in); multistage ($>2$-stage) trees; Benders / L-shaped decomposition (R2.4 / optional Julia); an explicit intraday order-book or imbalance-settlement market model (the recourse re-trades against a realized price, it does not model market microstructure; R3 scope).
 
-**Future work (forecast-value baseline).** The metrics above measure the value of *stochastic optimization* (VSS), but not the value of *forecast skill*: R2.1/R2.2 score the forecaster statistically (coverage, pinball loss), and R2.3 optimizes over whatever scenario set it is handed. A deferred baseline closes that loop. Run the same two-stage dispatch on scenarios built from a *naive* forecast (persistence, or seasonal-naive such as the same hour one week prior) and compare realized-price profit against the R2.1 conformal forecast, measuring in euros whether better forecasts yield better dispatch. It is distinct from EV/EEV, which use the scenario set's mean rather than contrasting forecast quality. Not built; recorded so the forecasting layer can later be justified in value terms, not statistical ones alone.
+**Forecast-value baseline.** The metrics above measure the value of *stochastic optimization* (VSS), but not the value of *forecast skill*: R2.1/R2.2 score the forecaster statistically, and R2.3 optimizes over whatever scenario set it is handed. The baseline that closes that loop, running the same two-stage dispatch on scenarios from a seasonal-naive forecast versus the R2.1 conformal forecast and comparing realized-price profit in euros, is built in §R2.5 below.
 
 ---
 
@@ -530,6 +530,54 @@ $T=3$, $\pi=[10,100,200]$, a 1 MW / **2 MWh** battery, $e_0=e^{\mathrm{tgt}}=0$,
 
 ---
 
+## R2.5. Value evaluation hardening (evaluation semantics; no optimizer change)
+
+*No governing reference:
+the quantities below are evaluation protocols over the existing §R2.3 program (Birge-Louveaux metrics under the §R1.4 leakage discipline) plus the standard quantile (pinball) loss.
+See [references.md: R2.3](references.md#r23-risk-aware-two-stage-dispatch--intraday-recourse) for the underlying machinery.*
+
+This section adds **no constraints, variables, or objective terms**.
+It defines the three quantities the evaluation layer ([specs/R2.5-value-evaluation.md](specs/R2.5-value-evaluation.md)) reports over the existing optimizer;
+if code and this section disagree, this governs.
+
+### Per-window out-of-sample VSS (a distribution, not a number)
+
+R2.3's gate measured VSS $>0$ out-of-sample on a *designed* value-generating instance.
+This protocol asks whether that value is a property of the market rather than of the design, by repeating the ADR-0021 measurement over arbitrary real delivery windows.
+
+A **window** $w$ is a UTC calendar day (the §R1.4 boundary) with realized price path $y^{(w)}$.
+Its **training scenario set** $S_w$ is $n$ equiprobable day-paths drawn with replacement from the $H$ complete days strictly before $w$ (an empirical bootstrap over recent day shapes; the §R1.4 information set, so nothing at or after $w$ enters).
+Fit both first-stage commitments on $S_w$: $g^{RP}$ (risk-neutral two-stage optimum) and $g^{EV}$ (deterministic solve at the mean path $\bar\pi_w$ of $S_w$).
+Score each commitment fixed, with optimal within-budget recourse, on the single realized path (an $S=1$ evaluation set), the day-ahead leg settling at $\bar\pi_w$ for both, exactly the ADR-0021 protocol:
+
+$$\boxed{ \mathrm{VSS}_w = v_w\bigl(g^{RP}\bigr) - v_w\bigl(g^{EV}\bigr), }$$
+
+where $v_w(g)$ is that held-out score. $\mathrm{VSS}_w$ carries no sign guarantee (out-of-sample, per ADR-0021); the reported object is the **empirical distribution** $\{\mathrm{VSS}_w\}$ over all windows with enough history (median, quartiles, share $>0$), never a single number.
+
+### Forecast value (euros, not statistics)
+
+The same fixed-commitment scoring, applied to two scenario sets that differ **only in the forecast** feeding the §R2.2 residual-path bootstrap: the R2.1 conformal forecast (its point path and residual history) versus a seasonal-naive forecast (same hour one week prior, with its own residual history).
+With $g^{\text{conf}}$ and $g^{\text{naive}}$ the risk-neutral two-stage commitments fit on the respective sets,
+
+$$\boxed{ \mathrm{FV} = v\bigl(g^{\text{conf}}\bigr) - v\bigl(g^{\text{naive}}\bigr). }$$
+
+FV is distinct from EV/EEV (which use one set's mean rather than contrasting forecasters) and is **reported with provenance, not asserted positive**: whether forecast skill converts to dispatch euros on a given window is the finding the protocol exists to measure.
+
+### Pinball (quantile) loss and skill
+
+For target $y$, quantile prediction $\hat q$ at level $\tau\in(0,1)$:
+
+$$\boxed{ \ell_\tau(y,\hat q) = \max\{\tau (y-\hat q),\ (\tau-1)(y-\hat q)\} }$$
+
+averaged over a §R1.4-style walk-forward test block, reported at the R2.1 interval edges $\tau=\alpha/2,\ 1-\alpha/2$.
+The **skill ratio** divides the conformal forecaster's loss by the seasonal-naive predictor's at the same $\tau$; below 1 means skill.
+Sanity identity: at $\tau=\tfrac12$ the pinball loss equals half the mean absolute error.
+This gives R2.1 an *accuracy* number beside its *calibration* (coverage) number; the two are independent axes (a wide, well-calibrated interval has coverage without skill).
+
+**Considered but out of scope:** CRPS and full-distribution scores (pinball at the shipped interval edges matches what R2.1 emits); formal significance testing of forecast-accuracy differences (Diebold-Mariano); retraining-cadence optimization (§R2.1b owns the drift decision); an intraday/imbalance settlement model (the scoring reuses §R2.3's two-price construction).
+
+---
+
 ## Changelog
 
 - **R1.1**: deterministic core.
@@ -541,4 +589,5 @@ $T=3$, $\pi=[10,100,200]$, a 1 MW / **2 MWh** battery, $e_0=e^{\mathrm{tgt}}=0$,
 - **R2.3**: risk-aware two-stage dispatch over the scenario set + intraday recourse. **Optimizer delta** (the first in Release 2): a non-anticipative day-ahead commitment $g^{DA}$, per-scenario recourse dispatch $g^{(s)}$ (R1.1 physics reused) tied by a recourse budget $\lvert g^{(s)}-g^{DA}\rvert\le\rho\bar P$, and a CVaR mean-risk term (Rockafellar-Uryasev linearisation, weight $\lambda$). Reports VSS $=\text{RP}-\text{EEV}$ and EVPI $=\text{WS}-\text{RP}$ with the ordering $\text{EEV}\le\text{RP}\le\text{WS}$ (extends R1.4). Reduces to the R1.1/R1.4 deterministic solve at $S=1$; the VSS $=0$ collapse is reproduced at the $\rho$-limits. Stays a MILP on HiGHS, no new dependency.
 - **R2.4**: shadow-price *explainability* over the solved R1.1/R1.2 dispatch (the SoC-balance dual as a water value, its flatness on interior SoC, the no-trade band, a per-trade breakeven-slippage read-off). **No optimizer change**: adds no constraint, variable, or objective term. MILP duals via fix-and-resolve; the idle tie-break is resolved by relaxing the exclusion caps at $\pi_t\ge 0$ idle periods with an objective-equality guard, bands reported only where $\mu_t$ is tie-break invariant ([ADR-0023](decisions/0023-milp-dual-resolve-rule.md)).
 - **Errata (2026-07-08)**: R1.4 ordering restated as $V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star$ with $0 \le V^{\mathrm{roll}}$ (the old display's $0 \le V^{\mathrm{greedy}}$ contradicted the greedy-can-lose-money note); sanity-band coefficient corrected to $c=\eta^{rt}(\text{cycles/day})\cdot 365$ ($E_{\text{usable}}$ wrongly appeared on both sides); R2.1 notation reconciled ($[\underline{\pi}_t,\overline{\pi}_t]$, margin $\hat s$). No model change.
+- **R2.5**: value evaluation *hardening* over the existing R2.3 program (per-window out-of-sample VSS as a distribution over real UTC-day windows under the ADR-0021 protocol; the forecast-value baseline FV contrasting conformal vs. seasonal-naive scenario inputs in euros, closing R2.3's deferred loop; pinball loss + skill ratio at the R2.1 interval edges). **No optimizer change**: adds no constraint, variable, or objective term. VSS windows and FV are reported, not sign-asserted (out-of-sample honesty per ADR-0021).
 - **R1.2 model change (2026-07-11)**: degradation regrounded. The earlier convex-PWL-of-throughput cost (epigraph form) was self-derived and matched no published source; replaced by the **linear DoD-stress** case of the cited cycle-based model (Xu 2018; Shi 2017 §II-C-1), a linear €/MWh throughput cost that is $\Delta t$-invariant (fixes a resolution dependence exposed by 15-min data) and asset-scale-invariant. Governing reference updated in [references.md](references.md); implementation (config, code, golden oracles) follows.

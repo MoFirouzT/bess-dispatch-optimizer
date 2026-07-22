@@ -78,7 +78,7 @@ def generate_scenarios(
         raise ValueError(f"n must be >= 1; got {n}")
     point_series = forecast.point
     point = np.asarray(point_series, dtype=float)
-    index = point_series.index
+    index = pd.DatetimeIndex(point_series.index)
     resid = np.asarray(residuals, dtype=float)
     if resid.ndim != 2 or resid.shape[1] != point.shape[0]:
         raise ValueError(

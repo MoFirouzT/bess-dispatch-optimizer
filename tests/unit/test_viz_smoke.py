@@ -23,6 +23,7 @@ from bess.viz.forecast_plots import (  # noqa: E402
 from bess.viz.stochastic_plots import (  # noqa: E402
     plot_risk_return_frontier,
     plot_vss_curve,
+    plot_vss_distribution,
 )
 
 
@@ -47,6 +48,9 @@ def test_stochastic_figures_build_without_error():
 
     fig_vss = plot_vss_curve(rhos=[0.0, 0.2, 0.5, 1.0, 2.0], vss=[0.0, 3.0, 6.0, 2.0, 0.0])
     assert fig_vss.axes
+
+    fig_dist = plot_vss_distribution([2.0, -0.5, 4.0, 0.0, 1.5, 3.2, -1.1, 0.8])
+    assert fig_dist.axes
 
 
 def test_forecast_interval_figure_builds_without_error():

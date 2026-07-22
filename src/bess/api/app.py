@@ -101,7 +101,7 @@ def post_dispatch(request: DispatchRequest) -> DispatchResponse:
 
 
 @app.post("/explain", response_model=ExplainResponse)
-def post_explain(request: DispatchRequest) -> ExplainResponse:
+def post_explain(request: DispatchRequest) -> ExplainResponse | JSONResponse:
     """Dispatch schedule plus its shadow-price explanation (R2.4, decision 5).
 
     Deliberately **not** behind the circuit breaker: the breaker's greedy fallback is

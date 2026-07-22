@@ -43,7 +43,7 @@ Strategy stays private; everything committed describes the project, not how to w
 ## 6. Commands
 
 - env / deps: `uv sync` · run: `uv run <cmd>`
-- lint + format: `ruff check .` · `ruff format .`
+- lint + format: `ruff check .` · `ruff format .` · types: `uv run mypy src`
 - tests: `uv run pytest` · coverage: `uv run pytest --cov=bess`
 - layers: `uv run lint-imports`
 - docs: `uv run python scripts/lint_docs.py` (writing charter — `conventions.md` §7)

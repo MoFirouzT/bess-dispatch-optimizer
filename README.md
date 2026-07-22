@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-177_(166_CI_%2B_11_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-193_(178_CI_%2B_15_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -54,13 +54,14 @@ The complete model, every constraint, and the governing references are in [docs/
 - **R2.2**: scenario generation and reduction: residual-path bootstrap into probability-weighted price paths, reduced ~300 → ~50 within a Kantorovich tolerance
 - **R2.3**: risk-aware two-stage dispatch with intraday MPC recourse: a CVaR mean-risk MILP with a measured **value of the stochastic solution (VSS) > 0** out-of-sample, plus a risk/return frontier (see [Value under uncertainty](#value-under-uncertainty-release-2))
 - **R2.4**: dual-based explainability: the state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades (see [Why it holds](#why-it-holds-release-2))
+- **R2.5**: value evaluation hardening: the VSS re-measured as a **per-window distribution** over real NL days (median positive, ~62% of windows), a **forecast-value baseline** in euros (conformal vs. seasonal-naive scenarios feeding the same dispatch), and **pinball skill** reported beside coverage (see [Value under uncertainty](#value-under-uncertainty-release-2))
 
 ## Example results
 
 Two results anchor the project: the deterministic core is essentially tight, so the value that remains is in handling price *uncertainty*, and that value is measurable and positive.
 
 **On real Dutch day-ahead prices, a rolling, no-look-ahead policy captures 99.0% of the perfect-foresight revenue ceiling.**
-Once the price curve is known, a myopic per-day policy is already near-optimal, so the deterministic problem is essentially solved. That is the foundation, not the headline: the value left on the table is not overnight foresight but *not knowing prices in advance*, which is exactly what Release 2 targets. That is where the project's differentiated result lives, a **measured value of the stochastic solution (VSS) > 0** (see [Value under uncertainty](#value-under-uncertainty-release-2)).
+Once the price curve is known, a myopic per-day policy is already near-optimal, so the deterministic problem is essentially solved. That is the foundation, not the headline: the value left on the table is not overnight foresight but *not knowing prices in advance*, which is exactly what Release 2 targets. That is where the project's differentiated result lives, a **measured value of the stochastic solution (VSS) with a positive median across real out-of-sample days** (see [Value under uncertainty](#value-under-uncertainty-release-2)).
 
 The numbers below are from a worked example over a 91-day 2024-Q2 ENTSO-E NL day-ahead window (1 MWh / 1 MW asset, η = 0.95), **net of a priced linear degradation cost** (R1.2, €15/MWh of throughput). No price data is committed; set an ENTSO-E token and run [`examples/worked_example.py`](examples/worked_example.py) to reproduce (without a token it falls back to a synthetic series):
 
@@ -84,7 +85,7 @@ These figures are for a **1-hour** asset (1 MWh / 1 MW). Storage duration (energ
 
 The deterministic result above assumes the price curve is known. Release 2 drops that assumption: it forecasts prices as calibrated intervals (R2.1), samples them into scenarios (R2.2), and solves a two-stage risk-aware program that commits a day-ahead schedule now and re-dispatches intraday once prices realize (R2.3).
 
-The forecaster (R2.1) predicts each price as a *calibrated interval*, not a point: LightGBM quantile models wrapped in conformal prediction. "Calibrated" is the load-bearing word, and it is measured rather than assumed. On real NL prices, the nominal 90% interval covers the realized price **89.2% of the time** out-of-sample under a leakage-safe walk-forward, so the scenarios drawn from it inherit an honest spread instead of false confidence.
+The forecaster (R2.1) predicts each price as a *calibrated interval*, not a point: LightGBM quantile models wrapped in conformal prediction. "Calibrated" is the load-bearing word, and it is measured rather than assumed. On real NL prices, the nominal 90% interval covers the realized price **89.2% of the time** out-of-sample under a leakage-safe walk-forward, so the scenarios drawn from it inherit an honest spread instead of false confidence. Calibration alone is cheap (a wide interval covers everything), so accuracy is measured separately: at the interval edges the forecaster's pinball loss is **0.36x / 0.16x a seasonal-naive baseline's** under the same walk-forward (R2.5; below 1 is skill).
 
 ![Conformal price forecast on a held-out block: the shaded 90% interval, the point forecast, and the realized price; the interval widens where the price is volatile (heteroscedastic) and the realized price lands inside it close to the nominal 90% of the time.](docs/figures/example-forecast-intervals.svg)
 
@@ -100,7 +101,15 @@ A residual-path bootstrap then generates a few hundred price paths, and forward-
 
 ![Scenario reduction: Kantorovich distance to the full set vs. the number of paths kept (forward selection beats the k-means baseline), and the wall-clock cost of reducing, which together justify keeping ~50 of ~300.](docs/figures/example-scenario-reduction.svg)
 
-That machinery only earns its place if it beats simply optimizing against the mean forecast. It does: the **value of the stochastic solution (VSS) is positive**, measured out-of-sample on held-out real days, and it rises then falls with the intraday recourse budget ρ (zero recourse and unlimited recourse both collapse to the mean-value plan; the value lives in between). Trading expected profit for downside protection traces a mean-CVaR frontier.
+That machinery only earns its place if it beats simply optimizing against the mean forecast. It does, and not only on a designed instance. Repeating the out-of-sample measurement over **every UTC day of a real NL quarter** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of about +12 EUR** for the 2 MWh / 1 MW study asset, positive on **62% of 63 windows** (quartiles −8 to +33). The negative windows are real and reported: on a calm day the mean-value plan is fine, so the stochastic edge is a distribution, not a constant (R2.5).
+
+![Per-window out-of-sample VSS on real NL 2024-Q2 days: a histogram of 63 windows straddling zero with its median clearly positive; the stochastic commitment usually, but not always, beats the mean-value plan out-of-sample.](docs/figures/example-vss-distribution.svg)
+
+Reproduce with `uv run --group examples python examples/vss_study.py` (token, synthetic fallback otherwise).
+
+The forecast layer is also held to a euro standard, not just a statistical one: on the last study window, the plan built from conformal scenarios out-earned the seasonal-naive plan by **about +47 EUR** (the R2.5 forecast-value baseline; reported per window with provenance, not guaranteed positive).
+
+The mechanism behind the VSS is the intraday recourse budget ρ: the value **rises then falls with ρ** (zero recourse and unlimited recourse both collapse to the mean-value plan; the value lives in between). Trading expected profit for downside protection traces a mean-CVaR frontier.
 
 <table>
   <tr>
@@ -170,6 +179,7 @@ Assumes some familiarity with linear/integer programming; battery and power-mark
 uv sync                       # environment + dependencies
 uv run pytest                 # tests (golden + property gates)
 ruff check . && ruff format . # lint + format
+uv run mypy src               # static types
 uv run lint-imports           # layering contract
 ```
 

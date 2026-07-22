@@ -47,9 +47,9 @@ def build_model(
 
     # Objective — grid-side arbitrage revenue (NO efficiency factor) minus the
     # asset-provided degradation cost (R1.2; zero/absent ⇒ identical to R1.1).
-    revenue = sum(prices[t] * dt * (model.p_discharge[t] - model.p_charge[t]) for t in model.T)  # type: ignore[operator]
+    revenue = sum(prices[t] * dt * (model.p_discharge[t] - model.p_charge[t]) for t in model.T)
     degradation = (
-        sum(model.degradation_cost[t] for t in model.T) if hasattr(model, "degradation_cost") else 0  # type: ignore[operator]
+        sum(model.degradation_cost[t] for t in model.T) if hasattr(model, "degradation_cost") else 0
     )
     model.revenue = pyo.Objective(expr=revenue - degradation, sense=pyo.maximize)
     return model
@@ -86,7 +86,7 @@ def solve(
     for _key, _val in _HIGHS_TOLERANCES.items():
         opt.options[_key] = _val
     if time_limit is not None:
-        opt.config.time_limit = time_limit  # type: ignore[attr-defined]
+        opt.config.time_limit = time_limit
     # load_solutions=False so a residual (e.g. ramp-coupled) infeasibility returns
     # a termination condition to guard on, rather than raising on solution load.
     results = opt.solve(model, load_solutions=False)
@@ -98,11 +98,11 @@ def solve(
         raise RuntimeError(f"solve did not reach optimality: termination_condition={tc}")
     model.solutions.load_from(results)
 
-    idx = sorted(model.T)  # type: ignore[index]
+    idx = sorted(model.T)
     return Schedule(
-        p_charge=[pyo.value(model.p_charge[t]) for t in idx],  # type: ignore[index]
-        p_discharge=[pyo.value(model.p_discharge[t]) for t in idx],  # type: ignore[index]
-        soc=[pyo.value(model.soc[t]) for t in idx],  # type: ignore[index]
-        objective=pyo.value(model.revenue),  # type: ignore[index]
+        p_charge=[pyo.value(model.p_charge[t]) for t in idx],
+        p_discharge=[pyo.value(model.p_discharge[t]) for t in idx],
+        soc=[pyo.value(model.soc[t]) for t in idx],
+        objective=pyo.value(model.revenue),
         termination="optimal",  # guard above guarantees optimality at this point
     )

@@ -17,6 +17,7 @@ from bess.forecaster.drift import (
     psi,
     seasonal_naive_forecast,
 )
+from bess.forecaster.evaluate import pinball_loss, seasonal_naive
 from bess.forecaster.features import DEFAULT_LAGS, align_target, make_features
 
 __all__ = [
@@ -29,7 +30,9 @@ __all__ = [
     "align_target",
     "classify_drift",
     "make_features",
+    "pinball_loss",
     "psi",
+    "seasonal_naive",
     "seasonal_naive_forecast",
     "walk_forward_coverage",
 ]

@@ -54,6 +54,15 @@ SCRIPTS: dict[str, tuple[str | None, dict]] = {
         "FIG_DIR",
         {"N_SCENARIOS": 12, "LAMBDAS": [0.0, 0.5], "RHOS": [0.0, 0.3]},
     ),
+    "vss_study": (
+        "FIG_DIR",
+        {
+            "HISTORY_DAYS": 4,
+            "N_SCENARIOS": 4,
+            "N_SYNTH_DAYS": 7,
+            "RUN_FORECAST_BASELINE": False,
+        },
+    ),
 }
 
 

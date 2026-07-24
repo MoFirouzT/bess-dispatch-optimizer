@@ -30,6 +30,7 @@ def walk_forward_coverage(
     method: str = "cqr",
     n_folds: int = 3,
     test_days: int = 5,
+    fundamentals: pd.DataFrame | None = None,
     **forecaster_params: Any,
 ) -> tuple[float, float]:
     """Return ``(empirical_coverage, mean_interval_width)`` over a walk-forward.
@@ -38,6 +39,11 @@ def walk_forward_coverage(
     blocks. For each block, a fresh forecaster is fit on all days strictly before the
     block and used to predict it (features for the block come from prior days, so no
     leakage). Coverage is pooled across all test points.
+
+    If ``fundamentals`` is given (R2.1c: a day-ahead ``load_da/wind_da/solar_da``
+    frame), each fold's forecaster is fit and predicted with it (``make_features``
+    reindexes it per fold, so passing the whole frame is safe). ``None`` is the R2.1
+    behavior, byte-identical.
     """
     from bess.forecaster.forecast import PriceForecaster  # lazy: needs the forecast group
 
@@ -59,10 +65,13 @@ def walk_forward_coverage(
         hist_and_block = prices[norm <= block_end]
 
         forecaster = PriceForecaster(
-            confidence_level=confidence_level, method=method, **forecaster_params
+            confidence_level=confidence_level,
+            method=method,
+            use_fundamentals=fundamentals is not None,
+            **forecaster_params,
         )
-        forecaster.fit(train)
-        forecast = forecaster.predict_interval(hist_and_block)
+        forecaster.fit(train, fundamentals=fundamentals)
+        forecast = forecaster.predict_interval(hist_and_block, fundamentals=fundamentals)
 
         f_norm = pd.DatetimeIndex(forecast.point.index).normalize()
         block_mask = (f_norm >= block_start) & (f_norm <= block_end)
@@ -136,6 +145,7 @@ def walk_forward_pinball_skill(
     n_folds: int = 3,
     test_days: int = 5,
     lag_days: int = 7,
+    fundamentals: pd.DataFrame | None = None,
     **forecaster_params: Any,
 ) -> PinballSkill:
     """Pinball loss at the interval edges under the R1.4 walk-forward, vs. naive.
@@ -143,7 +153,9 @@ def walk_forward_pinball_skill(
     Same fold discipline as :func:`walk_forward_coverage` (fit strictly before
     each test block, pool across blocks). The conformal forecaster's lower/upper
     bounds are scored as τ = α/2 and 1 − α/2 quantile predictions; the seasonal-
-    naive prediction is scored at the same τ as the degenerate baseline.
+    naive prediction is scored at the same τ as the degenerate baseline. Pass
+    ``fundamentals`` (R2.1c) to score the fundamentals-augmented forecaster; ``None``
+    is the R2.1/R2.5 behavior.
     """
     from bess.forecaster.forecast import PriceForecaster  # lazy: needs the forecast group
 
@@ -166,10 +178,13 @@ def walk_forward_pinball_skill(
 
         norm = pd.DatetimeIndex(prices.index).normalize()
         forecaster = PriceForecaster(
-            confidence_level=confidence_level, method=method, **forecaster_params
+            confidence_level=confidence_level,
+            method=method,
+            use_fundamentals=fundamentals is not None,
+            **forecaster_params,
         )
-        forecaster.fit(prices[norm < block_start])
-        forecast = forecaster.predict_interval(prices[norm <= block_end])
+        forecaster.fit(prices[norm < block_start], fundamentals=fundamentals)
+        forecast = forecaster.predict_interval(prices[norm <= block_end], fundamentals=fundamentals)
 
         f_norm = pd.DatetimeIndex(forecast.point.index).normalize()
         block_mask = (f_norm >= block_start) & (f_norm <= block_end)

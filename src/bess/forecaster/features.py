@@ -29,12 +29,18 @@ def _dt_hours(index: pd.DatetimeIndex) -> float:
     return (index[1] - index[0]).total_seconds() / 3600.0
 
 
+#: Fundamentals feature columns (R2.1c). Grid-side day-ahead forecasts in MW,
+#: aligned *contemporaneously* to the target (not lagged); see ``fundamentals`` below.
+FUNDAMENTAL_COLS: tuple[str, ...] = ("load_da", "wind_da", "solar_da")
+
+
 def make_features(
     prices: pd.Series,
     *,
     lags: tuple[int, ...] = DEFAULT_LAGS,
     calendar: bool = True,
     country: str | None = None,
+    fundamentals: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Build the leakage-safe feature matrix for forecasting ``prices``.
 
@@ -44,6 +50,16 @@ def make_features(
     calendar fields. If ``country`` is given and ``holidays`` is installed, adds an
     ``is_holiday`` flag. Every column at row ``t`` depends only on information from
     strictly before ``t`` (prior-day prices, or the calendar of ``t`` itself).
+
+    **Fundamentals (R2.1c, opt-in).** If ``fundamentals`` is given, its columns
+    (a subset of ``load_da``/``wind_da``/``solar_da``, day-ahead forecasts in MW on
+    the same UTC grid as ``prices``) are added **aligned to the target ``t`` itself**,
+    not shifted into the past. This is leakage-safe *because these are the day-ahead
+    forecasts published before gate closure* (see the spec / ADR-0024), so the value
+    for ``t`` is already known when forecasting ``π_t`` — never pass realized actuals.
+    When all three components are present, a ``residual_load = load_da − wind_da −
+    solar_da`` column is added (the merit-order driver). ``fundamentals=None`` is
+    byte-identical to the R2.1 feature matrix (the opt-in identity).
     """
     if not isinstance(prices.index, pd.DatetimeIndex):
         raise ValueError("prices must have a DatetimeIndex")
@@ -65,8 +81,16 @@ def make_features(
             if holiday_flag is not None:
                 feats["is_holiday"] = holiday_flag
 
+    if fundamentals is not None:
+        fund = fundamentals.reindex(idx)  # contemporaneous, label-aligned to the targets
+        if all(c in fund.columns for c in FUNDAMENTAL_COLS):
+            feats["residual_load"] = fund["load_da"] - fund["wind_da"] - fund["solar_da"]
+        for col in FUNDAMENTAL_COLS:
+            if col in fund.columns:
+                feats[col] = fund[col].astype("float64")
+
     frame = pd.DataFrame(feats, index=idx)
-    return frame.dropna()  # drop the warm-up rows where a lag is unavailable
+    return frame.dropna()  # drop the warm-up rows where a lag (or fundamental) is unavailable
 
 
 def align_target(prices: pd.Series, features: pd.DataFrame) -> pd.Series:

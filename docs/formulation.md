@@ -180,6 +180,10 @@ $$\boxed{ e_{T} = e^{\mathrm{tgt}} }$$
     SoC-dependent efficiency is bilinear, and rainflow wear is path-dependent (both in the R1.2 out-of-scope list), so either would trade a fast, provably-optimal solve for a slow, locally-optimal one.
     Cheap, convexity-preserving additions (a linear self-discharge decay in balance (1); a 2-to-3-segment PWL efficiency curve) are held back until a real asset demands them.
     This mirrors production dispatch practice, where the modeling budget is spent on market scope and uncertainty, not cell chemistry.
+- **Price-taker (reflexivity out of scope).**
+    The price path $\pi_t$ is an exogenous parameter: dispatch $g_t$ optimizes against it and never feeds back into it. This standard price-taker assumption holds for the study asset (2 MWh / 1 MW), far too small to move day-ahead clearing in a bidding zone that trades in the gigawatts.
+    Worth naming what it sets aside, since a day-ahead price is not a physical signal but the clearing point of an auction, the outcome of many agents' strategic bids: the model forecasts that outcome as a given series (R2.1) and does not model the game producing it.
+    It would break for a participant large enough that its own bids move the price it is forecasting (reflexivity), where dispatch and price co-determine and the honest decision object is a bid curve submitted into the auction, not a schedule against a fixed one; that is out of scope here and the natural home of the R3 marginal-value bid-curve work.
 - **Sense.**
     Pyomo minimizes by default;
     set the objective sense to maximize (or minimize the negated expression).

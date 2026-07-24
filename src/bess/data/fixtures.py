@@ -54,15 +54,14 @@ def synthetic_day_ahead(days: int = 90, seed: int = 42, spread_scale: float = 1.
     return pd.Series(np.concatenate(out), index=idx, name=PRICE_COL)
 
 
-def validate_price_series(s: pd.Series, *, source: str = "price series") -> pd.Series:
-    """Validate the internal price-series schema; return the series unchanged.
+def validate_utc_index(idx: pd.Index, *, source: str = "series") -> None:
+    """Validate the internal time-index schema; raise ``ValueError`` on violation.
 
     The schema (conventions §1/§4): a tz-aware **UTC** ``DatetimeIndex``, sorted
-    ascending, with a single regular frequency and no gaps. Raises ``ValueError``
-    naming ``source`` on any violation. Shared by the fixture loader and the
-    ENTSO-E adapter (``bess.data.entsoe``) so both enforce one contract.
+    ascending, with a single regular frequency and no gaps. Shared by the price
+    fixture loader, the ENTSO-E price adapter, and the R2.1c fundamentals loader
+    so every internal time series enforces one index contract.
     """
-    idx = s.index
     if not isinstance(idx, pd.DatetimeIndex):
         raise ValueError(f"{source}: index must be a DatetimeIndex, got {type(idx).__name__}")
     if idx.tz is None or str(idx.tz) != "UTC":
@@ -78,6 +77,15 @@ def validate_price_series(s: pd.Series, *, source: str = "price series") -> pd.S
                 f"{source}: gaps / irregular freq — steps seen: "
                 f"{sorted(set(steps))} (expected a single regular frequency)"
             )
+
+
+def validate_price_series(s: pd.Series, *, source: str = "price series") -> pd.Series:
+    """Validate the internal price-series schema; return the series unchanged.
+
+    Thin wrapper over ``validate_utc_index`` (the shared index contract); kept as
+    the price-specific entry point the fixture loader and ENTSO-E price adapter call.
+    """
+    validate_utc_index(s.index, source=source)
     return s
 
 

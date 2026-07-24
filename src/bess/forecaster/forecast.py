@@ -18,6 +18,7 @@ leakage-safe feature construction lives in ``features.py`` and needs neither.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import numpy as np
@@ -26,6 +27,8 @@ from lightgbm import LGBMRegressor
 from mapie.regression import ConformalizedQuantileRegressor, SplitConformalRegressor
 
 from bess.forecaster.features import DEFAULT_LAGS, align_target, make_features
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, eq=False)
@@ -65,6 +68,7 @@ class PriceForecaster:
         calib_fraction: float = 0.3,
         n_estimators: int = 200,
         random_state: int = 0,
+        use_fundamentals: bool = False,
         **lgb_params: object,
     ) -> None:
         if method not in ("cqr", "split"):
@@ -76,6 +80,7 @@ class PriceForecaster:
         self.lags = lags
         self.calendar = calendar
         self.country = country
+        self.use_fundamentals = use_fundamentals
         self.calib_fraction = calib_fraction
         # Deterministic, single-threaded LightGBM so intervals are reproducible.
         self._lgb = dict(
@@ -91,12 +96,41 @@ class PriceForecaster:
     def _lgbm(self, **extra: object) -> LGBMRegressor:
         return LGBMRegressor(**{**self._lgb, **extra})
 
-    def _matrix(self, prices: pd.Series) -> tuple[np.ndarray, pd.DatetimeIndex]:
-        feats = make_features(prices, lags=self.lags, calendar=self.calendar, country=self.country)
+    def _features(self, prices: pd.Series, fundamentals: pd.DataFrame | None) -> pd.DataFrame:
+        """Build the feature matrix, honoring ``use_fundamentals`` with graceful fallback.
+
+        When ``use_fundamentals`` is set but no fundamentals frame is supplied, fall
+        back to the R2.1 price+calendar features and log a warning (R1.5/R1.4c
+        reliability posture: a degraded-but-valid forecast beats none). When it is
+        off, ``fundamentals`` is ignored so the output is byte-identical to R2.1.
+        """
+        fund = None
+        if self.use_fundamentals:
+            if fundamentals is None:
+                _logger.warning(
+                    "use_fundamentals=True but no fundamentals supplied; "
+                    "falling back to price+calendar features"
+                )
+            else:
+                fund = fundamentals
+        return make_features(
+            prices,
+            lags=self.lags,
+            calendar=self.calendar,
+            country=self.country,
+            fundamentals=fund,
+        )
+
+    def _matrix(
+        self, prices: pd.Series, fundamentals: pd.DataFrame | None = None
+    ) -> tuple[np.ndarray, pd.DatetimeIndex]:
+        feats = self._features(prices, fundamentals)
         return feats.to_numpy(), pd.DatetimeIndex(feats.index)
 
-    def fit(self, prices: pd.Series) -> PriceForecaster:
-        feats = make_features(prices, lags=self.lags, calendar=self.calendar, country=self.country)
+    def fit(
+        self, prices: pd.Series, *, fundamentals: pd.DataFrame | None = None
+    ) -> PriceForecaster:
+        feats = self._features(prices, fundamentals)
         y = align_target(prices, feats)
         x = feats.to_numpy()
         yv = y.to_numpy()
@@ -122,10 +156,12 @@ class PriceForecaster:
         self._mapie = mapie
         return self
 
-    def predict_interval(self, prices: pd.Series) -> IntervalForecast:
+    def predict_interval(
+        self, prices: pd.Series, *, fundamentals: pd.DataFrame | None = None
+    ) -> IntervalForecast:
         if self._mapie is None:
             raise RuntimeError("call fit() before predict_interval()")
-        x, idx = self._matrix(prices)
+        x, idx = self._matrix(prices, fundamentals)
         pred, interval = self._mapie.predict_interval(x)
         return IntervalForecast(
             point=pd.Series(np.asarray(pred).ravel(), index=idx, name="point"),
@@ -134,13 +170,13 @@ class PriceForecaster:
             confidence_level=self.confidence_level,
         )
 
-    def recalibrate(self, recent_prices: pd.Series) -> PriceForecaster:
+    def recalibrate(
+        self, recent_prices: pd.Series, *, fundamentals: pd.DataFrame | None = None
+    ) -> PriceForecaster:
         """Refresh the conformal calibration on a recent window; base models unchanged."""
         if self._mapie is None:
             raise RuntimeError("call fit() before recalibrate()")
-        feats = make_features(
-            recent_prices, lags=self.lags, calendar=self.calendar, country=self.country
-        )
+        feats = self._features(recent_prices, fundamentals)
         y = align_target(recent_prices, feats)
         self._mapie.conformalize(feats.to_numpy(), y.to_numpy())
         return self

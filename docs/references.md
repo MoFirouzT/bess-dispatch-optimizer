@@ -85,6 +85,13 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.1c. Exogenous day-ahead fundamentals features
+
+- **No governing reference; feature-engineering phase.** R2.1c adds exogenous predictors to the R2.1 forecaster and introduces no new modelling theory; Angelopoulos & Bates still governs the conformal wrapper and López de Prado the evaluation discipline.
+- **Residual load / merit order (domain context, not relied on):** the day-ahead price as the intersection of a step supply stack and demand, with *residual load* (load minus must-run wind/solar) as the position on the stack. Textbook-ubiquitous power-market context; used as motivation, not a cited method. The leakage-safe **contemporaneous alignment** of day-ahead forecast features is the project's own rule, recorded in [ADR-0024](decisions/0024-day-ahead-forecast-feature-alignment.md).
+
+---
+
 ## R2.2. Scenario generation + reduction
 
 *Selected at R2.2 draft ([spec](specs/R2.2-scenarios.md)); reconciled/verified before implementation.*

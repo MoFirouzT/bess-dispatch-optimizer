@@ -9,15 +9,23 @@ Resampling whole vectors preserves the intra-day error correlation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Protocol
 
 import numpy as np
 import pandas as pd
 
 from bess.scenarios.tail import ConditionalTailModel, TailModel, apply_tail
 
-if TYPE_CHECKING:  # avoid importing the LightGBM/MAPIE-backed forecaster at runtime
-    from bess.forecaster.forecast import IntervalForecast
+
+class PointForecast(Protocol):
+    """Anything exposing a ``point`` price path: an ``IntervalForecast`` (R2.1), or a
+    bare mean-day forecast. The generator reads only ``.point``, so it accepts either
+    without importing the LightGBM-backed forecaster. Declared read-only (a property)
+    so frozen-dataclass forecasts satisfy it."""
+
+    @property
+    def point(self) -> pd.Series: ...
+
 
 _PROB_ATOL = 1e-9
 
@@ -62,7 +70,7 @@ class ScenarioSet:
 
 
 def generate_scenarios(
-    forecast: IntervalForecast,
+    forecast: PointForecast,
     residuals: np.ndarray,
     *,
     n: int,

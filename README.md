@@ -51,10 +51,14 @@ The complete model, every constraint, and the governing references are in [docs/
 
 - **R2.1**: probabilistic price forecaster: LightGBM quantile models wrapped in conformal prediction (MAPIE) for calibrated day-ahead price *intervals*; on real NL prices the nominal 90% interval achieves **~89% empirical coverage** under a leakage-safe walk-forward (see [Value under uncertainty](#value-under-uncertainty-release-2))
 - **R2.1b**: rolling drift monitor: attributes a degrading forecast to a *regime shift* (wait), *model staleness* (retrain), or *miscalibration* (recalibrate), so the flag is actionable
+- **R2.1c**: exogenous day-ahead fundamentals features: ENTSO-E load and wind/solar forecasts combined into **residual load** (the supply-stack position that actually drives price), which cuts the forecaster's walk-forward pinball loss by **~17%** on real NL while holding nominal coverage (see [Value under uncertainty](#value-under-uncertainty-release-2))
 - **R2.2**: scenario generation and reduction: residual-path bootstrap into probability-weighted price paths, reduced ~300 → ~50 within a Kantorovich tolerance
+- **R2.2b**: extreme-value scenario tail: a peaks-over-threshold Generalized Pareto fit spliced onto the residual bootstrap, so scenarios can price spikes beyond the historical maximum (realized spikes above the plain generator's support ceiling fall from **7.4% to 1.0%** on real NL)
+- **R2.2c**: residual-load-conditional tail: the spike scale rises with residual load, so spikes concentrate on tight-margin hours (a measured **~69%** heavier tail on tight versus slack hours on real NL)
 - **R2.3**: risk-aware two-stage dispatch with intraday MPC recourse: a CVaR mean-risk MILP with a measured **value of the stochastic solution (VSS) > 0** out-of-sample, plus a risk/return frontier (see [Value under uncertainty](#value-under-uncertainty-release-2))
 - **R2.4**: dual-based explainability: the state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades (see [Why it holds](#why-it-holds-release-2))
 - **R2.5**: value evaluation hardening: the VSS re-measured as a **per-window distribution** over real NL days (median positive, ~62% of windows), a **forecast-value baseline** in euros whose per-window distribution comes out centred on zero (a null reported as a null), and **pinball skill** reported beside coverage (see [Value under uncertainty](#value-under-uncertainty-release-2))
+- **R2.5b**: tail dispatch value: whether the R2.2b/R2.2c scenario tail earns real euros, measured the same way as the forecast-value baseline; the per-window value is **centred on zero at every recourse budget** (another null, reported as one: the intraday recourse already captures a realized spike), so the scenario generator is refined enough
 
 ## Example results
 
@@ -87,6 +91,8 @@ The forecaster (R2.1) predicts each price as a *calibrated interval*, not a poin
 
 Reproduce with `uv run --group forecast --group examples python examples/forecast_demo.py` (token, synthetic fallback otherwise).
 
+That forecaster began as an autoregression: its features were the price's own recent past plus the calendar. But a day-ahead price is the clearing point of an auction, and where it lands on the supply stack is set by **residual load**, the demand left after must-run wind and solar. R2.1c adds that driver: ENTSO-E publishes day-ahead load and wind/solar forecasts before the auction closes, so conditioning on residual load is both leakage-safe (it is the published forecast for the target hour, never the realized value) and honest (it inherits the same forecast error a real desk sees). Feeding it cuts the forecaster's walk-forward pinball loss by about **17%** on real NL while empirical coverage stays at the nominal 90%, so the scenarios drawn downstream start from a sharper, better-conditioned signal.
+
 A forecaster deployed against a live market decays, so the drift monitor (R2.1b) watches its trailing accuracy and attributes *why* it degraded: a **regime shift** (the market moved; even a naive baseline degrades, so wait), **staleness** (the model fell behind a seasonal-naive, so retrain), or **miscalibration** (the intervals stopped covering, so recalibrate): an actionable alarm rather than a bare "accuracy dropped."
 
 ![Drift attribution map: the monitor's decision regions over the error ratio (forecaster vs. seasonal-naive MAE) and the input shift (PSI), each region coloured by what the real classifier returns there. Staleness (retrain) owns the whole high-ratio half regardless of input shift; regime shift (wait) is the high-PSI, low-ratio corner; miscalibration sits inside the healthy region because coverage is a third axis this map cannot show.](docs/figures/example-drift-regions.svg)
@@ -96,6 +102,16 @@ Reproduce with `uv run --group examples python examples/drift_demo.py` (syntheti
 A residual-path bootstrap then generates a few hundred price paths, and forward-selection reduction keeps the ~50 that best preserve the distribution (measured by Kantorovich distance), so the stochastic program stays small without discarding the tails that risk-aware dispatch cares about.
 
 ![Scenario reduction: Kantorovich distance to the full set vs. the number of paths kept (forward selection beats the k-means baseline), and the wall-clock cost of reducing, which together justify keeping ~50 of ~300.](docs/figures/example-scenario-reduction.svg)
+
+For a battery the decision-relevant part of the price distribution is its **tail**: a scarcity spike is precisely the hour to have saved charge for. Two refinements make that tail faithful. The residual-path bootstrap can only replay forecast errors it has already seen, so the largest spike any scenario prices is capped at the historical maximum, and real markets spike past it. R2.2b fits an **extreme-value tail**, a Generalized Pareto distribution over the residual exceedances above a high threshold, and splices it onto the bootstrap, so a scenario can price an unprecedented spike in a calibrated way rather than by an arbitrary multiplier. On real NL held-out days, the share of realized prices above the plain generator's support ceiling (the highest price it gives any probability at all) falls from **7.4% to 1.0%**: spikes the capped bootstrap ruled out are now represented.
+
+![Scenario tail: a histogram of forecast residuals with the fitted Generalized Pareto tail drawn over the high-threshold exceedances, beside the highest price each generator can produce; the plain bootstrap is capped at the historical-maximum residual while the extreme-value tail extends well beyond it.](docs/figures/example-spike-tail.svg)
+
+A spike is a scarcity event, so it does not fall uniformly across the day: it concentrates on tight-margin hours, high load against low renewables. R2.2c ties the tail's scale to residual load, the same driver R2.1c gave the forecaster, so spikes are heavier where they physically occur. The dependence is measured, not assumed: on real NL the fitted tail scale rises about **69%** from slack hours to tight hours, so the risk-aware program reserves stored energy for the hours that actually risk a spike.
+
+![Conditional scenario tail: historical spike sizes (excess over the threshold) plotted against residual load, with the fitted conditional Generalized Pareto scale rising over the flat unconditional one; spikes are systematically larger on high-residual-load (tight-margin) hours, which the unconditional tail spreads uniformly.](docs/figures/example-conditional-tail.svg)
+
+Reproduce the two tail figures with `uv run --group examples python examples/spike_tail_demo.py` and `examples/conditional_tail_demo.py` (both synthetic by design: they demonstrate the tail mechanism, not a market result). These refinements sharpen the scenario *representation*, but a sharper representation is not the same as more money, and the difference is measured rather than assumed. Running the two-stage dispatch on the tail-augmented scenarios versus the plain bootstrap over real NL days gives a per-window value **centred on zero at every recourse budget**, because the intraday recourse already captures a realized spike after the fact. So the extreme-value tail makes the scenario set more faithful without changing what the battery earns on this asset; the VSS and forecast-value numbers below use the plain bootstrap and the tail leaves them unmoved.
 
 That machinery only earns its place if it beats simply optimizing against the mean forecast. It does, and not only on a designed instance. Repeating the out-of-sample measurement over **every UTC day of a real NL quarter** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of about +12 EUR** for the 2 MWh / 1 MW study asset, positive on **62% of 63 windows** (quartiles −8 to +33). The negative windows are real and reported: on a calm day the mean-value plan is fine, so the stochastic edge is a distribution, not a constant (R2.5).
 
@@ -149,11 +165,13 @@ The data flows one way, from a raw price feed to a schedule and its explanation.
 ```mermaid
 flowchart LR
     P["Day-ahead prices<br/>(ENTSO-E)"] --> G["Ingestion guard<br/>R1.4c"]
+    F["Fundamentals: load,<br/>wind, solar (ENTSO-E)<br/>→ residual load, R2.1c"] --> FC
     G --> D{"Prices<br/>known?"}
     D -->|yes| OPT["Deterministic MILP<br/>R1.1 / R1.2"]
-    D -->|no| FC["Conformal forecaster<br/>R2.1"]
+    D -->|no| FC["Conformal forecaster<br/>R2.1 / R2.1c"]
     FC -.watched by.-> DM["Drift monitor<br/>R2.1b"]
-    FC --> SC["Scenarios<br/>R2.2"]
+    FC --> SC["Scenarios + extreme-value tail<br/>R2.2 / R2.2b / R2.2c"]
+    F -.conditions tail.-> SC
     SC --> ST["Two-stage risk-aware<br/>+ intraday recourse<br/>R2.3"]
     OPT --> SCH["Optimal schedule"]
     ST --> SCH
@@ -200,7 +218,7 @@ docker build -t bess-dispatch . && docker run -p 8000:8000 bess-dispatch
 
 ## Data
 
-The tests and CI use **synthetic** price series only, no real or third-party market data is committed (the ENTSO-E terms grant no public-redistribution right). Real Belgian/Dutch day-ahead prices are fetched at runtime via `bess.data.entsoe.fetch_day_ahead`, which wraps the [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/) and caches to `data/cache/` (gitignored).
+The tests and CI use **synthetic** price series only, no real or third-party market data is committed (the ENTSO-E terms grant no public-redistribution right). Real Belgian/Dutch day-ahead prices are fetched at runtime via `bess.data.entsoe.fetch_day_ahead`, which wraps the [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/) and caches to `data/cache/` (gitignored). The same module fetches the R2.1c fundamentals (`fetch_load_forecast`, `fetch_renewable_forecast`), the day-ahead load and wind/solar forecasts the forecaster conditions on.
 
 To run the live loader (and its token-gated integration test, skipped without a token), copy `.env.example` to `.env` and set `ENTSOE_API_TOKEN`. Any extra local setup (a CA bundle behind a TLS-intercepting proxy, the forecaster's OpenMP runtime) is documented in `.env.example`; it is operator setup, not code, and CI never touches the live API.
 

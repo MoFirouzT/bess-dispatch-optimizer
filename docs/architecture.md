@@ -14,7 +14,7 @@ this file maps the system's layers to the code's packages and points to [formula
 
 The optimizer takes a **day-ahead price curve** and a **battery spec** (power, energy, efficiency, ramp, SoC window) and returns the revenue-maximizing charge/discharge schedule, formulated as a deterministic MILP and solved with HiGHS.
 Release 1 builds this deterministic core and a leakage-safe backtest around it.
-Release 2 is complete: probabilistic price forecasting with conformal intervals (R2.1) and a forecast-drift monitor (R2.1b), scenario generation and reduction (R2.2), risk-aware two-stage optimization with intraday recourse (R2.3), and dual-based explainability (R2.4) are all implemented.
+Release 2 is complete: probabilistic price forecasting with conformal intervals (R2.1), conditioned on day-ahead fundamentals / residual load (R2.1c), with a forecast-drift monitor (R2.1b); scenario generation and reduction (R2.2) with an extreme-value (R2.2b), residual-load-conditional (R2.2c) tail; risk-aware two-stage optimization with intraday recourse (R2.3); dual-based explainability (R2.4); and value-evaluation hardening (R2.5) are all implemented.
 
 ---
 
@@ -49,13 +49,13 @@ forecaster → scenarios ┘
 | `stochastic` | Scenario-based and risk-aware optimization (R2.3). |
 | `explain` | Shadow prices and dispatch explanations (R2.4). |
 | `api` | The serving entry point. |
-| `forecaster` | Probabilistic price forecasting (conformal intervals) and a forecast-drift monitor (R2.1/R2.1b). |
-| `scenarios` | Scenario generation from forecasts, feeding `stochastic` (R2.2). |
+| `forecaster` | Probabilistic price forecasting (conformal intervals), day-ahead fundamentals features, and a forecast-drift monitor (R2.1/R2.1c/R2.1b). |
+| `scenarios` | Scenario generation from forecasts, with an extreme-value / residual-load-conditional tail, feeding `stochastic` (R2.2/R2.2b/R2.2c). |
 
 Two layers sit deliberately **outside** the serving chain:
 
 - `backtest`: an offline evaluation tool (R1.4a). It must not import the serving chain (`api`, `explain`, `stochastic`, `recourse`, `scenarios`, `forecaster`); it drives the optimizer directly.
-- `data`: the ENTSO-E loader (R1.4b) and the ingestion guard that wraps the fetch (R1.4c). A leaf: it imports nothing else in `bess`.
+- `data`: the ENTSO-E loaders (day-ahead prices, R1.4b; day-ahead load and wind/solar forecasts, R2.1c) and the ingestion guard that wraps the fetch (R1.4c). A leaf: it imports nothing else in `bess`.
 
 The headline invariant is `optimizer ⊥ api` (the optimizer never depends on the serving layer), which the layered contract gives for free.
 

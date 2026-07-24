@@ -5,6 +5,20 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ---
 
+## R2.2c IMPLEMENTED (gate green): residual-load-conditional scenario tail (2026-07-24)
+
+The payoff of the forecasting-challenges thread: R2.1c put residual load in the forecaster, R2.2b un-capped spikes but spread them *uniformly*, and R2.2c ties the tail to residual load so spikes land on tight-margin hours. Spec drafted, approved (one design fork put to the human via a question), implemented to green in one session. **Spec: [`docs/specs/R2.2c-conditional-tail.md`](specs/R2.2c-conditional-tail.md) (Implemented); [ADR-0026](decisions/0026-conditional-scale-tail-channel.md).**
+
+- **Design fork resolved by the human: the magnitude channel `β(x)`** (over frequency `λ(x)` or both). Condition the GPD *scale* on residual load via a log-link `β(x) = β₀·exp(γ·z)`; `ξ`/`β₀` reused from R2.2b's unconditional PWM fit (`β₀` = scale at `z=0`), `γ` fit by **OLS of log(excess) on standardized residual load**, clamped `γ ≥ 0`. Clean `γ=0 ⇒ byte-identical R2.2b` identity; pure-numpy (no scipy). Frequency channel deferred to **R2.2d** (named, on record) as the more decision-relevant but larger redesign with no clean identity.
+- **New in `bess.scenarios.tail`:** `log_scale_slope` (raw OLS slope), `ConditionalTailModel` (`.fit`, `.beta_at`); `apply_tail`/`generate_scenarios` gain a per-hour `tail_covariate` (per-element GPD scale; `gpd_quantile` now accepts an array β). `ConditionalTailModel` exported.
+- **Live result (NL Feb–Jun 2024, verified 2026-07-24):** **`γ = 0.21 > 0`**, so residual load genuinely predicts spike magnitude on this asset. Tail scale rises from **`β ≈ 6.2` on slack hours (10th-pct residual load) to `β ≈ 10.4` on tight hours (90th-pct), about +69%**. This is the thread's thesis confirmed end-to-end: spikes are residual-load-extreme events, and conditioning on residual load makes the scenario set represent that. A no-signal window would fit `γ≈0` and reduce to R2.2b (reported null, not failure).
+- **Tests (tests-first):** `tests/golden/test_golden_conditional_tail.py` (OLS slope exact `1`/`2`; `β₀`=R2.2b PWM; β rises with covariate; `γ<0` clamp; `γ=0` identity), `tests/property/test_conditional_tail.py` (opt-in identity, monotone-in-covariate spikes, `γ≥0` clamp, no-signal `γ≈0`, determinism), token-gated `tests/integration/test_conditional_tail_live.py`. Figure `docs/figures/example-conditional-tail.svg` (`plot_conditional_tail` + `examples/conditional_tail_demo.py`); viz + example smoke.
+- **No `formulation.md` section** (same call as R2.2b: statistical scenario-layer extension, 600-line cap). Theory in the spec + `references.md` §R2.2c (Coles 2001 **ch. 6 "Extremes of Nonstationary Sequences"** governing, chapter verified against the publisher listing; Hosking-Wallis PWM for the base fit).
+- **Gate status:** full suite **229 passed, 19 skipped**; ruff/format/mypy(43)/lint-imports(4 KEPT)/docs-lint clean. R2.2/R2.2b/R2.3/R2.5 unaffected (byte-identical default path). Uncommitted.
+- **The forecasting-challenges arc is now complete** (#1 reduced-form, #2 spike tail + conditional, #4 fundamentals, #5 reflexivity note). **Deferred, on record:** R2.2d (frequency channel `λ(x)`); the lower (negative-price) tail. **Next per the human's plan: a single documentation consolidation** surfacing R2.1c + R2.2b + R2.2c in the README/architecture (the milestone the per-phase pattern was deferring to).
+
+---
+
 ## R2.2b IMPLEMENTED (gate green): extreme-value (peaks-over-threshold) tail for the scenario bootstrap (2026-07-24)
 
 Continued the forecasting-challenges thread (the #2 spike-tail work R2.1c unblocked). Spec drafted, approved, and implemented to green in one session. **Spec: [`docs/specs/R2.2b-spike-tail.md`](specs/R2.2b-spike-tail.md) (Implemented); [ADR-0025](decisions/0025-semiparametric-gpd-scenario-tail.md).**
@@ -132,11 +146,9 @@ Session driven by an external-reviewer pass over the project (rubric-based portf
 
 ## Current phase
 
-**No active phase. Two forecasting-stack phases implemented and green 2026-07-24, both uncommitted:**
-- **R2.2b** (extreme-value scenario tail): committed most recently; spec [`docs/specs/R2.2b-spike-tail.md`](specs/R2.2b-spike-tail.md), details in the top dated entry. Scenario-layer, no optimizer/formulation math.
-- **R2.1c** (exogenous day-ahead fundamentals features): spec [`docs/specs/R2.1c-exogenous-fundamentals.md`](specs/R2.1c-exogenous-fundamentals.md). Forecaster-only. *(Per the earlier note the user committed R2.1c + the VSS-gate fix; R2.2b is the new uncommitted work.)*
+**No active phase. The forecasting-challenges arc (R2.1c → R2.2b → R2.2c) is complete and green 2026-07-24.** R2.1c and R2.2b are committed; **R2.2c is the newest uncommitted work** (spec [`docs/specs/R2.2c-conditional-tail.md`](specs/R2.2c-conditional-tail.md), details in the top dated entry). All scenario-layer / forecaster-layer, no optimizer or formulation math.
 
-Full suite 217 passed / 18 skipped; all gates green. R2.2b closes #2 of the price-vs-physical forecasting audit (spike tail); the deferred pieces are the conditional (residual-load-dependent) tail and the lower tail. Not yet surfaced in README/architecture (per-phase pattern → milestone).
+Full suite 229 passed / 19 skipped; all gates green. The arc closed #1 (reduced-form merit order), #2 (spike tail, now residual-load-conditional), #4 (fundamentals), #5 (reflexivity note) of the price-vs-physical forecasting audit. **Deferred, on record:** R2.2d (frequency-channel tail `λ(x)`), the lower negative-price tail. **Next per the human's plan: one documentation consolidation** surfacing R2.1c + R2.2b + R2.2c in README/architecture (the milestone the per-phase pattern defers figure/prose surfacing to). The new committed figures awaiting surfacing: `example-forecast-intervals`, `example-spike-tail`, `example-conditional-tail`.
 
 **Release 3 (not started). The R3.2 spec (drafted 2026-07-22) was withdrawn on 2026-07-23:** the human stepped back from starting Release 3 at that point and the draft spec file was deleted. Nothing else was touched (no formulation delta, no tests, no code). When R3.2 is picked again, regenerate its spec from `docs/specs/_TEMPLATE.md`; the drafted content (direction-asymmetric net-export caps, the time-varying R1.3 reachability extension, greedy-fallback cap-feasibility, the lossy capped oracle at objective 23.05) is summarized in `planning/` and re-derivable. Release 3 has since been replanned and its phase ids renumbered to match build order (both in `planning/`, Tier 0): **R3.1 imbalance-settlement recourse stage (builds first), R3.2 grid-connection / congestion cap, R3.3 ancillary co-optimization, R3.4 marginal-value bid curves.** **Next: human confirms the phase at the start of the next working session, then the spec-first workflow as usual (spec for the new R3.1 from `_TEMPLATE.md`).**
 

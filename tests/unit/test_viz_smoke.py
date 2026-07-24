@@ -14,7 +14,11 @@ pytest.importorskip("matplotlib")
 from bess.assets.battery import BatterySpec  # noqa: E402
 from bess.backtest.baselines import solve_window  # noqa: E402
 from bess.data.fixtures import synthetic_day_ahead  # noqa: E402
-from bess.viz.backtest_plots import plot_dispatch_day, plot_spike_tail  # noqa: E402
+from bess.viz.backtest_plots import (  # noqa: E402
+    plot_conditional_tail,
+    plot_dispatch_day,
+    plot_spike_tail,
+)
 from bess.viz.explain_plots import plot_water_value  # noqa: E402
 from bess.viz.forecast_plots import (  # noqa: E402
     plot_drift_regions,
@@ -76,6 +80,18 @@ def test_spike_tail_figure_builds_without_error():
         gpd_density=[0.05, 0.02, 0.008, 0.003],
         hist_max_price=300.0,
         tail_max_price=900.0,
+    )
+    assert fig.axes
+
+
+def test_conditional_tail_figure_builds_without_error():
+    fig = plot_conditional_tail(
+        residual_load=[6000.0, 8000.0, 11000.0, 13000.0],
+        excess=[3.0, 8.0, 20.0, 45.0],
+        grid_x=[6000.0, 9000.0, 13000.0],
+        beta_conditional=[4.0, 7.0, 12.0],
+        beta_unconditional=7.0,
+        gamma=0.4,
     )
     assert fig.axes
 

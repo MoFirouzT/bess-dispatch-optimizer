@@ -307,6 +307,45 @@ def plot_spike_tail(
     return fig
 
 
+def plot_conditional_tail(
+    residual_load: list[float],
+    excess: list[float],
+    grid_x: list[float],
+    beta_conditional: list[float],
+    beta_unconditional: float,
+    *,
+    gamma: float,
+    title: str = "Conditional scenario tail — spike size vs residual load (R2.2c)",
+) -> Figure:
+    """The R2.2c conditioning (no new optimizer math): exceedance magnitudes against
+    residual load, with the fitted conditional GPD scale rising over the flat
+    unconditional one.
+
+    Points are historical exceedances (excess over the threshold) at their residual
+    load. The flat grey line is R2.2b's single tail scale; the rising blue line is
+    R2.2c's ``β(x) = β₀·exp(γ·z)`` — spikes are systematically larger on tight-margin
+    (high-residual-load) hours, which the unconditional tail spreads uniformly.
+    """
+    fig, ax = plt.subplots(figsize=(8.5, 4.8))
+
+    ax.scatter(residual_load, excess, s=14, color=_BASELINE_MUTED, alpha=0.5, label="exceedances")
+    ax.axhline(
+        beta_unconditional, color=_FAULT, linestyle="--", lw=1.5,
+        label=f"unconditional scale β₀ = {beta_unconditional:.1f}",
+    )  # fmt: skip
+    ax.plot(
+        grid_x, beta_conditional, color=_METHOD, lw=2.2, label=f"conditional β(x), γ = {gamma:.2f}"
+    )
+    ax.set_xlabel("residual load  (load − wind − solar, MW)")
+    ax.set_ylabel("spike excess over threshold  (€/MWh)")
+    ax.set_title(title)
+    ax.legend(**_LEGEND_KW)
+    ax.grid(alpha=0.3)
+
+    fig.tight_layout()
+    return fig
+
+
 def plot_duration_sweep(
     durations_h: list[float],
     pct_of_perfect_foresight: list[float],

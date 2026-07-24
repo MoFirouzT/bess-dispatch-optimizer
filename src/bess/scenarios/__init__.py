@@ -14,9 +14,10 @@ from __future__ import annotations
 from bess.scenarios.generate import ScenarioSet, generate_scenarios
 from bess.scenarios.metrics import kantorovich_distance
 from bess.scenarios.reduce import reduce_scenarios
-from bess.scenarios.tail import TailModel
+from bess.scenarios.tail import ConditionalTailModel, TailModel
 
 __all__ = [
+    "ConditionalTailModel",
     "ScenarioSet",
     "TailModel",
     "generate_scenarios",

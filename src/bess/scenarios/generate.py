@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+from bess.scenarios.tail import TailModel, apply_tail
+
 if TYPE_CHECKING:  # avoid importing the LightGBM/MAPIE-backed forecaster at runtime
     from bess.forecaster.forecast import IntervalForecast
 
@@ -65,14 +67,22 @@ def generate_scenarios(
     *,
     n: int,
     seed: int,
+    tail: TailModel | None = None,
 ) -> ScenarioSet:
-    """Residual-path bootstrap (ADR-0017).
+    """Residual-path bootstrap (ADR-0017), optionally with an extreme-value tail (R2.2b).
 
     ``forecast`` supplies the point path via ``forecast.point`` (a ``pd.Series``
     indexed by target timestamp). ``residuals`` is an ``(M, T)`` matrix of
     historical whole-day error vectors (``actual − forecast``) from the
     forecaster's calibration history. Returns ``n`` equiprobable paths, each the
     point forecast plus one resampled error vector.
+
+    When ``tail`` is given (a fitted :class:`~bess.scenarios.tail.TailModel`), each
+    resampled residual's exceedances over the tail threshold are spliced with GPD
+    draws, so scenarios can exceed the historical-maximum residual (peaks-over-
+    threshold; spec R2.2b). ``tail=None`` is byte-identical to the plain bootstrap:
+    the tail draws come from the same generator *after* the resample indices, so the
+    bootstrap itself is unchanged.
     """
     if n < 1:
         raise ValueError(f"n must be >= 1; got {n}")
@@ -90,6 +100,9 @@ def generate_scenarios(
 
     rng = np.random.default_rng(seed)
     draws = rng.integers(0, resid.shape[0], size=n)
-    paths = point[None, :] + resid[draws]
+    resid_draws = resid[draws]
+    if tail is not None:
+        resid_draws = apply_tail(resid_draws, tail, rng)
+    paths = point[None, :] + resid_draws
     probs = np.full(n, 1.0 / n)
     return ScenarioSet(paths=paths, probs=probs, index=index)

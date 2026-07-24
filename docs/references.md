@@ -105,6 +105,16 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.2b. Extreme-value (peaks-over-threshold) tail for the scenario bootstrap
+
+*Selected at R2.2b draft ([spec](specs/R2.2b-spike-tail.md)); reconciled/verified before implementation. R2.2b adds no optimizer math and carries **no `formulation.md` section** (classified with R2.1b; the 600-line cap also forces it); the self-contained EVT theory lives in the spec and here.*
+
+- **S. Coles, *An Introduction to Statistical Modeling of Extreme Values*, Springer, 2001, ch. 4 "Threshold Models":** *governing reference* (the new theory: peaks-over-threshold and the Generalized Pareto Distribution). Authority for the POT limit, the GPD $(\xi, \beta)$ tail, threshold selection (mean-residual-life / parameter-stability diagnostics), and return levels. Coles is a textbook and the standard EVT reference, so no textbook-first deviation is needed (unlike R2.2's paper-defined reduction). Ch. 4 verified as the threshold-models chapter before relying; edition/section confirmed against the publisher listing.
+- **J. Hosking & J. Wallis, *Parameter and quantile estimation for the generalized Pareto distribution* (Technometrics 29(3), 1987):** *secondary (estimator, pointer only).* The **probability-weighted-moments (PWM)** estimator used for the GPD fit: closed-form, so the fit is pure-numpy, deterministic, and golden-testable, and (per the paper) more reliable than MLE below ~500 samples, which fits the short day-ahead residual history. Reconciled to house style: the tail acts on the residual $r = y - \hat\mu$ (€/MWh, grid-side); a spliced spike is $\hat\mu + (\text{tail-augmented residual})$. *(PWM formulas restated and sanity-checked in the spec's design sketch.)*
+- *Alternatives considered:* **block-maxima / GEV** wastes sub-maximal exceedances POT uses (rejected on short history); an **ad-hoc spike multiplier** has no calibration or return-level meaning (rejected); a **full multivariate/extremal-dependence tail** is out of scope (R2.2b splices per-component onto the empirical day-shape). The **conditional tail** (GPD parameters as a function of residual load, unblocked by R2.1c) is deferred future work.
+
+---
+
 ## R2.3. Risk-aware two-stage dispatch + intraday recourse
 
 *Selected at R2.3 draft ([spec](specs/R2.3-stochastic-recourse.md)); reconciled/verified before implementation. R2.3 introduces more than one new theory, so it names one governing spine with two subordinate-but-authoritative sub-concept references (open question 3, resolved: one phase, not an R2.3a/b split).*

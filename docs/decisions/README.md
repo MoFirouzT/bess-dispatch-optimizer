@@ -67,5 +67,6 @@ The other options and why they were rejected.
 | 0022 | [Storage duration is a reported axis for economic and value comparisons](0022-storage-duration-reported-axis.md) | Accepted |
 | 0023 | [The re-solve rule for MILP duals (fix-and-resolve with a relaxed idle tie-break)](0023-milp-dual-resolve-rule.md) | Accepted |
 | 0024 | [Day-ahead forecast features are aligned contemporaneously to the target](0024-day-ahead-forecast-feature-alignment.md) | Accepted |
+| 0025 | [Semiparametric GPD tail for the scenario bootstrap (splice, not resample or re-model)](0025-semiparametric-gpd-scenario-tail.md) | Accepted |
 
 Write each as its own file when the decision is locked. Keep this index in sync.

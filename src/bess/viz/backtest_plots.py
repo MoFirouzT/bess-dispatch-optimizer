@@ -253,6 +253,60 @@ def plot_scenario_reduction(
     return fig
 
 
+def plot_spike_tail(
+    residuals: list[float],
+    threshold: float,
+    gpd_x: list[float],
+    gpd_density: list[float],
+    *,
+    hist_max_price: float,
+    tail_max_price: float,
+    title: str = "Scenario tail — empirical body, extreme-value tail (R2.2b)",
+) -> Figure:
+    """The R2.2b peaks-over-threshold mechanism (no new optimizer math): the residual
+    histogram (the empirical body the bootstrap resamples) with the fitted GPD tail
+    over the threshold overlaid, and the un-capping annotation.
+
+    Left: residual histogram; the threshold ``u`` marks where the empirical body ends
+    and the parametric tail begins; the GPD density is drawn over the exceedance
+    region. Right: the money shot — the plain bootstrap's price support is capped at
+    the historical maximum, while the GPD tail extends it, so a scenario can price an
+    unprecedented spike.
+    """
+    fig, (ax_h, ax_c) = plt.subplots(1, 2, figsize=(11, 4.2))
+
+    ax_h.hist(residuals, bins=40, density=True, color=_BASELINE_MUTED, alpha=0.6, label="residuals")
+    ax_h.axvline(threshold, color=_FAULT, linestyle="--", label=f"threshold u = {threshold:.0f}")
+    ax_h.plot(gpd_x, gpd_density, color=_METHOD, lw=2.0, label="fitted GPD tail")
+    ax_h.set_xlabel("forecast residual (€/MWh)")
+    ax_h.set_ylabel("density")
+    ax_h.set_title("Empirical body + GPD tail over the threshold")
+    ax_h.legend(**_LEGEND_KW)
+    ax_h.grid(alpha=0.3)
+
+    ax_c.bar(
+        ["plain\nbootstrap", "+ GPD\ntail"],
+        [hist_max_price, tail_max_price],
+        color=[_BASELINE_MUTED, _METHOD],
+    )
+    ax_c.axhline(hist_max_price, color=_BASELINE_MUTED, linestyle=":", lw=1.0)
+    ax_c.annotate(
+        "capped at\nhistorical max",
+        xy=(0, hist_max_price),
+        xytext=(0, hist_max_price * 0.55),
+        ha="center",
+        fontsize=8,
+        color=_BASELINE_MUTED,
+    )
+    ax_c.set_ylabel("highest priceable spike (€/MWh)")
+    ax_c.set_title("Support ceiling — the tail un-caps it")
+    ax_c.grid(alpha=0.3, axis="y")
+
+    fig.suptitle(title, fontsize=13)
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    return fig
+
+
 def plot_duration_sweep(
     durations_h: list[float],
     pct_of_perfect_foresight: list[float],

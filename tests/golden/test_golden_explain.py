@@ -256,3 +256,63 @@ def test_duality_error_is_exported():
     """The guard's exception type is part of the public surface (raised on a
     re-solved objective that does not match the MILP; see the soundness property)."""
     assert issubclass(DualityError, Exception)
+
+
+def test_a_degenerate_optimum_prices_two_plans_differently():
+    """A measured instance where the water value is NOT scale-invariant, and why.
+
+    Prices [0,-1,-1,0,0,0] on a 0.75 MWh / 2 MW asset (eta=1, e_0=e_tgt=half full,
+    dt=0.5). The battery empties at t0 and is then paid to absorb one full charge,
+    which it can take at t1 *or* at t2: both hours clear at -1, so the two plans earn
+    the same objective and the primal optimum is non-unique. Scaling by 2 flips which
+    one HiGHS returns, and with it the reported water value at t1 (-1 when it charges
+    there, 0 when it idles there). Both are valid: V* has a kink, so its subdifferential
+    at t1 is the interval [-1, 0] and each plan reports one endpoint.
+
+    Pinned because it is the counterexample to the natural but wrong reading of the
+    scale-invariance property, that mu depends on the price path alone. It depends on
+    the *chosen optimum*. Same spirit as the three-idle-rules oracle above: a measured
+    fact about which the code must not silently change its mind.
+    """
+    prices = [0.0, -1.0, -1.0, 0.0, 0.0, 0.0]
+    spec = BatterySpec(
+        capacity=0.75,
+        soc_min=0.0,
+        p_charge_max=2.0,
+        p_discharge_max=2.0,
+        eta_charge=1.0,
+        eta_discharge=1.0,
+        soc_initial=0.5,
+        soc_terminal=0.5,
+    )
+    scaled = spec.model_copy(update={"capacity": 1.5, "p_charge_max": 4.0, "p_discharge_max": 4.0})
+
+    base = explain_schedule(prices, spec, dt=0.5)
+    big = explain_schedule(prices, scaled, dt=0.5)
+
+    # One full charge at -1 EUR/MWh: 0.75 MWh, and the objective is extensive.
+    assert base.schedule.objective == pytest.approx(0.75, abs=TOL)
+    assert big.schedule.objective == pytest.approx(1.5, abs=TOL)
+
+    # The two scales charge in different hours: that is the degeneracy, measured.
+    charged = [[t for t in (1, 2) if exp.periods[t].action == "charge"] for exp in (base, big)]
+    assert charged in ([[1], [2]], [[2], [1]]), charged
+
+    # Every reported water value lies in the true subdifferential, at both scales.
+    for exp in (base, big):
+        for t in (1, 2):
+            assert -1.0 - TOL <= exp.periods[t].water_value_eur_mwh <= TOL
+        for t in (0, 3, 4, 5):
+            assert exp.periods[t].water_value_eur_mwh == pytest.approx(0.0, abs=TOL)
+
+    # The two scales really do disagree at t1: that is the whole point.
+    mu_base, mu_big = (exp.periods[1].water_value_eur_mwh for exp in (base, big))
+    assert abs(mu_base - mu_big) == pytest.approx(1.0, abs=TOL)
+
+    # And the disagreement is disclosed by the scale that idles at t1, where the
+    # negative-priced idle tie-break engages: that run is unpinned and no band is
+    # reported. The scale that charges at t1 cannot see it (its tie-break never
+    # fires), which is exactly why the invariant is conditional and not universal.
+    idling = base if base.periods[1].action == "idle" else big
+    assert not run_of(idling, 1).pinned
+    assert idling.periods[1].band_low_eur_mwh is None

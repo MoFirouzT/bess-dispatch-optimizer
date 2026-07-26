@@ -5,7 +5,7 @@ moving the fine measure's mass to the nearest support point of the coarse
 measure. When the coarse support is a *subset* of the fine one (forward
 selection) this is exact; for the k-means baseline (centroids are not atoms) it
 is an upper bound on the true ``W_p``, used consistently so methods compare
-fairly. See ``docs/formulation.md`` § R2.2.
+fairly. See ``docs/formulation-r2.md`` § R2.2.
 """
 
 from __future__ import annotations

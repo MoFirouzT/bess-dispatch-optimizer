@@ -1,6 +1,6 @@
 """Value of the stochastic solution and EVPI (R2.3).
 
-Formulation: ``docs/formulation.md`` § R2.3 (Birge-Louveaux). Reports the
+Formulation: ``docs/formulation-r2.md`` § R2.3 (Birge-Louveaux). Reports the
 decision-value metrics that make the stochastic layer *measured*, not asserted:
 
 - **EV**  — the mean-value solve at ``π̄``;

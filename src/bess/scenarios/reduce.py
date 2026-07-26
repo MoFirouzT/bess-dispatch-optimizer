@@ -1,6 +1,6 @@
 """Scenario reduction: Heitsch-Römisch fast forward selection + k-means baseline (R2.2).
 
-See ``docs/formulation.md`` § R2.2 and ADR-0018. Forward selection greedily
+See ``docs/formulation-r2.md`` § R2.2 and ADR-0018. Forward selection greedily
 grows the kept set to minimize the Kantorovich distance to the original, then
 redistributes each deleted atom's mass to its nearest kept atom (keeping the
 reduced measure a valid probability distribution over *original* paths). k-means

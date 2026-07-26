@@ -2,7 +2,7 @@
 
 Spec: ``docs/specs/R2.1-forecaster.md`` § "Gates" (coverage) and
 ``docs/specs/R2.5-value-evaluation.md`` (pinball skill + the naive baseline);
-math: ``formulation.md`` §R2.1 / §R2.5. The honest test of a conformal
+math: ``formulation-r2.md`` §R2.1 / §R2.5. The honest test of a conformal
 forecaster is **empirical coverage on data it did not calibrate on, under the R1.4
 walk-forward discipline**: for each fold, fit on all strictly-earlier data, predict
 a later block, and check how often the realized price falls inside the interval.

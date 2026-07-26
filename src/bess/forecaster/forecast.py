@@ -1,6 +1,6 @@
 """Probabilistic day-ahead price forecaster: LightGBM + conformal intervals (R2.1).
 
-Spec: ``docs/specs/R2.1-forecaster.md``; theory summary: ``formulation.md`` §R2.1.
+Spec: ``docs/specs/R2.1-forecaster.md``; theory summary: ``formulation-r2.md`` §R2.1.
 Wraps a gradient-boosted base learner in a MAPIE conformal calibrator so the output
 is a **calibrated interval**, not a point. Two methods:
 

@@ -1,6 +1,6 @@
 """stochastic — risk-aware (CVaR mean-risk) two-stage dispatch + VSS reporting.
 
-Formulation: ``docs/formulation.md`` § R2.3. Optimizes dispatch over a
+Formulation: ``docs/formulation-r2.md`` § R2.3. Optimizes dispatch over a
 ``scenarios.ScenarioSet`` with a non-anticipative day-ahead commitment and
 budget-limited intraday recourse, and measures the value of the stochastic
 solution. Imports ``recourse`` / ``optimizer``; fed by ``forecaster`` /
@@ -11,11 +11,15 @@ from __future__ import annotations
 
 from bess.stochastic.risk import cvar_from_losses
 from bess.stochastic.study import (
+    BidCurveValue,
     ForecastValue,
     TailValue,
+    WindowBCV,
     WindowFV,
     WindowTV,
     WindowVSS,
+    bid_curve_value_across_windows,
+    bid_curve_value_from_sets,
     forecast_value,
     forecast_value_from_sets,
     fv_across_windows,
@@ -25,7 +29,7 @@ from bess.stochastic.study import (
     vss_across_windows,
     window_sets,
 )
-from bess.stochastic.twostage import StochasticSchedule, solve_stochastic
+from bess.stochastic.twostage import StochasticSchedule, curve_response, solve_stochastic
 from bess.stochastic.vss import (
     OutOfSampleVSS,
     VSSResult,
@@ -34,14 +38,19 @@ from bess.stochastic.vss import (
 )
 
 __all__ = [
+    "BidCurveValue",
     "ForecastValue",
     "OutOfSampleVSS",
     "StochasticSchedule",
     "TailValue",
     "VSSResult",
+    "WindowBCV",
     "WindowFV",
     "WindowTV",
     "WindowVSS",
+    "bid_curve_value_across_windows",
+    "bid_curve_value_from_sets",
+    "curve_response",
     "cvar_from_losses",
     "forecast_value",
     "forecast_value_from_sets",

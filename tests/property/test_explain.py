@@ -175,7 +175,17 @@ def test_marginal_value_matches_finite_difference(case):
 @given(case=problem(), k=st.floats(min_value=0.25, max_value=4.0))
 def test_scale_invariance_of_water_value(case, k):
     """The water value is a per-MWh rate: scaling capacity, both power caps, and the
-    SoC endpoints by k > 0 leaves every mu_t unchanged. Mirrors the R1.2 property."""
+    SoC endpoints by k > 0 leaves every mu_t unchanged. Mirrors the R1.2 property.
+
+    Conditional on the solver returning the *same* dispatch at both scales. The water
+    value is a property of the chosen optimum, not of the price path alone, so where
+    the primal optimum is non-unique two equally optimal dispatches carry different,
+    both-valid marginal values (each a subgradient at a kink of V*). Scaling can flip
+    which one HiGHS returns. This is the same kink caveat the finite-difference
+    property above already carries; see the golden oracle that pins a measured
+    instance of it. The objective, being extensive, scales whatever the solver picks,
+    so that half is asserted unconditionally.
+    """
     prices, spec, dt = case
     scaled = spec.model_copy(
         update={
@@ -184,10 +194,24 @@ def test_scale_invariance_of_water_value(case, k):
             "p_discharge_max": spec.p_discharge_max * k,
         }
     )
-    base = [p.water_value_eur_mwh for p in explain_schedule(prices, spec, dt=dt).periods]
-    big = [p.water_value_eur_mwh for p in explain_schedule(prices, scaled, dt=dt).periods]
-    for a, b in zip(base, big, strict=True):
-        assert a == pytest.approx(b, abs=1e-4, rel=1e-5)
+    base = explain_schedule(prices, spec, dt=dt)
+    big = explain_schedule(prices, scaled, dt=dt)
+
+    assert big.schedule.objective == pytest.approx(k * base.schedule.objective, abs=1e-5, rel=1e-6)
+
+    same_dispatch = all(
+        b == pytest.approx(k * a, abs=1e-6, rel=1e-6)
+        for lo, hi in (
+            (base.schedule.p_charge, big.schedule.p_charge),
+            (base.schedule.p_discharge, big.schedule.p_discharge),
+        )
+        for a, b in zip(lo, hi, strict=True)
+    )
+    if not same_dispatch:
+        return  # a degenerate optimum: the two scales priced different, equally optimal, plans
+
+    for p, q in zip(base.periods, big.periods, strict=True):
+        assert p.water_value_eur_mwh == pytest.approx(q.water_value_eur_mwh, abs=1e-4, rel=1e-5)
 
 
 @settings(max_examples=50, deadline=None, suppress_health_check=[HealthCheck.too_slow])

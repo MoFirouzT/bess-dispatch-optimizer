@@ -49,6 +49,7 @@ ALL_DOCS = sorted((ROOT / "docs").glob("**/*.md")) + [ROOT / "README.md"]
 # Canonical Tier-1/2 docs that must declare what they take as given (rule 5).
 CANONICAL = [
     "docs/formulation.md",
+    "docs/formulation-r2.md",
     "docs/architecture.md",
     "docs/conventions.md",
     "docs/glossary.md",

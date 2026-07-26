@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-197_(181_CI_%2B_16_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-332_(311_CI_%2B_21_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -32,7 +32,7 @@ $$e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \D
 plus power, energy, and ramp limits, a binary that forbids simultaneous charge and discharge, and a terminal-SoC target. The degradation cost $D_t = c^{deg} \tau_t$ is linear in per-period storage-side throughput (the linear DoD-stress case of the Xu 2018 / Shi 2017 cycle-based model), so it stays native to the LP. Release 2 extends this into a two-stage stochastic program with a CVaR risk term and intraday recourse (§R2.3).
 
 The one non-obvious design choice is that **all power is metered grid-side**, so degradation is a cost subtracted from cash rather than an efficiency factor, and never touches the SoC balance.
-The complete model, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md) (start with its "Model at a glance" summary).
+The complete model, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md) (start with its "Model at a glance" summary); the Release 2 sections live alongside it in [docs/formulation-r2.md](docs/formulation-r2.md).
 
 ## Status
 
@@ -59,6 +59,7 @@ The complete model, every constraint, and the governing references are in [docs/
 - **R2.4**: dual-based explainability: the state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades (see [Why it holds](#why-it-holds-release-2))
 - **R2.5**: value evaluation hardening: the VSS re-measured as a **per-window distribution** over real NL days (median positive, ~62% of windows), a **forecast-value baseline** in euros whose per-window distribution comes out centred on zero (a null reported as a null), and **pinball skill** reported beside coverage (see [Value under uncertainty](#value-under-uncertainty-release-2))
 - **R2.5b**: tail dispatch value: whether the R2.2b/R2.2c scenario tail earns real euros, measured the same way as the forecast-value baseline; the per-window value is **centred on zero at every recourse budget** (another null, reported as one: the intraday recourse already captures a realized spike), so the scenario generator is refined enough
+- **R2.6**: price-contingent **bid curves**: a day-ahead auction takes a monotone (price, quantity) curve per hour, not a schedule, so the commitment becomes a function of that hour's clearing price. Value on real NL days is **another null**, and the number that is not null is the **delivery gap**: the commitment promises several times the battery's capacity over a day and does not deliver it, which imbalance settlement would price
 
 ## Example results
 
@@ -152,7 +153,7 @@ The plotting dependency is optional: `uv sync --group examples` installs it.
 
 ### Why it holds (Release 2)
 
-A schedule says *what* the battery does; the dual of the state-of-charge balance says *why*. That shadow price is the **water value**: the marginal worth of a stored MWh, borrowed from hydro-reservoir scheduling. It is flat while the battery is neither full nor empty and steps at a SoC bound, and it defines a **no-trade band** on price: charge only below the band, discharge only above it, hold in between. The band's width comes from round-trip loss and wear, not from the price, so an idle hour at a high price is explained rather than asserted, and each executed trade reports its breakeven slippage. `POST /explain` returns the schedule and this explanation from a single solve; the details are in [formulation.md §R2.4](docs/formulation.md#r24-shadow-price-explainability-derived-no-optimizer-change) and [ADR-0023](docs/decisions/0023-milp-dual-resolve-rule.md).
+A schedule says *what* the battery does; the dual of the state-of-charge balance says *why*. That shadow price is the **water value**: the marginal worth of a stored MWh, borrowed from hydro-reservoir scheduling. It is flat while the battery is neither full nor empty and steps at a SoC bound, and it defines a **no-trade band** on price: charge only below the band, discharge only above it, hold in between. The band's width comes from round-trip loss and wear, not from the price, so an idle hour at a high price is explained rather than asserted, and each executed trade reports its breakeven slippage. `POST /explain` returns the schedule and this explanation from a single solve; the details are in [formulation-r2.md §R2.4](docs/formulation-r2.md#r24-shadow-price-explainability-derived-no-optimizer-change) and [ADR-0023](docs/decisions/0023-milp-dual-resolve-rule.md).
 
 ![Water value and no-trade band over a day: the shadow price of stored energy (flat within a run, stepping at SoC bounds) and the shaded price band it induces; at the €175 hour the price sits inside the band, so the battery idles and holds its charge for the later €200 peak.](docs/figures/example-water-value.svg)
 
@@ -186,7 +187,8 @@ Start with [docs/architecture.md](docs/architecture.md) for the map, then dive i
 
 | Doc | What it is |
 | --- | --- |
-| [docs/formulation.md](docs/formulation.md) | **The math**: single source of truth for every constraint and objective term |
+| [docs/formulation.md](docs/formulation.md) | **The math**: single source of truth for every constraint and objective term (Release 1; preamble, conventions, changelog) |
+| [docs/formulation-r2.md](docs/formulation-r2.md) | The same, for Release 2: forecasting, scenarios, the two-stage program, duals, evaluation, bid curves |
 | [docs/conventions.md](docs/conventions.md) | Locked conventions: units, sign/metering, time, naming |
 | [docs/glossary.md](docs/glossary.md) | Domain + optimization terms, each with a common-error note |
 | [docs/market_reference.md](docs/market_reference.md) | How the BE/NL day-ahead market actually works |
@@ -240,4 +242,6 @@ The core is a deterministic, single-asset, day-ahead dispatch engine, and its sc
 - **Day-ahead arbitrage only.** Intraday, imbalance, and ancillary-service markets (FCR / aFRR) are out of scope; the asset trades a single energy market.
 - **No grid-connection / congestion constraint.** Dispatch is not capped at a connection-point limit. Adding a congestion or curtailment cap is the natural next physical constraint and is relevant to Dutch (TenneT) grid conditions.
 - **Linear degradation only.** The degradation cost is linear in throughput (R1.2, the linear DoD-stress case); the nonlinear convex deep-cycle penalty, rainflow cycle-counting, and calendar aging are not modelled.
+- **The asset is a price taker, and that is asserted rather than measured.** Dispatch optimizes against the price and never feeds back into it. The assumption is sound for the 2 MWh / 1 MW study asset, which cannot move a bidding zone that trades in gigawatts, but it is the one load-bearing claim here that carries no measurement. Modelling the feedback needs an endogenous price (a residual supply curve); a cheaper first step is to re-score an existing schedule under an impact model and see where the price-taking optimum starts over-concentrating.
+- **Committed volume can exceed what the battery delivers, and the gap is unpriced.** The R2.6 bid-curve study measures it (median 4 to 8 MWh per day on a 2 MWh asset, depending on the recourse budget) but does not charge for it: imbalance settlement is what would, and it is not modelled.
 - **Single asset, single node.** No portfolio of assets and no network model.

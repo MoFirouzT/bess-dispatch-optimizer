@@ -220,9 +220,11 @@ docker build -t bess-dispatch . && docker run -p 8000:8000 bess-dispatch
 
 ## Data
 
-The tests and CI use **synthetic** price series only, no real or third-party market data is committed (the ENTSO-E terms grant no public-redistribution right). Real Belgian/Dutch day-ahead prices are fetched at runtime via `bess.data.entsoe.fetch_day_ahead`, which wraps the [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/) and caches to `data/cache/` (gitignored). The same module fetches the R2.1c fundamentals (`fetch_load_forecast`, `fetch_renewable_forecast`), the day-ahead load and wind/solar forecasts the forecaster conditions on.
+The tests and CI use **synthetic** price series only, no real or third-party market data is committed (the ENTSO-E terms grant no public-redistribution right). Real Belgian/Dutch day-ahead prices are fetched at runtime via `bess.data.entsoe.fetch_day_ahead`, which wraps the [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/). The same module fetches the R2.1c fundamentals (`fetch_load_forecast`, `fetch_renewable_forecast`), the day-ahead load and wind/solar forecasts the forecaster conditions on.
 
 To run the live loader (and its token-gated integration test, skipped without a token), copy `.env.example` to `.env` and set `ENTSOE_API_TOKEN`. Any extra local setup (a CA bundle behind a TLS-intercepting proxy, the forecaster's OpenMP runtime) is documented in `.env.example`; it is operator setup, not code, and CI never touches the live API.
+
+Fetches are cached to parquet when `BESS_CACHE_DIR` points somewhere to write, which saves re-pulling the same history across runs; the live tests default it to the gitignored `data/cache/`. There is no expiry, because a published day-ahead price is a settled auction result that is never revised and each file is keyed on its exact window. The cache is derived data and safe to delete. Unset, nothing is cached and every fetch hits the API, which is what CI does.
 
 ### Data reliability
 

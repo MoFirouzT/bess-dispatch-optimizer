@@ -175,6 +175,43 @@ def test_load_forecast_calls_forecast_endpoint_and_normalizes(fake_entsoe):
     assert steps == {pd.Timedelta("1h")}
 
 
+def test_fundamentals_loaders_honour_the_cache_env_var(tmp_path, monkeypatch):
+    """The env-var cache default covers the fundamentals loaders, not just prices.
+
+    `fetch_fundamentals` pulls two endpoints per window, so leaving these two out of
+    the cache would keep two thirds of every R2.1c fetch on the wire.
+
+    Builds its own fake rather than reusing `fake_entsoe`, which keeps only the most
+    recently constructed client: the loaders construct one per uncached fetch, so a
+    per-client call log cannot tell one call from two and the assertion below could
+    not fail. One log shared across every client can.
+    """
+    import bess.data.entsoe as mod
+    from bess.data.entsoe import CACHE_DIR_ENV, fetch_load_forecast, fetch_renewable_forecast
+
+    calls: list[str] = []
+
+    def factory(api_key):
+        client = _FakeClient(api_key)
+        client.calls = calls
+        return client
+
+    monkeypatch.setattr(mod, "EntsoePandasClient", factory)
+    monkeypatch.setenv("ENTSOE_API_TOKEN", "dummy-token")
+    monkeypatch.setenv(CACHE_DIR_ENV, str(tmp_path))
+    start, end = _window()
+
+    for fetch in (fetch_load_forecast, fetch_renewable_forecast):
+        fetch("NL", start, end)
+        fetch("NL", start, end)
+
+    # Two API calls for four fetches: each repeat came off disk (without the env
+    # default it is four). The two kinds cache under distinct keys, so neither is
+    # served the other's frame.
+    assert calls == ["query_load_forecast", "query_wind_and_solar_forecast"]
+    assert len(list(tmp_path.glob("*.parquet"))) == 2
+
+
 def test_renewable_forecast_sums_wind_and_maps_columns(fake_entsoe):
     from bess.data.entsoe import fetch_renewable_forecast
 

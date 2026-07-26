@@ -5,6 +5,20 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ---
 
+## Price cache switched on: it was built in R1.4b and nothing ever used it (2026-07-26)
+
+Not a phase; a defect found by asking why live runs always re-fetch. **The R1.4b parquet cache worked and was fully tested, but `cache_dir` was opt-in and no production caller opted in**. Every integration test and example called `fetch_day_ahead` bare, so `data/cache/` never even existed on disk and each run re-pulled the same frozen history. The README's claim that the loader "caches to `data/cache/`" was aspirational.
+
+- **The loaders now fall back to `$BESS_CACHE_DIR`** when no `cache_dir=` is passed (`_resolve_cache_dir`, all three of prices / load forecast / wind-solar forecast). Explicit argument still wins, so a test's `tmp_path` is never redirected; unset **or blank** means no cache, so CI is byte-for-byte unchanged. Blank counts as unset because `export BESS_CACHE_DIR=` is how a shell clears one, and `Path("")` would scatter parquet across the working directory.
+- **No expiry, deliberately.** A published day-ahead price is a settled auction result and is never revised, and each file is keyed on `(kind, zone, start, end)`, so a hit is correct by construction. The one moving window in the suite (the guard's "last complete month") gets a new key when it moves and re-fetches on its own.
+- **Two conftests, opposite jobs.** `tests/integration/conftest.py` points the live tests at `data/cache/`; `tests/conftest.py` clears the variable for every other test, so the suite is hermetic against a developer's exported cache. Without that second one, the unit and property tests that assert an endpoint was called exactly once would silently start reading real parquet and pass for the wrong reason.
+- **`test_entsoe_live.py` opts out** (`uses_live_api = True`). It is the watchdog on the live API and its schema; served from parquet it would re-assert that against a file this repo wrote earlier and keep passing indefinitely after ENTSO-E broke. The other live tests cache freely: they consume real prices as *input* rather than testing the transport.
+- **Measured, and the headline number is the small one.** Live suite (21 integration tests, token set): **805.66s cold → 769.75s warm**, so roughly 36s of 13.5 minutes, about 4%. That is the honest whole-suite figure and it is *not* impressive, because the live tests are dominated by fitting LightGBM models and solving several hundred MILPs, not by fetching. Per fetch the ratio is enormous (cached parquet read vs live call: **0.077s vs 42.08s** on a full NL year, 0.006s vs 7.72s on 4 months, 0.005s vs 2.74s on 2 weeks, so 500-1200x), but the absolute seconds saved are small next to the solve time. Whole cache after a full live run: 14 files, 668 KB.
+- **The variance is the better argument than the mean.** The same full-year window measured **3.02s in one run and 42.08s in the next**, and during this session one live fetch stalled for **36 minutes** on a hung connection while burning 1s of CPU. So the case for the cache is not the 4%: it is removing a slow, rate-limited, occasionally-hanging network dependency from a suite that is otherwise pure local computation, and making a re-run reproducible against identical bytes. If the suite ever gets faster to solve, the fetch share grows.
+- **Gate status: full suite 317 passed / 21 skipped** (311 + 6 new: env-var default, explicit-argument precedence, three blank/unset cases, and the fundamentals pair). The two positive tests were **confirmed red** against the unpatched loader. **Live integration: 21 passed** on both the cold and the warm run. ruff/format/mypy(43)/lint-imports(4 KEPT)/docs-lint clean.
+
+---
+
 ## R2.4 water-value gate FIXED: the invariant was wrong, not the code (2026-07-26)
 
 Surfaced by a newly drawn Hypothesis example at the end of the R2.6 session, then diagnosed and fixed. **The defect was in the property's premise, and neither of the two resolutions first proposed was right.**

@@ -34,6 +34,10 @@ from bess.data.fixtures import PRICE_COL, validate_price_series, validate_utc_in
 # the EIC lookup; this set just bounds what the adapter will fetch.
 _SUPPORTED_ZONES = ("BE", "NL")
 
+# Session-wide opt-in to the on-disk cache, for callers that do not thread a path
+# through every fetch (the examples, the live integration tests, an ad-hoc script).
+CACHE_DIR_ENV = "BESS_CACHE_DIR"
+
 
 def _normalize(raw: pd.Series) -> pd.Series:
     """Coerce a raw entsoe-py price Series to the internal schema (no validation)."""
@@ -72,6 +76,26 @@ def _cache_path(
     fmt = "%Y%m%dT%H%MZ"
     stamp = f"{start.tz_convert('UTC'):{fmt}}_{end.tz_convert('UTC'):{fmt}}"
     return cache_dir / f"{kind}_{zone}_{stamp}.parquet"
+
+
+def _resolve_cache_dir(cache_dir: Path | None) -> Path | None:
+    """Where this fetch caches: explicit argument, else ``$BESS_CACHE_DIR``, else nowhere.
+
+    An explicit ``cache_dir=`` always wins, so a caller that needs a private cache (a
+    test's ``tmp_path``) is never redirected by the environment. Otherwise the env var
+    opts a whole session in, which is what lets the examples and the live integration
+    tests share one cache without threading a path through every call site.
+
+    Unset **or blank** means no cache, keeping the default behaviour "fetch at
+    runtime, keep nothing" (so CI, which sets neither, is unaffected). Blank counts as
+    unset because ``export BESS_CACHE_DIR=`` is how a shell clears a variable in
+    practice, and ``Path("")`` would otherwise resolve to the current working
+    directory and scatter parquet files wherever the caller happened to be.
+    """
+    if cache_dir is not None:
+        return Path(cache_dir)
+    env = os.environ.get(CACHE_DIR_ENV, "").strip()
+    return Path(env) if env else None
 
 
 def _resolve_token(api_token: str | None) -> str:
@@ -124,9 +148,12 @@ def fetch_day_ahead(
     """Fetch BE/NL day-ahead prices from ENTSO-E into the internal schema.
 
     Returns a ``price_eur_mwh`` Series on a tz-aware UTC, regular, gap-free index
-    over ``[start, end]``. ``api_token`` defaults to ``$ENTSOE_API_TOKEN``. If
-    ``cache_dir`` is given, a prior fetch of the same (zone, window) is served from
-    parquet without an API call (and a fresh fetch is written there).
+    over ``[start, end]``. ``api_token`` defaults to ``$ENTSOE_API_TOKEN``.
+
+    With a cache directory in play, a prior fetch of the same (zone, window) is
+    served from parquet without an API call, and a fresh fetch is written there.
+    ``cache_dir`` names one explicitly; otherwise ``$BESS_CACHE_DIR`` supplies it,
+    and with neither set nothing is cached (see ``_resolve_cache_dir``).
 
     Raises ``ValueError`` for an unsupported zone, ``RuntimeError`` if no token is
     available, and ``ValueError`` if the fetched series fails the schema check or
@@ -137,9 +164,10 @@ def fetch_day_ahead(
         raise ValueError(f"zone {zone!r} not supported; expected one of {list(_SUPPORTED_ZONES)}")
     source = f"ENTSO-E {zone} {start:%Y-%m-%d}..{end:%Y-%m-%d}"
 
+    resolved_cache_dir = _resolve_cache_dir(cache_dir)
     cache_file = None
-    if cache_dir is not None:
-        cache_file = _cache_path(Path(cache_dir), zone, start, end)
+    if resolved_cache_dir is not None:
+        cache_file = _cache_path(resolved_cache_dir, zone, start, end)
         if cache_file.exists():
             cached = pd.read_parquet(cache_file)[PRICE_COL].astype(float)
             cached.name = PRICE_COL
@@ -188,16 +216,18 @@ def fetch_load_forecast(
 
     Returns a ``load_da`` Series (MW) on a tz-aware UTC, regular, gap-free **hourly**
     index (the 15-min feed mean-resampled to the price grid). Mirrors
-    ``fetch_day_ahead``: token-gated, optional parquet cache, schema-validated.
+    ``fetch_day_ahead``: token-gated, schema-validated, and cached to parquet when
+    ``cache_dir`` or ``$BESS_CACHE_DIR`` gives it somewhere to write.
     """
     zone = zone.upper()
     if zone not in _SUPPORTED_ZONES:
         raise ValueError(f"zone {zone!r} not supported; expected one of {list(_SUPPORTED_ZONES)}")
     source = f"ENTSO-E load-forecast {zone} {start:%Y-%m-%d}..{end:%Y-%m-%d}"
 
+    resolved_cache_dir = _resolve_cache_dir(cache_dir)
     cache_file = None
-    if cache_dir is not None:
-        cache_file = _cache_path(Path(cache_dir), zone, start, end, kind="loadfc")
+    if resolved_cache_dir is not None:
+        cache_file = _cache_path(resolved_cache_dir, zone, start, end, kind="loadfc")
         if cache_file.exists():
             cached = pd.read_parquet(cache_file)["load_da"].astype(float)
             validate_utc_index(cached.index, source=f"{source} (cache)")
@@ -227,16 +257,18 @@ def fetch_renewable_forecast(
     Returns a frame with columns ``[wind_da, solar_da]`` (MW) on a tz-aware UTC,
     regular, gap-free hourly index. ``wind_da`` combines every wind column
     (offshore + onshore); ``solar_da`` sums the solar column(s). Mirrors
-    ``fetch_day_ahead``: token-gated, optional parquet cache, schema-validated.
+    ``fetch_day_ahead``: token-gated, schema-validated, and cached to parquet when
+    ``cache_dir`` or ``$BESS_CACHE_DIR`` gives it somewhere to write.
     """
     zone = zone.upper()
     if zone not in _SUPPORTED_ZONES:
         raise ValueError(f"zone {zone!r} not supported; expected one of {list(_SUPPORTED_ZONES)}")
     source = f"ENTSO-E wind/solar-forecast {zone} {start:%Y-%m-%d}..{end:%Y-%m-%d}"
 
+    resolved_cache_dir = _resolve_cache_dir(cache_dir)
     cache_file = None
-    if cache_dir is not None:
-        cache_file = _cache_path(Path(cache_dir), zone, start, end, kind="wsfc")
+    if resolved_cache_dir is not None:
+        cache_file = _cache_path(resolved_cache_dir, zone, start, end, kind="wsfc")
         if cache_file.exists():
             cached = pd.read_parquet(cache_file)[["wind_da", "solar_da"]].astype(float)
             validate_utc_index(cached.index, source=f"{source} (cache)")

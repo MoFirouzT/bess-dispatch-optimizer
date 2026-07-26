@@ -33,6 +33,15 @@ from bess.data.entsoe import fetch_day_ahead
 
 pytestmark = pytest.mark.integration
 
+# Opts this module out of the sibling tests' on-disk price cache (see
+# `conftest.py::_price_cache`). Everything below is a watchdog on the *live API* —
+# that the fetch still works, that the schema has not drifted, that the PT15M path
+# is real — and a fetch served from parquet would assert all of that against a file
+# this repo wrote earlier, passing indefinitely after ENTSO-E broke. The other live
+# tests cache freely because they use real prices as *input* rather than testing the
+# transport that produced them.
+uses_live_api = True
+
 RED_FLAG_EUR_PER_MWH_YR = 50_000.0  # §5 leakage red flag (matches the synthetic gate D)
 
 requires_token = pytest.mark.skipif(

@@ -9,7 +9,7 @@ live call lives in the token-gated integration test, never in CI.
 import pandas as pd
 import pytest
 
-from bess.data.entsoe import _cache_path, fetch_day_ahead
+from bess.data.entsoe import CACHE_DIR_ENV, _cache_path, fetch_day_ahead
 from bess.data.fixtures import PRICE_COL
 
 
@@ -129,6 +129,78 @@ def test_fetch_rejects_truncated_cache(tmp_path):
 
     with pytest.raises(ValueError, match="does not cover"):
         fetch_day_ahead("NL", start, end, api_token="dummy", cache_dir=tmp_path)
+
+
+# --- cache-directory resolution (explicit arg > $BESS_CACHE_DIR > no cache) ------
+#
+# The cache is opt-in, and for most of this project's life nothing opted in: every
+# integration test and example called `fetch_day_ahead` bare, so each run re-pulled
+# the same frozen history. The env var opts a whole session in without threading a
+# path through every call site. These tests pin the three-way precedence, because
+# each branch is load-bearing: the explicit argument keeps a caller's private cache
+# private, and "unset means no cache" is what keeps CI's behaviour unchanged.
+
+
+def test_cache_dir_defaults_to_env_var(tmp_path, monkeypatch):
+    """With no `cache_dir=`, `$BESS_CACHE_DIR` supplies one — the whole point."""
+    start = pd.Timestamp("2024-06-01", tz="UTC")
+    end = pd.Timestamp("2024-06-03", tz="UTC")
+    raw = _local_raw(start, end, "Europe/Amsterdam")
+    calls = {"n": 0}
+    monkeypatch.setattr("bess.data.entsoe.EntsoePandasClient", _fake_client_factory(raw, calls))
+    monkeypatch.setenv(CACHE_DIR_ENV, str(tmp_path))
+
+    s1 = fetch_day_ahead("NL", start, end, api_token="dummy")
+    assert calls["n"] == 1
+    assert _cache_path(tmp_path, "NL", start, end).exists()
+
+    s2 = fetch_day_ahead("NL", start, end, api_token="dummy")
+    assert calls["n"] == 1  # served from the env-supplied cache
+    pd.testing.assert_series_equal(s1, s2, check_freq=False)
+
+
+def test_explicit_cache_dir_wins_over_env_var(tmp_path, monkeypatch):
+    """A caller asking for a specific cache must not be redirected by the environment.
+
+    Unit tests hand in `tmp_path` precisely so their cache is isolated; if the env
+    var could override that, a developer with `BESS_CACHE_DIR` exported would have
+    those tests reading and writing the shared on-disk cache.
+    """
+    env_dir, explicit_dir = tmp_path / "env", tmp_path / "explicit"
+    start = pd.Timestamp("2024-06-01", tz="UTC")
+    end = pd.Timestamp("2024-06-03", tz="UTC")
+    raw = _local_raw(start, end, "Europe/Amsterdam")
+    monkeypatch.setattr("bess.data.entsoe.EntsoePandasClient", _fake_client_factory(raw, {"n": 0}))
+    monkeypatch.setenv(CACHE_DIR_ENV, str(env_dir))
+
+    fetch_day_ahead("NL", start, end, api_token="dummy", cache_dir=explicit_dir)
+    assert _cache_path(explicit_dir, "NL", start, end).exists()
+    assert not env_dir.exists()
+
+
+@pytest.mark.parametrize("env_value", [None, "", "   "])
+def test_no_cache_without_an_env_var(env_value, monkeypatch, tmp_path):
+    """Unset (or blank) means no cache at all: two fetches, two API calls, no files.
+
+    Blank counts as unset because `export BESS_CACHE_DIR=` is how a shell clears it
+    in practice, and `Path("")` would otherwise resolve to the current working
+    directory and scatter parquet files across the repo.
+    """
+    start = pd.Timestamp("2024-06-01", tz="UTC")
+    end = pd.Timestamp("2024-06-03", tz="UTC")
+    raw = _local_raw(start, end, "Europe/Amsterdam")
+    calls = {"n": 0}
+    monkeypatch.setattr("bess.data.entsoe.EntsoePandasClient", _fake_client_factory(raw, calls))
+    if env_value is None:
+        monkeypatch.delenv(CACHE_DIR_ENV, raising=False)
+    else:
+        monkeypatch.setenv(CACHE_DIR_ENV, env_value)
+    monkeypatch.chdir(tmp_path)
+
+    fetch_day_ahead("NL", start, end, api_token="dummy")
+    fetch_day_ahead("NL", start, end, api_token="dummy")
+    assert calls["n"] == 2
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_fetch_requires_token(monkeypatch):

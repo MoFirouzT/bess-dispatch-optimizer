@@ -74,6 +74,18 @@ def make_features(
     if calendar:
         feats["hour"] = pd.Series(idx.hour, index=idx, dtype="float64")
         feats["dayofweek"] = pd.Series(idx.dayofweek, index=idx, dtype="float64")
+        # Season as a plain month number. A cyclical (sin/cos day-of-year) encoding was
+        # tried and **reverted** (2026-07-26): it is the right encoding only once
+        # training spans a full year, and it is worse than this on the 4-month windows
+        # actually in use. Two measured reasons. (1) It does not buy the range safety
+        # it appears to: the pair is bounded in [-1, 1] globally, but a Feb-Jun fit
+        # only ever sees doy_sin [0.503, 1.000] / doy_cos [-0.864, 0.861], and mid
+        # December sits outside *both* (-0.276, +0.961), so trees extrapolate exactly
+        # as they do here. (2) Inside such a window it is strictly the weaker signal:
+        # doy_sin turns over at the summer solstice (doy 92), so one value maps to two
+        # dates, while `month` stays monotone and unambiguous. Empirically it left
+        # out-of-season coverage unchanged and pushed the in-season split gate to
+        # over-cover (0.920 → 0.961, outside [0.85, 0.95]). See docs/STATE.md.
         feats["month"] = pd.Series(idx.month, index=idx, dtype="float64")
         feats["is_weekend"] = pd.Series((idx.dayofweek >= 5).astype("float64"), index=idx)
         if country is not None:

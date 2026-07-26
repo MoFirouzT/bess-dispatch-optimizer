@@ -92,9 +92,27 @@ class PriceForecaster:
             **lgb_params,
         )
         self._mapie: ConformalizedQuantileRegressor | SplitConformalRegressor | None = None
+        # The fitted base learner(s), kept so ``recalibrate`` can rewrap them.
+        self._base: list[LGBMRegressor] | LGBMRegressor | None = None
 
     def _lgbm(self, **extra: object) -> LGBMRegressor:
         return LGBMRegressor(**{**self._lgb, **extra})
+
+    def _conformalizer(
+        self, base: list[LGBMRegressor] | LGBMRegressor
+    ) -> ConformalizedQuantileRegressor | SplitConformalRegressor:
+        """Wrap already-fitted base learner(s) in a fresh, un-conformalized estimator.
+
+        A *fresh* wrapper each time is the point: MAPIE allows ``conformalize`` once
+        per estimator and raises on a second call, so recalibration cannot reuse the
+        object built by ``fit``. Both wrappers take ``prefit=True``, so rewrapping
+        re-runs no training; only the conformal quantile is recomputed.
+        """
+        if self.method == "cqr":
+            return ConformalizedQuantileRegressor(
+                base, confidence_level=self.confidence_level, prefit=True
+            )
+        return SplitConformalRegressor(base, confidence_level=self.confidence_level, prefit=True)
 
     def _features(self, prices: pd.Series, fundamentals: pd.DataFrame | None) -> pd.DataFrame:
         """Build the feature matrix, honoring ``use_fundamentals`` with graceful fallback.
@@ -140,19 +158,19 @@ class PriceForecaster:
         x_tr, y_tr, x_ca, y_ca = x[:cut], yv[:cut], x[cut:], yv[cut:]
 
         alpha = 1.0 - self.confidence_level
+        base: list[LGBMRegressor] | LGBMRegressor
         if self.method == "cqr":
-            lo = self._lgbm(objective="quantile", alpha=alpha / 2).fit(x_tr, y_tr)
-            hi = self._lgbm(objective="quantile", alpha=1.0 - alpha / 2).fit(x_tr, y_tr)
-            med = self._lgbm(objective="quantile", alpha=0.5).fit(x_tr, y_tr)
-            mapie = ConformalizedQuantileRegressor(
-                [lo, hi, med], confidence_level=self.confidence_level, prefit=True
-            )
+            base = [
+                self._lgbm(objective="quantile", alpha=alpha / 2).fit(x_tr, y_tr),
+                self._lgbm(objective="quantile", alpha=1.0 - alpha / 2).fit(x_tr, y_tr),
+                self._lgbm(objective="quantile", alpha=0.5).fit(x_tr, y_tr),
+            ]
         else:  # split
-            est = self._lgbm().fit(x_tr, y_tr)
-            mapie = SplitConformalRegressor(
-                est, confidence_level=self.confidence_level, prefit=True
-            )
+            base = self._lgbm().fit(x_tr, y_tr)
+
+        mapie = self._conformalizer(base)
         mapie.conformalize(x_ca, y_ca)
+        self._base = base
         self._mapie = mapie
         return self
 
@@ -173,10 +191,22 @@ class PriceForecaster:
     def recalibrate(
         self, recent_prices: pd.Series, *, fundamentals: pd.DataFrame | None = None
     ) -> PriceForecaster:
-        """Refresh the conformal calibration on a recent window; base models unchanged."""
-        if self._mapie is None:
+        """Refresh the conformal calibration on a recent window; base models unchanged.
+
+        Rewraps the already-fitted base learner(s) in a new conformal estimator and
+        conformalizes *that* on ``recent_prices``. Calling ``conformalize`` again on
+        the estimator ``fit`` built raises in MAPIE ("conformalize method already
+        called"), which made this method unusable for both methods and left the
+        drift module's recalibrate-don't-retrain response unreachable.
+
+        Only the conformal quantile changes: the point forecast is bit-identical
+        afterwards, which is what separates this from a refit.
+        """
+        if self._base is None:
             raise RuntimeError("call fit() before recalibrate()")
         feats = self._features(recent_prices, fundamentals)
         y = align_target(recent_prices, feats)
-        self._mapie.conformalize(feats.to_numpy(), y.to_numpy())
+        mapie = self._conformalizer(self._base)
+        mapie.conformalize(feats.to_numpy(), y.to_numpy())
+        self._mapie = mapie
         return self

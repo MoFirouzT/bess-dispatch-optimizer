@@ -86,6 +86,75 @@ def test_reproducible_with_fixed_seed():
     pd.testing.assert_series_equal(a.predict_interval(test).upper, b.predict_interval(test).upper)
 
 
+# ------------------------------- recalibration --------------------------------
+#
+# `recalibrate` is the documented response to interval drift (`forecaster/drift.py`:
+# "intervals under-cover: recalibrate, don't retrain"). It had no test at all, and
+# under the installed MAPIE it raised `conformalize method already called` for both
+# methods, so that drift response was unreachable. These pin the contract it is
+# supposed to satisfy: it runs, it refreshes the interval, and it leaves the base
+# learners alone.
+
+
+@pytest.mark.parametrize("method", ["cqr", "split"])
+def test_recalibrate_runs_and_predicts(method):
+    prices = synthetic_day_ahead(days=120, seed=21)
+    train, recent, test = prices[: 70 * 24], prices[70 * 24 : 100 * 24], prices[100 * 24 :]
+
+    fc = PriceForecaster(confidence_level=0.9, method=method, **_FAST).fit(train)
+    returned = fc.recalibrate(recent)
+
+    assert returned is fc  # chainable, like fit
+    out = fc.predict_interval(test)
+    assert (out.lower <= out.point + 1e-9).all()
+    assert (out.point <= out.upper + 1e-9).all()
+    assert out.width.mean() > 0.0
+
+
+@pytest.mark.parametrize("method", ["cqr", "split"])
+def test_recalibrate_leaves_the_base_models_untouched(method):
+    """Only the conformal step moves: the point path must be bit-identical after.
+
+    This is the whole distinction between recalibrating and retraining, and it is
+    what makes recalibration the cheap drift response. If the point forecast shifts,
+    the base learners were refit and the method is misnamed.
+    """
+    prices = synthetic_day_ahead(days=120, seed=22)
+    train, recent, test = prices[: 70 * 24], prices[70 * 24 : 100 * 24], prices[100 * 24 :]
+
+    fc = PriceForecaster(confidence_level=0.9, method=method, **_FAST).fit(train)
+    before = fc.predict_interval(test)
+    fc.recalibrate(recent)
+    after = fc.predict_interval(test)
+
+    pd.testing.assert_series_equal(before.point, after.point)
+
+
+def test_recalibrate_actually_changes_the_interval():
+    """Non-vacuity: a recalibration on a differently-scaled window must move the band.
+
+    Without this, a `recalibrate` that silently did nothing would satisfy every other
+    assertion here (the point path is *required* to be unchanged, so that check alone
+    cannot tell a working refresh from a no-op).
+    """
+    prices = synthetic_day_ahead(days=120, seed=23)
+    train, recent, test = prices[: 70 * 24], prices[70 * 24 : 100 * 24], prices[100 * 24 :]
+
+    fc = PriceForecaster(confidence_level=0.9, method="cqr", **_FAST).fit(train)
+    before = fc.predict_interval(test).width.mean()
+    # A far more volatile recent window ⇒ larger conformal residuals ⇒ wider band.
+    fc.recalibrate((recent - recent.mean()) * 4.0 + recent.mean())
+    after = fc.predict_interval(test).width.mean()
+
+    assert after > before * 1.1, f"interval barely moved: {before:.3f} → {after:.3f}"
+
+
+def test_recalibrate_before_fit_is_an_error():
+    prices = synthetic_day_ahead(days=40, seed=24)
+    with pytest.raises(RuntimeError, match="fit"):
+        PriceForecaster(method="cqr", **_FAST).recalibrate(prices)
+
+
 # ----------------------------- R2.1c fundamentals -----------------------------
 
 

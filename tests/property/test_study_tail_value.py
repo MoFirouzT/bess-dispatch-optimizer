@@ -14,7 +14,7 @@ import pytest
 
 from bess.assets.battery import BatterySpec
 from bess.scenarios import ScenarioSet
-from bess.stochastic.study import tail_value_across_windows, tail_value_from_sets
+from bess.studies import tail_value_across_windows, tail_value_from_sets
 
 TOL = 1e-6
 _BATT = BatterySpec(capacity=2.0, soc_initial=0.5, soc_terminal=0.5)

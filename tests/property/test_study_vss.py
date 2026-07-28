@@ -25,7 +25,7 @@ from hypothesis import strategies as st
 from bess.assets.battery import BatterySpec
 from bess.forecaster.evaluate import pinball_loss
 from bess.stochastic import value_of_stochastic_solution
-from bess.stochastic.study import (
+from bess.studies import (
     forecast_value_from_sets,
     vss_across_windows,
     window_sets,
@@ -158,7 +158,7 @@ def test_fv_windows_bookkeeping_and_determinism() -> None:
     """One output per input item, in order; bit-identical on repeat (amendment
     2026-07-22)."""
     from bess.scenarios import ScenarioSet
-    from bess.stochastic.study import fv_windows_from_sets
+    from bess.studies import fv_windows_from_sets
 
     rng = np.random.default_rng(6)
     idx = pd.date_range("2024-03-01", periods=24, freq="h", tz="UTC")

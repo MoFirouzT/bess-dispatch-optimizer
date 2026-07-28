@@ -18,12 +18,12 @@ import pytest
 
 from bess.assets.battery import BatterySpec
 from bess.forecaster.evaluate import pinball_loss, seasonal_naive
-from bess.stochastic.study import (
+from bess.stochastic.vss import out_of_sample_vss
+from bess.studies import (
     forecast_value_from_sets,
     vss_across_windows,
     window_sets,
 )
-from bess.stochastic.vss import out_of_sample_vss
 
 TOL = 1e-6
 
@@ -146,7 +146,7 @@ def test_oracle_6_fv_windows_loop_adds_no_value() -> None:
     order, and the loop equals per-item `forecast_value_from_sets` calls — the
     distribution machinery adds no value of its own."""
     from bess.scenarios import ScenarioSet
-    from bess.stochastic.study import fv_windows_from_sets
+    from bess.studies import fv_windows_from_sets
 
     rng = np.random.default_rng(3)
     idx = pd.date_range("2024-03-01", periods=24, freq="h", tz="UTC")

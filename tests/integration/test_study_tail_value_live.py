@@ -24,7 +24,7 @@ pd = pytest.importorskip("pandas")
 
 from bess.assets.battery import BatterySpec  # noqa: E402
 from bess.data.entsoe import fetch_day_ahead, fetch_fundamentals  # noqa: E402
-from bess.stochastic.study import tail_value_across_windows  # noqa: E402
+from bess.studies import tail_value_across_windows  # noqa: E402
 
 pytestmark = pytest.mark.integration
 

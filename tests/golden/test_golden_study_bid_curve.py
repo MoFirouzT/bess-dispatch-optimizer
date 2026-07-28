@@ -24,11 +24,8 @@ import pytest
 
 from bess.assets.battery import BatterySpec
 from bess.scenarios import ScenarioSet
-from bess.stochastic import (
-    bid_curve_value_from_sets,
-    curve_response,
-    solve_stochastic,
-)
+from bess.stochastic import curve_response, solve_stochastic
+from bess.studies import bid_curve_value_from_sets
 
 TOL = 1e-6
 

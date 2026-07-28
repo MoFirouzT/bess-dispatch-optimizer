@@ -153,6 +153,26 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+# Note the direction, which is the reverse of the backtest contract above.
+# `studies` legitimately imports the chain (it scores the two-stage program), so
+# what must be forbidden is the chain reaching up into a study. That single edge
+# is the mechanical form of "studies are not the product" (spec S1).
+name = "studies are offline (the serving chain must not import them)"
+type = "forbidden"
+source_modules = [
+    "bess.api",
+    "bess.explain",
+    "bess.stochastic",
+    "bess.recourse",
+    "bess.optimizer",
+    "bess.validation",
+    "bess.assets",
+    "bess.scenarios",
+    "bess.forecaster",
+]
+forbidden_modules = ["bess.studies"]
+
+[[tool.importlinter.contracts]]
 name = "data is a leaf (imports nothing else in bess)"
 type = "forbidden"
 source_modules = ["bess.data"]

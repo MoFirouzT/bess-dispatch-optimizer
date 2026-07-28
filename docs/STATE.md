@@ -5,6 +5,47 @@ Holds: current phase · what's done · what's next · known blockers.
 
 ---
 
+## Open threads (next, and known blockers)
+
+Restored 2026-07-28: the split to `STATE-archive.md` carried the old
+"Known blockers / open questions" section out of this file, leaving it without the
+section `CLAUDE.md` §4 requires. These are written as durable text on purpose,
+because each currently exists only somewhere volatile.
+
+**Next phase (recommended order).**
+
+1. **S1 capability restructure** (`docs/specs/S1-capability-restructure.md`, Approved
+   and frozen). Do this before any further measurement work: its invariant is that no
+   number moves, which is only cheaply checkable against a quiet tree, and it
+   relocates `stochastic/study.py`, so study work done first would need moving.
+2. **Re-window the value studies.** R2.5, R2.5b and R2.6 all still rest on NL
+   Mar-Jun 2024, so all three headline nulls are single-sample. R2.1d built the
+   instrument to fix this (`rolling_origin_folds` over 2021-01-01..2025-09-30, 1734
+   days), and applying it one level up is the change most likely to move a headline
+   claim in this project. Needs its own spec; none is drafted.
+
+**Known blockers and carried findings.**
+
+- **R1.4c stuck-feed rule does not survive long windows.** `guarded_fetch` classifies
+  the NL 2021-2025 span ANOMALY/`stuck_feed` on a 5-hour run of exactly 64.00 EUR/MWh
+  (2021-05-15) plus 4-hour runs at 42.30 / 140.66 / 95.60, against
+  `DEFAULT_MAX_FLAT_HOURS = 4.0`. Those are ordinary merit-order flats. The nonfocal
+  rule is a fixed run length applied regardless of window length, so its false-positive
+  rate grows with the span; 2024 happens to contain no such run, which is why the
+  year-long guard test passes. Same class of defect that forced the *focal* threshold
+  from 8 hours to 24. **R2.1d works around it** by fetching the span unguarded
+  (`_span_prices` in `tests/integration/test_forecaster_live.py`); revisit that
+  workaround once the rule is fixed. **Do not simply raise the constant.**
+- **Two governing references named from memory and NOT verified**, so both phases ship
+  ungoverned and `references.md` is deliberately unwritten for them (CLAUDE.md §1):
+  Lago, Marcjasz, De Schutter & Weron (Applied Energy, 2021) for R2.1d's walk-forward
+  protocol, and Lei, G'Sell, Rinaldo, Tibshirani & Wasserman (JASA, 2018) for R2.1e's
+  locally-weighted conformal. Neither phase depends on either.
+- **Verify after S1:** `formulation-r2.md` is deleted and recut, so confirm the §R2.1
+  normalized-target paragraph (R2.1e) landed intact in its new home.
+
+---
+
 ## R2.1e IMPLEMENTED (gate green): de-levelled target; a null at the default window, a real gain at two years (2026-07-28)
 
 The model-change phase R2.1d sequenced itself before. Predict a standardized target `z = (price - level)/scale` from a trailing 168 h window ending at `t-24 h`, invert with `price = level + scale*z`. Because level and scale are known constants at prediction time and scale > 0, the inverse is a strictly increasing affine map and R2.1's marginal coverage is **inherited, not re-derived**. **Spec: [`docs/specs/R2.1e-target-normalization.md`](specs/R2.1e-target-normalization.md) (Implemented, every build task and acceptance box ticked). Full suite 373 passed; ruff/format/mypy(43)/lint-imports(4 KEPT)/docs-lint(57) clean. No optimizer change.**

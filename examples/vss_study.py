@@ -32,7 +32,7 @@ import pandas as pd
 
 from bess.assets.battery import BatterySpec
 from bess.data.entsoe import fetch_day_ahead
-from bess.stochastic import vss_across_windows
+from bess.studies import vss_across_windows
 
 HISTORY_DAYS = 28
 N_SCENARIOS = 30
@@ -106,7 +106,7 @@ def main() -> None:
         print("\nforecast group not installed — skipping forecast-value + pinball skill")
         return
     from bess.forecaster.evaluate import walk_forward_pinball_skill
-    from bess.stochastic import forecast_value
+    from bess.studies import forecast_value
 
     fv = forecast_value(
         prices, BATTERY, history_days=HISTORY_DAYS, n_scenarios=N_SCENARIOS, rho=RHO
@@ -125,7 +125,7 @@ def main() -> None:
     print(f"tau={skill.tau_upper:.3f}: conformal {skill.conformal_upper:.2f}"
           f" vs naive {skill.naive_upper:.2f}  -> skill {skill.skill_upper:.2f}")  # fmt: skip
 
-    from bess.stochastic import fv_across_windows
+    from bess.studies import fv_across_windows
 
     fv_windows = fv_across_windows(
         prices, BATTERY, history_days=HISTORY_DAYS, n_scenarios=N_SCENARIOS, rho=RHO

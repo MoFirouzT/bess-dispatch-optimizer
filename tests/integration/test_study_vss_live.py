@@ -28,7 +28,8 @@ import pytest
 
 from bess.assets.battery import BatterySpec
 from bess.data.entsoe import fetch_day_ahead
-from bess.stochastic import value_of_stochastic_solution, vss_across_windows, window_sets
+from bess.stochastic import value_of_stochastic_solution
+from bess.studies import vss_across_windows, window_sets
 
 pytestmark = pytest.mark.integration
 
@@ -128,7 +129,7 @@ def test_pinball_skill_beats_seasonal_naive_live():
 def test_fv_distribution_reports_on_real_weeks():
     pytest.importorskip("lightgbm")
     pytest.importorskip("mapie")
-    from bess.stochastic import fv_across_windows
+    from bess.studies import fv_across_windows
 
     prices = _real_prices()
     windows = fv_across_windows(prices, _BATT, **_KW, rho=0.5)
@@ -152,7 +153,7 @@ def test_fv_distribution_reports_on_real_weeks():
 def test_forecast_value_reports_on_real_window(capsys):
     pytest.importorskip("lightgbm")
     pytest.importorskip("mapie")
-    from bess.stochastic import forecast_value
+    from bess.studies import forecast_value
 
     prices = _real_prices()
     fv = forecast_value(prices, _BATT, **_KW, rho=0.5)

@@ -4,7 +4,7 @@
 tail value has a **median of +0.00 EUR at every ρ** tested (0.1, 0.25, 0.5, 1.0),
 means between +0.03 and +0.53, with only 8% to 25% of windows positive.
 
-Governing spec: [R2.5b](../specs/R2.5b-tail-dispatch-value.md).
+Governing spec: [R2.5b](../specs/tail-dispatch-value.md).
 
 ## The question
 

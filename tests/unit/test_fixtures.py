@@ -1,6 +1,6 @@
 """Unit tests for the fixture price loader (no network, no real data).
 
-Contract: docs/specs/R1.4a-backtest.md § "Data". Validates the internal schema
+Contract: docs/specs/backtest.md § "Data". Validates the internal schema
 (tz-aware UTC, hourly, gap-free, price_eur_mwh) the backtest consumes.
 """
 

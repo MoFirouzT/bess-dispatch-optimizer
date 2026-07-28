@@ -10,7 +10,7 @@ Two correctness anchors, both token-free:
   leakage-safe), and normalize the real 15-min shape to the internal hourly
   UTC schema. The ENTSO-E client is monkeypatched, so no token is needed.
 
-Spec: ``docs/specs/R2.1c-exogenous-fundamentals.md``.
+Spec: ``docs/specs/price-forecaster.md``.
 """
 
 from __future__ import annotations

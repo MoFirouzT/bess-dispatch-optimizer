@@ -1,6 +1,6 @@
 """Probabilistic day-ahead price forecaster: LightGBM + conformal intervals (R2.1).
 
-Spec: ``docs/specs/R2.1-forecaster.md``; theory summary: ``formulation-uncertainty.md`` §R2.1.
+Spec: ``docs/specs/price-forecaster.md``; theory summary: ``formulation-uncertainty.md`` §R2.1.
 Wraps a gradient-boosted base learner in a MAPIE conformal calibrator so the output
 is a **calibrated interval**, not a point. Two methods:
 
@@ -100,7 +100,7 @@ class PriceForecaster:
         # R2.1e: fit on a de-levelled, de-scaled target and invert on predict. The
         # inverse is a known, strictly increasing affine map (level + scale*z) with
         # level/scale fixed at prediction time, so R2.1's conformal coverage
-        # guarantee is inherited unchanged; see docs/specs/R2.1e-target-normalization.md.
+        # guarantee is inherited unchanged; see docs/specs/target-normalization.md.
         self.normalize_target = normalize_target
         self.season_encoding = season_encoding
         self.rolling_stats = rolling_stats

@@ -2,6 +2,7 @@
 
 **Status:** Implemented (2026-07-28; gate green, results below)
 **Release:** R2  **Depends on:** R2.1 (the forecaster), R2.1c (fundamentals features), R2.1d (the evaluation harness this phase is measured on)
+**Phases:** R2.1e (2026-07-28)
 
 ## Objective
 
@@ -284,21 +285,36 @@ forecasting change.
 Statistical gates, in R2.1d's sense: decided on interval overlap, not on a point
 estimate landing in a band.
 
-- [ ] **Marginal coverage must not break.** Both methods, R2.1d's span and folds:
+Verified by re-running the live forecaster gate on 2026-07-28 (10 passed, NL and BE
+2021-01-01 to 2025-09-30, 260 test days); the measured values are recorded beside
+each box.
+
+- [x] **Marginal coverage must not break.** Both methods, R2.1d's span and folds:
       the 95 percent day-block interval still overlaps `[0.85, 0.95]`.
-- [ ] **Conditional coverage is the headline, and it is reported honestly.**
+      *Measured: raw 0.9003, normalized 0.9008; cqr interval [0.883, 0.916].*
+- [x] **Conditional coverage is the headline, and it is reported honestly.**
       Maximum absolute deviation of hour-of-day coverage from nominal is reported
       against the recorded baseline. **Improve or tie**, in the null-tolerant style
       of R2.1c and R2.5: a measured null is a pass and is recorded as a finding,
       but a material worsening is a failure.
-- [ ] **Sharpness must not regress.** Pinball skill against seasonal naive stays
+      *Measured: max hour deviation 0.0653 raw to 0.0498 normalized (cqr), a 24
+      percent reduction. See Measured results finding 1 for why an earlier reading
+      of this line called it a null.*
+- [x] **Sharpness must not regress.** Pinball skill against seasonal naive stays
       below 1 at both edges and no worse than R2.1d's 0.219 / 0.280 by more than
       noise.
-- [ ] **Opt-in identity holds**, pinned by oracle 5 and the identity property.
-- [ ] **The training-window sweep under normalization is reported**, including if
+      *Measured: 0.219 / 0.280, unchanged; mean width 138.3 raw to 134.8
+      normalized, so intervals are narrower rather than wider.*
+- [x] **Opt-in identity holds**, pinned by oracle 5 and the identity property.
+      *Both green in the full suite.*
+- [x] **The training-window sweep under normalization is reported**, including if
       it fails to change the raw-target ordering.
-- [ ] Reproducibility: fixed seed and inputs give bit-stable output.
-- [ ] R1, R2.2, R2.3, R2.4, R2.5, R2.6 gates untouched.
+      *Reported in [the target-normalization study](../studies/target-normalization.md);
+      the ordering flips at 365 days.*
+- [x] Reproducibility: fixed seed and inputs give bit-stable output.
+      *Property test green.*
+- [x] R1, R2.2, R2.3, R2.4, R2.5, R2.6 gates untouched.
+      *Full suite 373 passed / 29 skipped.*
 
 ## Out of scope
 
@@ -318,7 +334,7 @@ estimate landing in a band.
   the optimizer at all.
 - **Deep-learning forecasters.** Out of scope since R2.1 and staying there.
 
-## Open questions
+## Decisions
 
 All six resolved as proposed (2026-07-28, human's call). Proposals are kept above
 their resolutions so the section stays a decision trail.

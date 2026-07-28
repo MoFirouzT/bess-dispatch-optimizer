@@ -1,6 +1,6 @@
 """Integration — R2.6 bid-curve value on real ENTSO-E NL prices.
 
-Contract: docs/specs/R2.6-bid-curves.md § "Acceptance gate". Token-gated (skipped
+Contract: docs/specs/bid-curves.md § "Acceptance gate". Token-gated (skipped
 unless `ENTSOE_API_TOKEN` is set; deselected in CI); nothing fetched is committed.
 
 What it reports on *real* prices (the sign is a FINDING, not a gate, per the R2.5
@@ -18,7 +18,7 @@ curve program's monotonicity chain couples all commitment branches and its solve
 cost grows steeply in S (spec R2.6, decision 4).
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python may need the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import os

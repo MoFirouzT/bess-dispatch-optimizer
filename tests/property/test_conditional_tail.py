@@ -3,7 +3,7 @@
 Pure numpy/pandas (main CI job). Load-bearing invariants: γ=0 is exactly R2.2b;
 the spike magnitude is monotone in the covariate; γ is clamped non-negative; and a
 covariate carrying no signal fits γ≈0 (reduces to R2.2b). Spec:
-``docs/specs/R2.2c-conditional-tail.md``.
+``docs/specs/scenario-tail-conditioning.md``.
 """
 
 from __future__ import annotations

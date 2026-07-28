@@ -1,6 +1,6 @@
 """Tail dispatch value: does the scenario tail earn realized euros? (R2.5b)
 
-Spec: ``docs/specs/R2.5b-tail-dispatch-value.md``. Feeds the two-stage program
+Spec: ``docs/specs/tail-dispatch-value.md``. Feeds the two-stage program
 two scenario sets differing only in whether the R2.2b/R2.2c extreme-value tail is
 spliced on, and compares realized-path profit per window. Not sign-asserted; the
 measured answer was a null at every recourse budget.

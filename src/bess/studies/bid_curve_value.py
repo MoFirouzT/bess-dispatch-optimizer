@@ -1,6 +1,6 @@
 """Bid-curve value: does a price-contingent commitment beat a blind schedule? (R2.6)
 
-Spec: ``docs/specs/R2.6-bid-curves.md``; formulation:
+Spec: ``docs/specs/bid-curves.md``; formulation:
 ``docs/formulation-uncertainty.md`` § R2.6 (evaluation semantics). Compares a
 monotone (price, quantity) curve resolved at the realized clearing price against a
 single scalar schedule, both fitted on the same training set and scored identically.

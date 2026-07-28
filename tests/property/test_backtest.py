@@ -1,6 +1,6 @@
 """Property tests for the walk-forward backtest.
 
-Contract: docs/specs/R1.4a-backtest.md § "Property tests".
+Contract: docs/specs/backtest.md § "Property tests".
 Math: docs/formulation.md § "R1.4 — Backtest semantics (derived; no new model)".
 """
 

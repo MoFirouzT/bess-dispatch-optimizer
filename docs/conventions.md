@@ -120,7 +120,7 @@ A line that must break a per-line check (for instance, to quote a banned word) c
 
 **Prose about code must be checkable, or not written.**
 A sentence asserting a fact about the code is not executable, so nothing fails when the code moves underneath it and the claim rots invisibly.
-`scripts/lint_docs.py` therefore also binds the checkable subset: a spec's `bess.x.y` references must name real modules and attributes; `Depends on:` IDs must name real specs and form an acyclic graph; `file.md#anchor` links must resolve to a real heading; specs must carry no instruction that was already carried out ("to be recorded as ADRs", "when the module lands"); and math must render on GitHub.
+`scripts/lint_docs.py` therefore also binds the checkable subset: a spec marked `Implemented` must have no unticked box and must carry its `Decisions` section; a `formulation*.md §R<n>.<m>` reference anywhere in the repo must name a section that file has; a spec's `bess.x.y` references must name real modules and attributes; `Depends on:` IDs must name real specs and form an acyclic graph; `file.md#anchor` links must resolve to a real heading; specs must carry no instruction that was already carried out ("to be recorded as ADRs", "when the module lands"); and math must render on GitHub.
 The rule generalizes: **if a doc claim about code cannot be checked mechanically, either make it checkable or leave it out.**
 Counts, module paths restated from memory, and prose duplicating a table are the usual offenders.
 

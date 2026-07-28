@@ -5,7 +5,7 @@ Holds: current phase · capability status · what's next · known blockers.
 
 **History is not here.** What each phase concluded is one row per phase in the
 [phase ledger](specs/README.md); the reasoning behind each is in that phase's spec,
-under Open questions. This file stays short on purpose: it is rewritten every
+under Decisions. This file stays short on purpose: it is rewritten every
 session, so an append-only record inside it grows without bound, which is what
 happened before 2026-07-28.
 
@@ -15,17 +15,31 @@ happened before 2026-07-28.
 
 **No active phase.** Releases 1 and 2 are complete; Release 3 has not started.
 
-S1 (capability restructure) is implemented, in four commits: the `bess.studies`
-extraction, the studies doc shelf, the vocabulary plus formulation recut, and the
-decision-record consolidation (26 numbered ADRs to 17 subject-named records). Spec:
-[`specs/S1-capability-restructure.md`](specs/S1-capability-restructure.md).
+The capability restructure is implemented and committed, in four commits: the
+`bess.studies` extraction, the studies doc shelf, the vocabulary plus formulation
+recut, and the decision-record consolidation (26 numbered ADRs to 17 subject-named
+records). Its work order has been retired now that the restructure is done; the
+rules it established live in [architecture.md](architecture.md),
+[decisions/README.md](decisions/README.md) and [specs/README.md](specs/README.md), and
+the ledger row records what it did.
 Its governing invariant, that **no number moves**, was verified mechanically rather
 than by eye: numeric literals and definition bodies for the code move, and
 byte-identical section bodies for the formulation recut.
 
+**The spec consolidation is done, and uncommitted.** The same principle applied to
+`docs/specs/`: where a phase boundary recorded *when* work happened rather than a
+design decision, the work orders merged. Three merges landed (`dispatch-core`,
+`data-feed`, `price-forecaster`), every remaining spec dropped its phase ID from its
+filename, and the restructure's own work order was retired. **21 specs to 15.**
+
+Each merge was verified by diffing the set of distinct numeric values before and
+after, which caught seven real losses that were then restored. Phase IDs survive in a
+`**Phases:**` line on every spec, which is what keeps the `Depends on:` graph resolving
+after a rename or a merge.
+
 Full suite 373 passed / 29 skipped; ruff/format/mypy(48)/lint-imports(**5** KEPT,
-the new one forbidding the serving chain from importing `bess.studies`)/docs-lint(59)
-all clean.
+the new one forbidding the serving chain from importing `bess.studies`)/docs-lint(54)
+all clean. The full **live** gate also passed, 29 tests, 16 minutes.
 
 ## Capability status
 
@@ -39,17 +53,18 @@ all clean.
 | Scenario generation | complete, gated | `scenarios` |
 | Stochastic dispatch | complete, gated | `stochastic`, `recourse` |
 | Dispatch explainability | complete, gated | `explain` |
-| Studies | four nulls reported, see [studies/](studies/) | `studies` |
+| Studies | three nulls reported, see [studies/](studies/) | `studies` |
 
 ---
 
 ## Next (recommended order)
 
-1. **Re-window the value studies.** R2.5, R2.5b and R2.6 all still rest on NL
-   Mar-Jun 2024, so all three headline nulls are single-sample. R2.1d built the
-   instrument to fix this (`rolling_origin_folds` over 2021-01-01..2025-09-30, 1734
-   days), and applying it one level up is the change most likely to move a headline
-   claim in this project. Needs its own spec; none is drafted.
+1. **Re-window the value studies properly.** Partially addressed: the live gate runs
+   Mar-Jun 2024 (94 windows) and those measurements are now what the studies pages
+   publish, replacing an older Q2-only 63-window set. But all three nulls still rest
+   on a single 2024 window. R2.1d built the instrument (`rolling_origin_folds` over
+   2021-01-01..2025-09-30, 1734 days), and applying it one level up is still the
+   change most likely to move a headline claim. Needs its own spec; none is drafted.
 2. **Release 3**, phase ids in `planning/` (Tier 0): R3.1 imbalance-settlement
    recourse, R3.2 grid-connection cap, R3.3 ancillary co-optimization, R3.4 price
    impact. R2.6's own result argues for **R3.1**: it measured a delivery gap of 4 to
@@ -78,6 +93,16 @@ all clean.
   before S1 moved the studies out, and the move made it worse rather than introducing
   it. Promoting it is a small follow-up, deliberately not folded into a phase whose
   invariant is that nothing changes.
+- **The value-study numbers are window-sensitive, and the window is not settled.**
+  On Mar-Jun 2024 (94 windows) the VSS median is +12.90 EUR with 66% of windows
+  positive; forecast value is −19.81 EUR with 41% positive. On the Q2-only slice the
+  project published before (63 windows) the same quantities read +12 / 62% and
+  −0.9 / 49%. VSS is robust across both; **forecast value is not**, so its "centred on
+  zero" framing was weakened to "null, and if anything mildly negative". Whether
+  Mar-Jun is the right authoritative window is an open question, not a settled one.
+- **The `## Decisions` lint check only requires at least one such section.** The
+  heading normalization left one spec with two, which the merge caught by hand. Tighten
+  to "exactly one" if it recurs.
 - **The doc linter's module check is a word search, not symbol resolution.**
   `_module_exists` falls back to `re.search` in the parent package's `__init__.py`, so
   a spec naming a symbol that has moved *within* a surviving package passes. This gave

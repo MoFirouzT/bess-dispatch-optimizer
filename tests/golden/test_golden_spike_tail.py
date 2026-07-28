@@ -3,7 +3,7 @@
 The GPD fit (PWM) and the exceedance splice are exact arithmetic, so R2.2b gets
 real golden oracles, not only statistical gates. Pinned by hand from the
 Hosking-Wallis PWM formulas and the GPD inverse-CDF. Spec:
-``docs/specs/R2.2b-spike-tail.md``. Pure numpy/pandas (no forecast group).
+``docs/specs/scenario-tail.md``. Pure numpy/pandas (no forecast group).
 """
 
 from __future__ import annotations

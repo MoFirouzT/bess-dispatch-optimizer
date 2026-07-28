@@ -10,8 +10,8 @@ Like ``bess.backtest`` this package sits outside the serving chain, and an
 import-linter contract enforces the direction: studies may import the chain, and
 nothing in the chain may import studies.
 
-Spec: ``docs/specs/S1-capability-restructure.md``. No result is sign-asserted;
-four of these studies returned nulls, which is reported as the finding.
+Layering rationale: ``docs/architecture.md``. No result is sign-asserted;
+three of these studies returned nulls, which is reported as the finding.
 """
 
 from __future__ import annotations

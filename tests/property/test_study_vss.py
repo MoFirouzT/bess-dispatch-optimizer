@@ -1,6 +1,6 @@
 """Property invariants for R2.5: value evaluation hardening (formulation §R2.5).
 
-Contract: docs/specs/R2.5-value-evaluation.md § "Property tests".
+Contract: docs/specs/value-evaluation.md § "Property tests".
 
 - pinball loss: non-negative, zero iff exact, monotone as a uniform shift grows;
 - the window study: leakage (early windows are bit-identical when *future* days

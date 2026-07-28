@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green; five resolved decisions below, 2026-07-08)
 **Release:** R2  **Depends on:** R2.1 (the interval forecaster this samples from), R1.4a (walk-forward + leakage discipline), R1.4b (ENTSO-E loader for the integration path)
+**Phases:** R2.2 (2026-07-08)
 
 ## Objective
 
@@ -18,12 +19,12 @@ A scenario layer in `bess.scenarios` that turns R2.1's calibrated price interval
 - **Notation reconciliation:** house style wins. A scenario is a price path $\pi^{(s)} = (\pi^{(s)}_1,\dots,\pi^{(s)}_T)$ on the existing UTC hourly schema (`π_t`, €/MWh, grid-side; conventions §1/§4), carrying probability $p_s$ with $\sum_s p_s = 1$. The reference's generic random vector maps onto this price path; the probability metric is written $D(\cdot,\cdot)$.
 - **Alternatives considered:** *moment matching* (match target mean/variance/skew/correlation by construction) is a legitimate generator but couples scenario quality to a hand-chosen moment list; kept as noted-not-built. *Optimal-scenario-tree / nested multistage* construction is out of scope (R2.2 is a single-stage fan of day-ahead paths; multistage tree structure belongs with R2.3 recourse if ever). *Property-matching heuristics without a stability argument* are rejected in favour of the distance-based method with a published bound.
 
-## Design decisions
+## Decisions
 
 - **[the residual-path bootstrap](../decisions/residual-path-bootstrap.md). Residual-path bootstrap for generation, not independent per-hour sampling.** R2.1 delivers *marginal* hour-by-hour intervals (CQR calibrates each target timestamp). Sampling each hour independently from its marginal would destroy the strong intra-day temporal correlation of prices (a real day is a smooth peak/trough shape, not 24 independent draws) and hand R2.3 unrealistically jagged paths. Instead, generate paths by adding **whole-day forecast-error vectors**, resampled (bootstrap) from the forecaster's historical residuals, onto the point forecast; this preserves the empirical temporal correlation of errors and reuses data R2.1 already holds.
 - **[forward selection over k-means](../decisions/forward-selection-over-kmeans.md). Fast forward selection (Heitsch-Römisch) as the primary reducer, k-means as the compared baseline.** Forward selection carries the published Kantorovich-distance guarantee and the redistribution rule that keeps the reduced measure a valid probability distribution; k-means on the paths is the pragmatic clustering alternative the master plan names, kept as the baseline the gate compares against (mirrors R2.1's CQR-vs-split pattern).
 
-## Scope decisions
+## Decisions
 
 - **Generation source v1: R2.1 forecaster residuals.** Self-contained and token-free-testable: the generator consumes an `IntervalForecast` plus the forecaster's residual history, no new data feed. The master plan's ARIMA/GARCH-bootstrap alternative is a *second* generator path (parametric, on raw ENTSO-E) and is out of scope here unless open question 2 flips.
 - **Single-stage fan, not a multistage tree.** R2.2 emits one stage of `S` day-ahead paths with probabilities; the here-and-now/recourse split is R2.3's to impose.
@@ -122,7 +123,7 @@ Unlike R2.1's coverage, scenario *reduction* on a tiny fixed set has an exact an
 - **ARIMA/GARCH parametric generator on raw prices**: a second generator path; deferred unless open question 2 flips.
 - **Distributional distance choice beyond Kantorovich-p** (e.g. Fortet-Mourier metrics): the published stability bound uses Kantorovich; others are noted-not-built.
 
-## Resolved decisions (reviewed 2026-07-08)
+## Decisions (reviewed 2026-07-08)
 
 Phase-local decisions only; roadmap/positioning stays in the Tier 0 log.
 

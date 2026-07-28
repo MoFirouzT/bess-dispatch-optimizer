@@ -1,6 +1,6 @@
 """Integration — R2.5b tail dispatch value on real ENTSO-E NL prices.
 
-Contract: docs/specs/R2.5b-tail-dispatch-value.md § "Acceptance gate". Token-gated
+Contract: docs/specs/tail-dispatch-value.md § "Acceptance gate". Token-gated
 (skipped unless `ENTSOE_API_TOKEN` is set; deselected in CI); nothing fetched is
 committed. Uses the R2.1c fundamentals loader for the conditional tail's covariate.
 
@@ -12,7 +12,7 @@ gates the R2.2d go/no-go: a null (recourse already captures realized spikes, so 
 day-ahead tail adds nothing) is a legitimate, informative result.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python may need the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import os

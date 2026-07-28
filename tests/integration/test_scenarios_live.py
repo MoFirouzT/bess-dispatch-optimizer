@@ -1,6 +1,6 @@
 """Integration — R2.2 scenario generation + reduction on real ENTSO-E prices.
 
-Contract: docs/specs/R2.2-scenarios.md § "Acceptance gate" (token-gated
+Contract: docs/specs/scenario-generation.md § "Acceptance gate" (token-gated
 integration): generate + reduce on real ENTSO-E data and assert the trade-off
 curve shape holds. Token-gated: skipped unless `ENTSOE_API_TOKEN` is set;
 deselected in CI via the `integration` marker. Nothing fetched here is committed.
@@ -17,7 +17,7 @@ proves on *real* prices:
       full set is non-increasing as the reduced count grows, and zero at full size.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python may need the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import os

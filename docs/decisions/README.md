@@ -11,7 +11,7 @@ subject, with no numbering, so a decision can be merged into a related one or
 retired without leaving a gap. What lives here is what still governs the code
 today. History is not this directory's job: the build record is the
 [phase ledger](../specs/README.md), and the full reasoning trail for any phase is in
-that phase's spec under Open questions.
+that phase's spec under Decisions.
 
 The tradeoff is deliberate and worth stating. A numbered append-only series
 preserves what was believed at the time, including proposals later abandoned. A

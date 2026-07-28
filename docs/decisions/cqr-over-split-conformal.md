@@ -6,7 +6,7 @@
 
 ## Context
 
-R2.1 outputs calibrated day-ahead price *intervals* (spec `docs/specs/R2.1-forecaster.md`).
+R2.1 outputs calibrated day-ahead price *intervals* (spec `docs/specs/price-forecaster.md`).
 Two conformal constructions are available in MAPIE 1.x:
 
 - **Split conformal**: one point model plus a single conformity quantile, giving a

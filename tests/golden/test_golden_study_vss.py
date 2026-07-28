@@ -1,6 +1,6 @@
 """Golden oracles for R2.5: value evaluation hardening (formulation §R2.5).
 
-Contract: docs/specs/R2.5-value-evaluation.md § "Golden oracles".
+Contract: docs/specs/value-evaluation.md § "Golden oracles".
 
 Exact, hand-computable cases for the pinball loss and the seasonal-naive
 predictor; designed-instance cases for the per-window VSS study (the window

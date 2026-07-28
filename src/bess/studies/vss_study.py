@@ -1,7 +1,7 @@
 """Per-window out-of-sample VSS: is VSS > 0 a market property or an instance one? (R2.5)
 
 Formulation: ``docs/formulation-evaluation.md`` § R2.5; spec:
-``docs/specs/R2.5-value-evaluation.md``. Repeats the docs/decisions/risk-aware-two-stage-design.md
+``docs/specs/value-evaluation.md``. Repeats the docs/decisions/risk-aware-two-stage-design.md
 measurement over
 arbitrary UTC-day windows of a real price series, so the reported object is a
 *distribution* rather than a single number. Not sign-asserted: a negative window

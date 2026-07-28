@@ -1,6 +1,6 @@
 """Golden oracles for R2.1d walk-forward fold placement and the coverage bootstrap.
 
-Spec: ``docs/specs/R2.1d-evaluation-honesty.md`` § "Golden oracles". Unlike the rest
+Spec: ``docs/specs/forecaster-evaluation.md`` § "Golden oracles". Unlike the rest
 of forecasting, fold placement is exact arithmetic, so these are hand-derived oracles
 rather than statistical gates: given a span and a fold request, *which* days train and
 *which* days are tested is fully determined, and so is the no-leakage boundary.

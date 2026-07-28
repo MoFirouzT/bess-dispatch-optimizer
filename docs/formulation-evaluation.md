@@ -23,7 +23,7 @@ See [references.md: R1.4](references.md#r14-backtest-walk-forward-baselines-sani
 the leakage-control machinery specific to a fitted model (purged CV, embargo) is deferred to R2.1.*
 
 This section adds **no constraints, variables, or objective terms**.
-It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey;
+It defines the three revenue quantities the backtest ([specs/backtest.md](specs/backtest.md)) reports and the leakage discipline they obey;
 all built from the *existing* R1.1/R1.2 optimizer.
 If code and this section disagree, this governs.
 
@@ -32,7 +32,7 @@ If code and this section disagree, this governs.
 The whole day-ahead block for delivery day $d$ is committed at a single gate (≈12:00 CET on $d-1$).
 So at decision time the agent knows **all** of day $d$'s prices, but **none** of day $d+1$'s.
 Write $\Pi_d$ for the price vector of day $d$.
-The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d-1$, and on **nothing from $d'>d$**: this is the leakage boundary (gate C; the gates are lettered in [specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)).
+The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d-1$, and on **nothing from $d'>d$**: this is the leakage boundary (gate C; the gates are lettered in [specs/backtest.md](specs/backtest.md)).
 
 ### Three revenue quantities
 
@@ -105,7 +105,7 @@ the quantities below are evaluation protocols over the existing §R2.3 program (
 See [references.md: R2.3](references.md#r23-risk-aware-two-stage-dispatch--intraday-recourse) for the underlying machinery.*
 
 This section adds **no constraints, variables, or objective terms**.
-It defines the three quantities the evaluation layer ([specs/R2.5-value-evaluation.md](specs/R2.5-value-evaluation.md)) reports over the existing optimizer;
+It defines the three quantities the evaluation layer ([specs/value-evaluation.md](specs/value-evaluation.md)) reports over the existing optimizer;
 if code and this section disagree, this governs.
 
 ### Per-window out-of-sample VSS (a distribution, not a number)

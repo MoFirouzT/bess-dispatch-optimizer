@@ -1,6 +1,6 @@
 """Golden — ENTSO-E A44 parser maps raw XML to the internal price-series schema.
 
-Contract: docs/specs/R1.4b-entsoe-loader.md § "Golden / property expectations".
+Contract: docs/specs/data-feed.md § "Golden / property expectations".
 
 No real ENTSO-E data is committed (licensing — see the spec). This XML is
 **synthetic**: fabricated prices encoding the real *structure* the parser must

@@ -1,6 +1,6 @@
 """Integration — R1.4c ingestion guard sanity-checked against real ENTSO-E prices.
 
-Contract: docs/specs/R1.4c-ingestion-guard.md § "Acceptance gate" (the token-gated
+Contract: docs/specs/data-feed.md § "Acceptance gate" (the token-gated
 integration check) and § "Config": confirm on a *full year* of real NL and BE
 day-ahead data that
   (a) a genuine feed classifies HEALTHY — the guard does not false-positive on the
@@ -16,7 +16,7 @@ Token-gated: skipped unless `ENTSOE_API_TOKEN` is set; deselected in CI via the
 at runtime and discarded.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python may need the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import os

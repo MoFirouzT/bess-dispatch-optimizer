@@ -1,6 +1,6 @@
 """ENTSO-E day-ahead price adapter → internal price-series schema.
 
-Spec: ``docs/specs/R1.4b-entsoe-loader.md``. Wraps **entsoe-py** (it owns EIC
+Spec: ``docs/specs/data-feed.md``. Wraps **entsoe-py** (it owns EIC
 mapping, the A03 carry-forward expansion, and 60/15-min handling), then
 normalizes to the same internal schema the backtest consumes (``price_eur_mwh``
 on a tz-aware **UTC** ``DatetimeIndex``, regular and gap-free) and validates it

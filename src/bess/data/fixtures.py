@@ -1,7 +1,7 @@
 """Fixture price loader — reads a committed parquet slice into the internal
 price-series schema the backtest consumes.
 
-Spec: ``docs/specs/R1.4a-backtest.md`` § "Data". The internal contract is a
+Spec: ``docs/specs/backtest.md`` § "Data". The internal contract is a
 ``pandas.Series`` named ``price_eur_mwh`` on a tz-aware **UTC** ``DatetimeIndex``
 with a regular frequency and no gaps (conventions §1/§4). Raw ENTSO-E shapes are
 *not* handled here — that adapter is R1.4b; this only loads the validated fixture.

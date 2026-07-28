@@ -1,6 +1,6 @@
 """Property tests for the R1.5 dispatch circuit breaker.
 
-Contract: docs/specs/R1.5-serving.md § "Property tests" + § "Acceptance gate".
+Contract: docs/specs/serving.md § "Property tests" + § "Acceptance gate".
 For any pre-flight-valid request the breaker returns a *feasible* schedule in both
 modes, never raises on solver failure, and the greedy fallback never beats the
 optimum (V_greedy ≤ V*, formulation §R1.4).

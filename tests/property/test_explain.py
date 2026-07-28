@@ -1,6 +1,6 @@
 """Property tests for R2.4 — shadow-price explainability.
 
-Contract: docs/specs/R2.4-explainability.md § "Property tests".
+Contract: docs/specs/explainability.md § "Property tests".
 Math: docs/formulation.md § "R2.4. Shadow-price explainability".
 
 Feasibility is guaranteed via soc_initial == soc_terminal (idle is always feasible),

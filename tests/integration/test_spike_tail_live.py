@@ -1,6 +1,6 @@
 """Integration — R2.2b extreme-value tail on real ENTSO-E NL prices.
 
-Contract: docs/specs/R2.2b-spike-tail.md § "Acceptance gate". Token-gated (skipped
+Contract: docs/specs/scenario-tail.md § "Acceptance gate". Token-gated (skipped
 unless `ENTSOE_API_TOKEN` is set; deselected in CI via the `integration` marker);
 nothing fetched is committed. Mirrors the R2.2 live test's residual-path setup
 (mean day shape as the point, real-day deviations as residuals), so no forecast
@@ -17,7 +17,7 @@ What it proves on *real* prices:
       not the tail, so the ceiling, where the cap actually bites, is the honest metric.)
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python may need the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import os

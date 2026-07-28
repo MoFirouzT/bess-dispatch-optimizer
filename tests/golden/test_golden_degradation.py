@@ -1,6 +1,6 @@
 """Golden oracles for R1.2 — linear degradation cost (D_t = c_deg · τ_t).
 
-Contract: docs/specs/R1.2-degradation.md § "Golden oracles".
+Contract: docs/specs/dispatch-core.md § "Golden oracles".
 Math: docs/formulation.md § "R1.2. Degradation cost".
 
 All use a 1 MWh / 1 MW battery, dt=1, e0 = e_tgt = 0. Tolerance 1e-6.

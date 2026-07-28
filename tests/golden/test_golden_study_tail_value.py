@@ -1,6 +1,6 @@
 """Golden oracles for R2.5b: dispatch value of the scenario tail.
 
-Contract: docs/specs/R2.5b-tail-dispatch-value.md § "Golden oracles". The exact
+Contract: docs/specs/tail-dispatch-value.md § "Golden oracles". The exact
 anchors are the tail-off identity (identical sets ⇒ TV = 0) and the bookkeeping /
 antisymmetry; the designed spike-capture case pins that the study can detect a real
 tail benefit. Token-free (the ML wrapper is exercised by the live integration test).

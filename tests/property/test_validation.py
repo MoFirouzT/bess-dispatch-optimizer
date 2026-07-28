@@ -1,6 +1,6 @@
 """Property tests for the pre-flight validator.
 
-Contract: docs/specs/R1.3-validation.md § "Property tests".
+Contract: docs/specs/dispatch-core.md § "Property tests".
 Math: docs/formulation.md § "R1.3 — Pre-flight feasibility (derived; no new model)".
 
 Soundness/completeness are checked against the *raw* solver (bypassing the

@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green; five resolved decisions below, [the scenario tail construction](../decisions/scenario-tail-construction.md))
 **Release:** R2  **Depends on:** R2.2 (the residual-path bootstrap this extends), R2.1c (fundamentals condition the point forecast the tail is added to; also the prerequisite for the *conditional* tail deferred below), R2.1 (residual history), R1.4a (walk-forward + leakage discipline)
+**Phases:** R2.2b (2026-07-24)
 
 ## Objective
 
@@ -17,7 +18,7 @@ Extreme-value theory gives the standard fix. Above a high threshold `u`, exceeda
 
 ## Formulation reference
 
-**New theory (EVT), no optimizer delta, no `formulation.md` section.** R2.2b adds no constraint, variable, or objective term to the dispatch MILP; the tail-augmented set is still a `ScenarioSet` the R2.3 program consumes unchanged. It does introduce genuinely new theory (peaks-over-threshold / GPD), but it is classified with the **statistical R2-stack extensions that intentionally carry no `formulation.md` section** (the preamble lists R2.1b the drift monitor in exactly this class): it models the scenario *input* distribution, not the optimizer. The decision was also forced at the time by the **600-line cap** on `formulation.md`, which the file was then at. The self-contained EVT theory therefore lives in **this spec's design sketch + estimator** and **`references.md` §R2.2b** (governing reference), not in the formulation. The file has since been split by subject (spec S1), so headroom is no longer the obstacle; the classification argument above is, and it still holds. The R2.2 "considered but out of scope" list already anticipates a tail extension.
+**New theory (EVT), no optimizer delta, no `formulation.md` section.** R2.2b adds no constraint, variable, or objective term to the dispatch MILP; the tail-augmented set is still a `ScenarioSet` the R2.3 program consumes unchanged. It does introduce genuinely new theory (peaks-over-threshold / GPD), but it is classified with the **statistical R2-stack extensions that intentionally carry no `formulation.md` section** (the preamble lists R2.1b the drift monitor in exactly this class): it models the scenario *input* distribution, not the optimizer. The decision was also forced at the time by the **600-line cap** on `formulation.md`, which the file was then at. The self-contained EVT theory therefore lives in **this spec's design sketch + estimator** and **`references.md` §R2.2b** (governing reference), not in the formulation. The file has since been split by subject (2026-07-28), so headroom is no longer the obstacle; the classification argument above is, and it still holds. The R2.2 "considered but out of scope" list already anticipates a tail extension.
 
 ## Governing reference
 
@@ -120,7 +121,7 @@ The GPD fit and the splice are exact arithmetic, so R2.2b gets real golden oracl
 - **Any optimizer / R2.3 change.** The tail-augmented set is a drop-in `ScenarioSet`; the reduction and the two-stage program are untouched.
 - **Reduction re-design** beyond the tail-preservation question posed below.
 
-## Open questions
+## Decisions
 
 Phase-local decisions only; posed with a proposed answer, resolved in place at review (2026-07-24). Resolved lines kept as the decision trail.
 

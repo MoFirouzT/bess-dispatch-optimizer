@@ -1,7 +1,7 @@
 """The three backtest baselines, each over a single window.
 
 Math: ``docs/formulation.md`` § "R1.4 — Backtest semantics". Spec:
-``docs/specs/R1.4a-backtest.md``. ``perfect_foresight`` (full horizon) and
+``docs/specs/backtest.md``. ``perfect_foresight`` (full horizon) and
 ``rolling`` (per window) are solves of the existing R1.1/R1.2 optimizer with
 **empty** SoC endpoints; ``greedy`` is the feasibility-preserving percentile rule,
 which lives in ``bess.optimizer.heuristics`` and is re-exported here

@@ -1,6 +1,6 @@
 """Peaks-over-threshold (GPD) tail for the scenario bootstrap (R2.2b).
 
-Spec: ``docs/specs/R2.2b-spike-tail.md``; theory + references: ``references.md`` §R2.2b
+Spec: ``docs/specs/scenario-tail.md``; theory + references: ``references.md`` §R2.2b
 (Coles 2001 ch. 4; PWM estimator from Hosking & Wallis 1987). No ``formulation.md``
 section (a statistical scenario-layer extension, classified with R2.1b).
 

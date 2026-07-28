@@ -1,6 +1,6 @@
 """Integration — R2.2c residual-load-conditional tail on real ENTSO-E NL.
 
-Contract: docs/specs/R2.2c-conditional-tail.md § "Acceptance gate". Token-gated
+Contract: docs/specs/scenario-tail-conditioning.md § "Acceptance gate". Token-gated
 (skipped unless `ENTSOE_API_TOKEN` is set; deselected in CI); nothing fetched is
 committed. Uses the R2.1c fundamentals loader for the residual-load covariate and
 the R2.2-live residual construction (mean day shape as the point).
@@ -13,7 +13,7 @@ What it proves on *real* prices:
       provenance; γ ≈ 0 on another asset/window would be a reported null.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python may need the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import os

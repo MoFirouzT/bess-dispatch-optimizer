@@ -2,7 +2,7 @@
 
 The conditional-scale fit (OLS log-link slope on the standardized covariate, base
 scale from R2.2b's PWM) and the per-hour splice are exact arithmetic. Spec:
-``docs/specs/R2.2c-conditional-tail.md``. Pure numpy/pandas (no forecast group).
+``docs/specs/scenario-tail-conditioning.md``. Pure numpy/pandas (no forecast group).
 """
 
 from __future__ import annotations

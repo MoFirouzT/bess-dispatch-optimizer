@@ -1,6 +1,6 @@
 """Property invariants for R2.5b: dispatch value of the scenario tail.
 
-Contract: docs/specs/R2.5b-tail-dispatch-value.md § "Property tests". Token-free:
+Contract: docs/specs/tail-dispatch-value.md § "Property tests". Token-free:
 the tail-off identity, antisymmetry, determinism, and the well-formed per-window
 distribution. The realized-euro *sign* of TV is a finding, not a gate (reported by
 the live integration test), exactly as for the R2.5 forecast value.

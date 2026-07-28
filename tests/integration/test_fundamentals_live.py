@@ -1,6 +1,6 @@
 """Integration — R2.1c exogenous fundamentals on real ENTSO-E NL, walk-forward.
 
-Contract: docs/specs/R2.1c-exogenous-fundamentals.md § "Acceptance gate". Uses the
+Contract: docs/specs/price-forecaster.md § "Acceptance gate". Uses the
 exact R2.1 walk-forward evaluation (fit strictly before each test block, pool
 coverage), now threading the day-ahead residual-load features, on *real* data the
 model did not calibrate on:

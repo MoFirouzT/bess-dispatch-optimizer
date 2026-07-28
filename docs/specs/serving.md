@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green)
 **Release:** R1  **Depends on:** R1.1 (solver), R1.2 (degradation, optional via `BatterySpec`), R1.3 (pre-flight validation), R1.4a (greedy baseline, which lives in `bess.optimizer` so serving can reuse it)
+**Phases:** R1.5 (2026-06-26)
 
 ## Objective
 
@@ -15,7 +16,7 @@ R1.5 is serving and operations over the existing model.
 The optimal schedule is the R1.1/R1.2 `solve()`; the fallback is the greedy baseline already specified in `docs/formulation.md`: "R1.4. Backtest semantics" and implemented as `greedy_window`.
 No constraint, objective term, or efficiency placement changes.
 
-## Design decisions
+## Decisions
 
 Both are **Accepted**; the reasoning, alternatives, and failure modes live in the ADRs (Tier 2 canonical), not here.
 
@@ -112,7 +113,7 @@ The breaker is a thin service function `dispatch(request, *, budget, solve_fn=so
 - **Forecasting, scenarios, stochastic/recourse**: Release 2.
 - **Warm-start / persistent solver process**: an R2.3 latency optimization, not needed at R1 horizons.
 
-## Resolved decisions (reviewed 2026-06-26)
+## Decisions (reviewed 2026-06-26)
 
 1. **Solver result surface**: **resolved:** add an optional `time_limit` param to `solve()` and a back-compatible `termination: str = "optimal"` field on `Schedule`. One return type; existing callers unaffected by the default.
 2. **Budget default**: **resolved: 2.0 s.** Comfortable for a ≤96-period MILP; the breaker fires only on genuine solver stress, and tests force the fallback path via injection regardless of the budget.

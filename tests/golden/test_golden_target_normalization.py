@@ -1,6 +1,6 @@
 """Golden oracles for the R2.1e normalized target and its rolling baseline.
 
-Spec: ``docs/specs/R2.1e-target-normalization.md`` § "Golden oracles". The transform
+Spec: ``docs/specs/target-normalization.md`` § "Golden oracles". The transform
 is exact arithmetic, so these are hand-derived rather than statistical: a baseline
 window with a known mean and standard deviation must produce exactly those numbers,
 and the affine inversion ``price = level + scale * z`` must round-trip to floating

@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green 2026-07-26; every build task and acceptance box ticked. Result: a null, reported below)
 **Release:** R2  **Depends on:** R2.3 (the two-stage program this modifies), R2.2 (the scenario set the curve is measurable against), R2.5 (the per-window value harness the study reuses), R1.1 (the physics each commitment branch must satisfy)
+**Phases:** R2.6 (2026-07-26)
 
 ## Objective
 
@@ -164,7 +165,7 @@ Deliberately *not* a property: bid-curve value decreasing in `rho`. That is the 
 - **Off-support price vectors** (decision 2): a realized price path that matches no scenario accepts quantities across hours that jointly violate the SoC balance. Priced by imbalance settlement, which is R3.1. **Measured 2026-07-26, and it is the normal case rather than a corner:** over 30 trials (S=10, T=24, held-out realized paths), the curve's realized commitment was deliverable as an R1.1 schedule **0 times out of 30**, with a median terminal-SoC miss of **1.38 MWh on a 2 MWh asset** (max 3.43). The binding obstruction is the terminal-SoC *equality*: a commitment mixed across branches essentially never lands on it. This blocks the value study's scoring step and is the phase's open design question (see the note under Build tasks).
 - **Block bids, exclusive groups, and linked bids;** the continuous intraday order book; multistage (more than two-stage) trees.
 
-## Resolved decisions (reviewed 2026-07-26)
+## Decisions (reviewed 2026-07-26)
 
 Each was posed with a proposed answer and resolved as proposed; the lines below are the decision trail. Phase-local decisions only.
 

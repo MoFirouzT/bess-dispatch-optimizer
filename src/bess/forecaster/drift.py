@@ -1,6 +1,6 @@
 """Rolling forecast-drift monitor (R2.1b) — regime shift vs. model staleness.
 
-Spec: ``docs/specs/R2.1b-drift-monitor.md``. Watches the R2.1 forecaster's trailing
+Spec: ``docs/specs/price-forecaster.md``. Watches the R2.1 forecaster's trailing
 accuracy and, when it degrades, classifies *why*:
 
 - **regime shift** — the market genuinely moved; the input distribution shifted (high

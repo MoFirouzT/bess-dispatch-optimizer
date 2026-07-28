@@ -195,7 +195,7 @@ $$\boxed{ e_{T} = e^{\mathrm{tgt}} }$$
 ### Worked example (sanity, $\eta = 1$)
 
 $T=3$, $\pi=[10,50,20]$, $\Delta t=1$, a 1 MWh / 1 MW battery (energy capacity / power rating, a 1-hour, i.e. 1C, asset), $e_0=e^{\mathrm{tgt}}=0$, $R$ disabled → charge at $t_1$, discharge at $t_2$, idle at $t_3$; objective $=40$.
-The full oracle set (including the lossy and no-trade cases) is the test contract in [specs/R1.1-deterministic-core.md](specs/R1.1-deterministic-core.md).
+The full oracle set (including the lossy and no-trade cases) is the test contract in [specs/dispatch-core.md](specs/dispatch-core.md).
 
 ---
 
@@ -271,7 +271,7 @@ $T=2$, $\pi=[0,50]$, $\eta^{ch}=\eta^{dis}=1$, a 1 MWh / 1 MW battery, $e_0=e^{\
 - At $c^{\text{deg}}=10$ €/MWh: $f(q)=30q$, increasing, so $q^\star=1$ → charge $[1,0]$, discharge $[0,1]$, soc $[1,0]$, objective $=\mathbf{30}$.
 - At $c^{\text{deg}}=30$ €/MWh: $f(q)=-10q$, so $q^\star=0$ (idle), objective $=\mathbf{0}$: wear exceeds the €50 round-trip spread. The breakeven is $c^{\text{deg}}=25$ €/MWh.
 
-The full oracle set (including the storage-side $\eta<1$ case) is in [specs/R1.2-degradation.md](specs/R1.2-degradation.md).
+The full oracle set (including the storage-side $\eta<1$ case) is in [specs/dispatch-core.md](specs/dispatch-core.md).
 
 ---
 
@@ -283,7 +283,7 @@ See [references.md: R1.3](references.md#r13-pre-flight-validation).*
 
 This section adds **no constraints, variables, or objective terms**.
 It records the closed-form feasibility test the validation layer
-([specs/R1.3-validation.md](specs/R1.3-validation.md)) evaluates *before* the solver.
+([specs/dispatch-core.md](specs/dispatch-core.md)) evaluates *before* the solver.
 If the code and this derivation ever disagree, this governs.
 
 ### Per-period SoC increment bounds
@@ -325,7 +325,7 @@ The water value and no-trade band below are algebraic corollaries of R1.1/R1.2 s
 The term "water value" is borrowed from hydro-thermal scheduling as context only; see [references.md: R2.4](references.md#r24-shadow-price-explainability).*
 
 This section adds **no constraints, variables, or objective terms**.
-It records the dual quantities the explainability layer ([specs/R2.4-explainability.md](specs/R2.4-explainability.md)) reads off the *solved* R1.1/R1.2 dispatch. If the code and this derivation ever disagree, this governs.
+It records the dual quantities the explainability layer ([specs/explainability.md](specs/explainability.md)) reads off the *solved* R1.1/R1.2 dispatch. If the code and this derivation ever disagree, this governs.
 
 **A MILP has no duals, so fix-and-resolve.** The dispatch is a MILP (the binary $u_t$, constraint (3)), which has no LP dual. Take the optimal commitment $u^\star$, fix it, and re-solve the resulting LP; its duals are the reported values. Fixing $u=u^\star$ restricts the feasible set to a subset that still contains the MILP optimum, so the LP optimum equals it exactly, and the duals are valid for perturbations too small to change $u^\star$.
 
@@ -391,4 +391,4 @@ The changelog below covers all three.
 - **R2.6**: price-contingent day-ahead **bid curves**. **Optimizer delta**: the first stage is indexed by scenario and constrained to be monotone in, and single-valued in, each hour's clearing price, so the commitment is measurable with respect to that price alone (a submittable curve $q_t$) instead of one schedule shared across scenarios. Both legs settle at the realized clearing price. Forcing all branches equal reproduces §R2.3 exactly at $\lambda=0$, and the curve dominates it there; at $\lambda>0$ the two differ by design (§R2.3's fixed-price leg is a forward hedge, an auction leg is not). R1.1 physics, the recourse budget, and the CVaR term are unchanged. Carries its own **evaluation semantics**: a curve's realized commitment is assembled across branches, so it is not an R1.1 schedule, and it is scored as a cash-flow obligation entering only the recourse budget, with the unpriced **delivery gap** reported beside any value number.
 - **R2.4 clarification (2026-07-26)**: $\mu$ is a property of the *chosen* optimum, not of the price path. At a kink of $V^\star$ the subdifferential is an interval, and where the primal optimum is non-unique two equally optimal dispatches report different endpoints of it, so invariance claims about $\mu$ hold only where the dispatch is also invariant. No model change; the scale-invariance property gained the condition and a golden oracle now pins a measured instance.
 - **Split (2026-07-26)**: the Release-2 sections moved to a companion file at the 600-line cap; no math changed. §R1.1's price-taker note was corrected at the same time to separate price *impact* (reflexivity, R3) from a *bid curve* (price contingency under uncertainty, §R2.6), which one sentence had conflated.
-- **Recut by subject (2026-07-28, spec S1)**: **no math changed and no section body was edited.** The earlier split was by *release*, which cut through the subject: §R2.4's water value is the dual of §R1.1's SoC balance and belongs beside it, while §R1.4's revenue ordering is measurement protocol and belongs beside §R2.5's. The three files are now [formulation.md](formulation.md) (the deterministic model and its duals: §R1.1, §R1.2, §R1.3, §R2.4), [formulation-uncertainty.md](formulation-uncertainty.md) (§R2.1, §R2.2, §R2.3, §R2.6), and [formulation-evaluation.md](formulation-evaluation.md) (§R1.4, §R2.5). Section numbers keep their historical phase labels, so every existing cross-reference resolves to the same mathematics in a new home. `scripts/lint_docs.py` gained a check that binds a `formulation*.md §R<n>.<m>` reference, anywhere in the repository, to a section that actually exists.
+- **Recut by subject (2026-07-28)**: **no math changed and no section body was edited.** The earlier split was by *release*, which cut through the subject: §R2.4's water value is the dual of §R1.1's SoC balance and belongs beside it, while §R1.4's revenue ordering is measurement protocol and belongs beside §R2.5's. The three files are now [formulation.md](formulation.md) (the deterministic model and its duals: §R1.1, §R1.2, §R1.3, §R2.4), [formulation-uncertainty.md](formulation-uncertainty.md) (§R2.1, §R2.2, §R2.3, §R2.6), and [formulation-evaluation.md](formulation-evaluation.md) (§R1.4, §R2.5). Section numbers keep their historical phase labels, so every existing cross-reference resolves to the same mathematics in a new home. `scripts/lint_docs.py` gained a check that binds a `formulation*.md §R<n>.<m>` reference, anywhere in the repository, to a section that actually exists.

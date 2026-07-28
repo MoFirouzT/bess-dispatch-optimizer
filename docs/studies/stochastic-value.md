@@ -2,10 +2,13 @@
 
 **Answer: yes, and it is a distribution rather than a constant.**
 Over every UTC day of a real Dutch quarter, the two-stage stochastic commitment
-beat the mean-value plan by a **median of about +12 EUR per window**, positive on
-**62% of 63 windows**, quartiles −8 to +33, for a 2 MWh / 1 MW asset.
+beat the mean-value plan by a **median of +12.90 EUR per window**, positive on
+**66% of 94 windows**, quartiles [−2.41, +31.37], for a 2 MWh / 1 MW asset.
 
-Governing spec: [R2.5](../specs/R2.5-value-evaluation.md); protocol:
+*Measured live on 2026-07-28 over real NL day-ahead prices, 2024-03-01 to
+2024-06-30, a 2 MWh / 1 MW asset at a 0.5 recourse budget.*
+
+Governing spec: [R2.5](../specs/value-evaluation.md); protocol:
 [the recourse and out-of-sample protocol](../decisions/risk-aware-two-stage-design.md); math:
 [formulation-evaluation.md § R2.5](../formulation-evaluation.md).
 
@@ -33,7 +36,7 @@ The negative windows are real and reported. On a calm day the mean-value plan is
 already fine, so the stochastic edge is a distribution whose median is positive,
 not a constant.
 
-![Per-window out-of-sample VSS on real NL 2024-Q2 days: a histogram of 63 windows straddling zero with its median clearly positive.](../figures/example-vss-distribution.svg)
+![Per-window out-of-sample VSS on real NL 2024-Q2 days: a histogram of windows straddling zero with its median clearly positive.](../figures/example-vss-distribution.svg)
 
 The mechanism behind it is the intraday recourse budget ρ, and the shape confirms
 it: value **rises then falls** with ρ. At zero recourse the commitment cannot

@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green; channel = magnitude, confirmed by the human 2026-07-24; four resolved decisions below, [the tail conditioning channel](../decisions/scenario-tail-construction.md))
 **Release:** R2  **Depends on:** R2.2b (the unconditional GPD tail this conditions), R2.1c (supplies the residual-load covariate, the whole reason this is possible), R2.2 (bootstrap), R2.1 (residual history)
+**Phases:** R2.2c (2026-07-24)
 
 ## Objective
 
@@ -112,7 +113,7 @@ Unchanged; `bess.scenarios` still imports only `bess.forecaster` + `bess.data`. 
 - **Full covariate-MLE GPD, regime-split fits, multivariate/extremal-dependence tails.**
 - **Any optimizer / R2.3 change.**
 
-## Open questions
+## Decisions
 
 Posed with a proposed answer, resolved in place at review (2026-07-24). Resolved lines kept as the decision trail.
 

@@ -1,6 +1,6 @@
 """Property tests for R1.2 — linear degradation cost (D_t = c_deg · τ_t).
 
-Contract: docs/specs/R1.2-degradation.md § "Property tests".
+Contract: docs/specs/dispatch-core.md § "Property tests".
 Feasibility guaranteed via soc_initial == soc_terminal (idle always feasible);
 degradation only adds a non-negative cost, never makes the model infeasible.
 """

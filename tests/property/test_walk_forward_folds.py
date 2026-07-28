@@ -1,6 +1,6 @@
 """Property gates for R2.1d fold placement and the day-block coverage bootstrap.
 
-Spec: ``docs/specs/R2.1d-evaluation-honesty.md`` § "Property tests". The load-bearing
+Spec: ``docs/specs/forecaster-evaluation.md`` § "Property tests". The load-bearing
 invariants are that no fold can train on data at or after the block it tests, that
 folds never overlap (which would pool the same test day into coverage twice), and
 that the bootstrap actually resamples **whole days** rather than individual hours.

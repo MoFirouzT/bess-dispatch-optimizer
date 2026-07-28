@@ -1,6 +1,6 @@
 """Integration — real-data sanity-band re-validation against live ENTSO-E.
 
-Contract: docs/specs/R1.4b-entsoe-loader.md § "Golden / property expectations"
+Contract: docs/specs/data-feed.md § "Golden / property expectations"
 (real-data band) and § "Acceptance gate". This is the only place the project
 touches the live API, and it is **token-gated**: skipped unless `ENTSOE_API_TOKEN`
 is set (so it never runs in CI). Nothing fetched here is committed — the data is
@@ -17,7 +17,7 @@ What it proves on *real* NL day-ahead prices:
       correctly through annualization.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python needs the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note" and
+Keychain roots — see docs/specs/data-feed.md § "Environment note" and
 .env.example. Without `REQUESTS_CA_BUNDLE`/`SSL_CERT_FILE` the live fetch fails
 `CERTIFICATE_VERIFY_FAILED`; that is operator setup, not a code defect.
 """

@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green; five resolved decisions below, 2026-07-09)
 **Release:** R2  **Depends on:** R2.2 (the reduced scenario set this optimizes over), R2.1 (the forecast the scenarios are built from), R1.1 (the deterministic dispatch model each stage / re-solve reuses), R1.4a (walk-forward + leakage discipline for the out-of-sample VSS measurement)
+**Phases:** R2.3 (2026-07-09)
 
 > **Post-freeze erratum (2026-07-10):** the `warm_start` recourse option described below was **not** shipped. It had landed only as a no-op stub, so `rolling_recourse` dropped the param rather than misrepresent a real MILP warm-start through `appsi_highs`; a genuine warm-start remains available as future latency work. The lines below are reconciled to the shipped `rolling_recourse(realized, battery, *, dt=1.0, forecast=None)`. Warm-start as a *concept* stays in the MPC framing (references / [the recourse and out-of-sample protocol](../decisions/risk-aware-two-stage-design.md)) as justified-by-latency future work.
 
@@ -61,7 +62,7 @@ R2.3 introduces more than one genuinely new theory, which strains the one-govern
 - **Secondary (robust alternative, pointer only):** Bertsimas & Sim, *The Price of Robustness* (2004); Ben-Tal, El Ghaoui & Nemirovski, *Robust Optimization*.
 - **Notation reconciliation:** house style wins. Scenarios $\pi^{(s)}$, probabilities $p_s$ (R2.2 schema); the reference's generic first/second-stage vectors map onto $x$ and the per-scenario R1.1 dispatch; CVaR tail $\alpha$, risk weight $\lambda$, VaR auxiliary $\eta$, tail slacks $z_s$.
 
-## Design decisions
+## Decisions
 
 - [the two-stage design](../decisions/risk-aware-two-stage-design.md). The two-stage construction that escapes VSS = 0.** Records the chosen here-and-now / recourse split (open question 1) and *why* it yields a strictly positive VSS where the naive single-signal day-ahead program does not. This is the phase's central decision; the ADR carries the trap analysis so it is not re-litigated.
 - [the CVaR risk model](../decisions/risk-aware-two-stage-design.md). Risk model = CVaR mean-risk frontier, not $\Gamma$-budget robust.** CVaR is scenario-native (composes directly with R2.2's discrete set), coherent, and LP-representable; the Bertsimas-Sim robust counterpart is the compared/optional alternative (mirrors R2.1's CQR-vs-split and R2.2's forward-vs-kmeans baseline pattern). Open question 2.
@@ -163,7 +164,7 @@ Unlike R2.1's statistical gates, these are **exact and hand-computable**: the co
 - **Multistage (>2-stage) scenario trees:** two-stage only here.
 - **Hard chance constraints as a separate mechanism:** the CVaR soft objective stands in (open question 2); revisit only if the gate demands a hard probability guarantee.
 
-## Resolved decisions (reviewed 2026-07-09)
+## Decisions (reviewed 2026-07-09)
 
 Phase-local decisions only; roadmap / positioning stays in the Tier 0 log. Each was posed with a proposed answer, resolved in place; the resolved lines are the decision trail.
 

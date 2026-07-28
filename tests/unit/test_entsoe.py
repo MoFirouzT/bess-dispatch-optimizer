@@ -1,6 +1,6 @@
 """Unit tests for the ENTSO-E day-ahead adapter (no network, no real data, no token).
 
-Contract: docs/specs/R1.4b-entsoe-loader.md § "Interfaces" / "Acceptance gate".
+Contract: docs/specs/data-feed.md § "Interfaces" / "Acceptance gate".
 The live fetch is exercised via a fake client (monkeypatch) so the normalization,
 schema validation, and parquet cache paths are covered token-free. The genuine
 live call lives in the token-gated integration test, never in CI.

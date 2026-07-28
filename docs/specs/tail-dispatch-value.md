@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green; four resolved decisions below, one corrected during implementation; the result is a measured null, which is the finding)
 **Release:** R2  **Depends on:** R2.5 (the value-study machinery + out-of-sample protocol this reuses), R2.2b / R2.2c (the tail being evaluated), R2.2 (the plain-bootstrap baseline), R2.3 (the two-stage program), R2.1c (the residual-load covariate for the conditional tail)
+**Phases:** R2.5b (2026-07-24)
 
 ## Objective
 
@@ -44,7 +45,7 @@ The scoring **pattern** is R2.5's `forecast_value_from_sets`: fit each set's ris
 
 ```python
 # src/bess/studies/tail_value.py  (extends the R2.5 study; reuses its scoring core)
-# (moved here from bess/stochastic/study.py by spec S1)
+# (moved here from bess/stochastic/study.py, 2026-07-28)
 
 @dataclass(frozen=True)
 class TailValue:                    # from the token-free core (mirrors ForecastValue)
@@ -75,7 +76,7 @@ def tail_value_across_windows(prices, battery, *, residual_load=None, history_da
 
 ## Layering (import-linter)
 
-Unchanged at the time of this phase; the study code already imported `bess.scenarios`, `bess.optimizer`, and (lazily) the forecast group, and 4 contracts were KEPT. Spec S1 later moved it to `bess.studies` and added a fifth contract forbidding the serving chain from importing it; the imports this phase relies on are unaffected. No new dependency.
+Unchanged at the time of this phase; the study code already imported `bess.scenarios`, `bess.optimizer`, and (lazily) the forecast group, and 4 contracts were KEPT. The 2026-07-28 restructure later moved it to `bess.studies` and added a fifth contract forbidding the serving chain from importing it; the imports this phase relies on are unaffected. No new dependency.
 
 ## Golden oracles
 
@@ -110,7 +111,7 @@ Value studies get real oracles by tying to designed instances (as R2.5 does).
 - **Any optimizer / R2.3 change**, including conditioning the CVaR loss tail on the price tail (a price spike is upside for a battery, not a CVaR loss; a different object).
 - **A new committed headline number.** TV is reported as a distribution with provenance, like FV; whether it earns a README claim depends on the result.
 
-## Open questions
+## Decisions
 
 Posed with a proposed answer, resolved in place at review (2026-07-24). Resolved lines kept as the decision trail.
 

@@ -1,10 +1,10 @@
 """Gate D — structural sanity band on a deterministic SYNTHETIC price series.
 
-Contract: docs/specs/R1.4a-backtest.md § "Acceptance gate". Math/§5 band:
+Contract: docs/specs/backtest.md § "Acceptance gate". Math/§5 band:
 docs/formulation.md § "R1.4 — Backtest semantics".
 
 No price data is committed to the repo (copyright-clean by construction — see
-docs/specs/R1.4a-backtest.md § "Committed data"). This gate runs on a synthetic
+docs/specs/backtest.md § "Committed data"). This gate runs on a synthetic
 series shaped like a calm NL day-ahead month (cheap nights, evening peak, gentle
 midday, occasional solar dip). It still catches the dangerous bugs: broken
 ordering, leakage-inflated magnitude, sign/efficiency errors. Validation against

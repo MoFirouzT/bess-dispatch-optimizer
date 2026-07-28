@@ -7,7 +7,7 @@ solution. Imports ``recourse`` / ``optimizer``; fed by ``forecaster`` /
 ``scenarios``. (R2.3)
 
 The multi-window value studies that used to live here moved to ``bess.studies``
-(spec S1): a function that aggregates over windows is a study, a function that
+(2026-07-28): a function that aggregates over windows is a study, a function that
 reports on a single scenario set is part of the program.
 """
 

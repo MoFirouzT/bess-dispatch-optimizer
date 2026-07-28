@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green 2026-07-28; open questions resolved as proposed)
 **Release:** R2  **Depends on:** R1.4a (walk-forward discipline), R1.4b (ENTSO-E loader + cache), R2.1 (the forecaster and its coverage gate), R2.1c (the fundamentals claim this phase re-measures)
+**Phases:** R2.1d (2026-07-28)
 
 ## Objective
 
@@ -376,7 +377,7 @@ is the R2.1e question and is deliberately still open.
 - **Additional zones beyond the BE generality check**, and cross-border joint
   forecasting (already out of scope in R2.1).
 
-## Open questions
+## Decisions
 
 All six resolved as proposed (2026-07-28, human's call). The proposals are kept
 above their resolutions so the section stays a decision trail.

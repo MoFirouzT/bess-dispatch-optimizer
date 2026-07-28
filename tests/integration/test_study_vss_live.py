@@ -1,6 +1,6 @@
 """Integration — R2.5 value evaluation on real ENTSO-E day-ahead prices.
 
-Contract: docs/specs/R2.5-value-evaluation.md § "Statistical gates".
+Contract: docs/specs/value-evaluation.md § "Statistical gates".
 Token-gated: skipped unless `ENTSOE_API_TOKEN` is set (never runs in CI). Nothing
 fetched here is committed — real prices are pulled at runtime and discarded.
 
@@ -16,7 +16,7 @@ What it proves on *real* prices:
       provenance — its sign is a finding, not a gate (formulation §R2.5).
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python needs the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import math
@@ -100,6 +100,18 @@ def test_vss_median_not_significantly_negative_on_real_weeks():
     # Windows are the study's unit: consecutive UTC days, each internally consistent.
     for w in results:
         assert w.vss_oos == pytest.approx(w.rp_oos - w.eev_oos, abs=TOL)
+
+    # Report the distribution, not just the pass/fail. The gate is a sign test, so
+    # without this the run proves "not significantly negative" and publishes nothing;
+    # the median and the positive share are what the studies pages actually quote,
+    # and a claim nobody re-measures is a claim that rots.
+    q25, q75 = np.percentile(vss, [25, 75])
+    print(
+        f"\nVSS distribution (real NL {_START:%Y-%m-%d} to {_END:%Y-%m-%d}, "
+        f"{len(vss)} windows): median {float(np.median(vss)):+.2f} EUR, "
+        f"{np.mean(vss > 0):.0%} > 0, quartiles [{q25:+.2f}, {q75:+.2f}], "
+        f"sign-test p={p_neg:.4f}"
+    )
 
 
 @requires_token

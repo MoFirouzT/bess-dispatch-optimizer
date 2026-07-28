@@ -44,7 +44,7 @@ Both releases are complete and gated by golden + property tests. Eight capabilit
 | **Backtest** | Walk-forward evaluation against greedy, rolling, and perfect-foresight baselines, with a provable ordering between them |
 | **Data feed** | Live ENTSO-E day-ahead loader (BE/NL) behind an anomaly-aware ingestion guard, a *second* circuit breaker that classifies every fetch before it can reach the solver |
 | **Serving** | FastAPI dispatch service with a graceful-degradation breaker (greedy fallback on solver timeout), Dockerized |
-| **Price forecaster** | LightGBM quantile models under conformal prediction for calibrated day-ahead price *intervals* (**~90% empirical coverage** on real NL), conditioned on **residual load** (**~17%** lower pinball loss), watched by a drift monitor that attributes degradation to a regime shift, staleness, or miscalibration |
+| **Price forecaster** | LightGBM quantile models under conformal prediction for calibrated day-ahead price *intervals* (**~90% empirical coverage** on real NL), conditioned on **residual load** (**13.4%** lower pinball loss), watched by a drift monitor that attributes degradation to a regime shift, staleness, or miscalibration |
 | **Scenario generation** | Residual-path bootstrap into probability-weighted price paths, reduced ~300 → ~50 within a Kantorovich tolerance, with an extreme-value tail that prices spikes beyond the historical maximum (realized prices above the generator's ceiling fall from **7.4% to 1.0%**) and concentrates them on tight-margin hours |
 | **Stochastic dispatch** | A CVaR mean-risk two-stage MILP with intraday MPC recourse, whose **value over a mean-forecast plan is measured out of sample** |
 | **Dispatch explainability** | The state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades |
@@ -84,7 +84,7 @@ The forecaster predicts each price as a *calibrated interval*, not a point: Ligh
 
 Reproduce with `uv run --group forecast --group examples python examples/forecast_demo.py` (token, synthetic fallback otherwise).
 
-That forecaster began as an autoregression: its features were the price's own recent past plus the calendar. But a day-ahead price is the clearing point of an auction, and where it lands on the supply stack is set by **residual load**, the demand left after must-run wind and solar. The forecaster adds that driver: ENTSO-E publishes day-ahead load and wind/solar forecasts before the auction closes, so conditioning on residual load is both leakage-safe (it is the published forecast for the target hour, never the realized value) and honest (it inherits the same forecast error a real desk sees). Feeding it cuts the forecaster's walk-forward pinball loss by about **17%** on real NL while empirical coverage stays at the nominal 90%, so the scenarios drawn downstream start from a sharper, better-conditioned signal.
+That forecaster began as an autoregression: its features were the price's own recent past plus the calendar. But a day-ahead price is the clearing point of an auction, and where it lands on the supply stack is set by **residual load**, the demand left after must-run wind and solar. The forecaster adds that driver: ENTSO-E publishes day-ahead load and wind/solar forecasts before the auction closes, so conditioning on residual load is both leakage-safe (it is the published forecast for the target hour, never the realized value) and honest (it inherits the same forecast error a real desk sees). Feeding it cuts the forecaster's walk-forward pinball loss by **13.4%** on real NL while empirical coverage stays at the nominal 90%, so the scenarios drawn downstream start from a sharper, better-conditioned signal.
 
 A forecaster deployed against a live market decays, so the drift monitor watches its trailing accuracy and attributes *why* it degraded: a **regime shift** (the market moved; even a naive baseline degrades, so wait), **staleness** (the model fell behind a seasonal-naive, so retrain), or **miscalibration** (the intervals stopped covering, so recalibrate): an actionable alarm rather than a bare "accuracy dropped."
 
@@ -106,9 +106,9 @@ A spike is a scarcity event, so it does not fall uniformly across the day: it co
 
 Reproduce the two tail figures with `uv run --group examples python examples/spike_tail_demo.py` and `examples/conditional_tail_demo.py` (both synthetic by design: they demonstrate the tail mechanism, not a market result).
 
-That machinery only earns its place if it beats simply optimizing against the mean forecast. It does, and not only on a designed instance. Repeating the out-of-sample measurement over **every UTC day of a real NL quarter** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of about +12 EUR** for the 2 MWh / 1 MW study asset, positive on **62% of 63 windows**. The negative windows are real and reported: on a calm day the mean-value plan is fine, so the stochastic edge is a distribution, not a constant.
+That machinery only earns its place if it beats simply optimizing against the mean forecast. It does, and not only on a designed instance. Repeating the out-of-sample measurement over **every UTC day of a real NL quarter** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of +12.90 EUR** for the 2 MWh / 1 MW study asset, positive on **66% of 94 windows**. The negative windows are real and reported: on a calm day the mean-value plan is fine, so the stochastic edge is a distribution, not a constant.
 
-![Per-window out-of-sample VSS on real NL 2024-Q2 days: a histogram of 63 windows straddling zero with its median clearly positive; the stochastic commitment usually, but not always, beats the mean-value plan out-of-sample.](docs/figures/example-vss-distribution.svg)
+![Per-window out-of-sample VSS on real NL 2024-Q2 days: a histogram of windows straddling zero with its median clearly positive; the stochastic commitment usually, but not always, beats the mean-value plan out-of-sample.](docs/figures/example-vss-distribution.svg)
 
 Reproduce with `uv run --group examples python examples/vss_study.py` (token, synthetic fallback otherwise). The mechanism, the risk/return frontier, and the full per-window distribution are in [docs/studies/stochastic-value.md](docs/studies/stochastic-value.md).
 
@@ -118,7 +118,7 @@ The stochastic *structure* earns money. Three attempts to earn more by feeding i
 
 | Question | Answer |
 | --- | --- |
-| Does a better price forecast earn more euros than a seasonal-naive one? | [**Null.**](docs/studies/forecast-value.md) Centred on zero over 63 real days, despite clear statistical skill |
+| Does a better price forecast earn more euros than a seasonal-naive one? | [**Null.**](docs/studies/forecast-value.md) Median −19.81 EUR over 94 real days, despite clear statistical skill |
 | Does pricing unprecedented spikes in the scenarios earn more? | [**Null**](docs/studies/tail-value.md) at every recourse budget |
 | Does a price-contingent bid curve beat a single blind schedule? | [**Null**](docs/studies/bid-curves.md) on euros, but it surfaced an unpriced delivery gap of 4 to 8 MWh per day on a 2 MWh asset |
 
@@ -209,7 +209,7 @@ Fetches are cached to parquet when `BESS_CACHE_DIR` points somewhere to write, w
 
 A dispatch is only as trustworthy as the price it was computed from, so the data feed gets its own circuit breaker, distinct from the solver breaker above. `bess.data.ingestion_guard` classifies every fetch as **healthy**, **outage** (no data), or **anomalous-but-present** (a frozen feed, a grid gap, a duplicate timestamp, an out-of-band value), and on either failure falls back to the last-known-good series, reporting the schedule as degraded rather than silently optimal; a stale-but-present price is treated as *more* dangerous than an obvious outage because it fails silently.
 
-The checks key on feed *pathology*, never price *level*: zero and negative prices are legitimate in BE/NL, and the market really does clear at exactly €0.00 for hours on end (8 straight hours on 2024-03-24), so the stuck-feed check fires on a repeated *arbitrary* value, not a repeated focal one. The full classification rules are in [the ingestion-guard spec](docs/specs/R1.4c-ingestion-guard.md).
+The checks key on feed *pathology*, never price *level*: zero and negative prices are legitimate in BE/NL, and the market really does clear at exactly €0.00 for hours on end (8 straight hours on 2024-03-24), so the stuck-feed check fires on a repeated *arbitrary* value, not a repeated focal one. The full classification rules are in [the ingestion-guard spec](docs/specs/data-feed.md).
 
 ![Ingestion guard: a feed frozen at an arbitrary price is rejected, and the dispatch runs on the trustworthy last-known-good series instead, so the overall provenance is reported as degraded rather than a silent optimal.](docs/figures/example-ingestion-guard.svg)
 

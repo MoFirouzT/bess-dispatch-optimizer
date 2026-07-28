@@ -1,7 +1,7 @@
 """Forecast value: does a better forecast convert into dispatch euros? (R2.5)
 
 Formulation: ``docs/formulation-evaluation.md`` § R2.5; spec:
-``docs/specs/R2.5-value-evaluation.md``. Feeds the same two-stage dispatch two
+``docs/specs/value-evaluation.md``. Feeds the same two-stage dispatch two
 scenario sets that differ only in the forecast behind them (conformal vs.
 seasonal-naive) and compares realized-path profit.
 :func:`forecast_value_from_sets` is the token-free core and carries the

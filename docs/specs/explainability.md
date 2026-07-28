@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green, 2026-07-16; six decisions resolved, formulation §R2.4 + [the MILP dual re-solve rule](../decisions/milp-dual-resolve-rule.md) written)
 **Release:** R2  **Depends on:** R1.1 (the MILP whose duals these are), R1.2 (degradation enters the no-trade band, and the per-period cost this phase surfaces), R1.5 (the serving surface the endpoint extends)
+**Phases:** R2.4 (2026-07-16)
 
 ## Objective
 
@@ -77,7 +78,7 @@ Note $\kappa$ enters **flat on each side, outside the $\eta$ factors**, unlike t
 
 **None (resolved decision 6).** LP duality and fix-and-resolve are textbook-ubiquitous technique, which CLAUDE.md section 1 exempts, and the water-value reading here is derived from R1.1's own stationarity conditions rather than imported. The term "water value" is borrowed from hydro-thermal / reservoir scheduling (the shadow price of the storage balance = the marginal value of water behind a dam); that lineage is noted as terminology context in [`references.md` section R2.4](../references.md#r24-shadow-price-explainability), not relied on to ground any claim.
 
-## Design decisions
+## Decisions
 
 - [the MILP dual re-solve rule](../decisions/milp-dual-resolve-rule.md). The re-solve rule for MILP duals.**
 Records the shipped rule (`free_idle` restricted to $\pi_t \ge 0$), the measured 200 / 100 / 10 spread that forces the choice, the closed-form dump that bounds where the relaxation is safe, and the objective-equality guard.
@@ -308,7 +309,7 @@ Oracles 3, 5, 6, and 7 have their instances and values computed by hand at test-
 - **Bid-curve construction from the water value:** Release 3.
 - **Multi-asset or congestion duals:** no such constraints exist in the model yet.
 
-## Resolved decisions (reviewed 2026-07-16)
+## Decisions (reviewed 2026-07-16)
 
 Phase-local decisions only. Each was posed as an open question with a proposed answer, then resolved in place; the resolved lines are the decision trail. Three (1, 2, and the retired rival in 1) were settled by measurement, recorded in "De-risked before drafting"; the rest are scope and interface calls. Formulation §R2.4 and implementation follow human approval of this spec.
 

@@ -3,7 +3,7 @@
 Pure numpy/pandas (main CI job, no forecast group). The load-bearing invariants:
 the tail is opt-in (off ⇒ exactly R2.2), touches only exceedances, and *un-caps*
 the bootstrap (a path can exceed the historical-maximum residual, which the plain
-bootstrap cannot). Spec: ``docs/specs/R2.2b-spike-tail.md``.
+bootstrap cannot). Spec: ``docs/specs/scenario-tail.md``.
 """
 
 from __future__ import annotations

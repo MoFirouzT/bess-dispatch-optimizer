@@ -1,8 +1,8 @@
 """Integration — R2.1 forecaster coverage on real ENTSO-E prices, walk-forward.
 
-Contract: docs/specs/R2.1-forecaster.md § "Gates",
-docs/specs/R2.1d-evaluation-honesty.md § "Acceptance gate", and
-docs/specs/R2.1e-target-normalization.md § "Acceptance gate".
+Contract: docs/specs/price-forecaster.md § "Gates",
+docs/specs/forecaster-evaluation.md § "Acceptance gate", and
+docs/specs/target-normalization.md § "Acceptance gate".
 
 **What R2.1d changed here.** The original gate trained and tested inside a single
 Feb-to-Jun 2024 window and took the last 15 days as three contiguous folds, so every
@@ -35,7 +35,7 @@ cyclical season encoding and the rolling-stat features were measured and deliber
 differs from R2.1d only in the quantile-crossing fix.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python may need the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import os

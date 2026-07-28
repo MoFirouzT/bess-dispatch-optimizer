@@ -1,6 +1,6 @@
 """Golden oracles for the walk-forward backtest — exact greedy / rolling / ceiling.
 
-Contract: docs/specs/R1.4a-backtest.md § "Golden oracles".
+Contract: docs/specs/backtest.md § "Golden oracles".
 Math: docs/formulation.md § "R1.4 — Backtest semantics (derived; no new model)".
 
 Toy Sequence[float] inputs (no fixture); each window is `window` periods. The

@@ -1,8 +1,8 @@
 """Forecast evaluation: walk-forward coverage, pinball loss, seasonal naive.
 
-Spec: ``docs/specs/R2.1-forecaster.md`` § "Gates" (coverage),
-``docs/specs/R2.1d-evaluation-honesty.md`` (fold placement + gate statistics), and
-``docs/specs/R2.5-value-evaluation.md`` (pinball skill + the naive baseline);
+Spec: ``docs/specs/price-forecaster.md`` § "Gates" (coverage),
+``docs/specs/forecaster-evaluation.md`` (fold placement + gate statistics), and
+``docs/specs/value-evaluation.md`` (pinball skill + the naive baseline);
 math: ``formulation-uncertainty.md`` §R2.1 and
 ``formulation-evaluation.md`` §R2.5. The honest test of a conformal
 forecaster is **empirical coverage on data it did not calibrate on, under the R1.4

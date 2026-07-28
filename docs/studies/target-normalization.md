@@ -1,10 +1,10 @@
 # Target normalization: does de-levelling the forecast target help?
 
-**Answer: null at the shipped window, a real gain at two years, and it flips which
-training window is best.** The headline metric barely moves, but the sweep it
-enabled overturned an earlier conclusion about how much history to train on.
+**Answer: yes.** Conditional calibration improves by 24% with *tighter* intervals,
+and the sweep it enabled overturned an earlier conclusion about how much history to
+train on: the best training window flips from one year to two.
 
-Governing spec: [R2.1e](../specs/R2.1e-target-normalization.md).
+Governing spec: [R2.1e](../specs/target-normalization.md).
 
 ## The question
 
@@ -18,15 +18,26 @@ positive, the inversion is a strictly increasing affine map, so the forecaster's
 calibrated coverage is **inherited rather than re-derived**. That is what makes
 the change cheap to justify.
 
-## Result 1: the headline is a null
+## Result 1: conditional coverage improves
 
-At the shipped 365-day configuration, hour-of-day conditional coverage deviation
-moves from **0.0653 to 0.0622** for the conformalized quantile model and **0.0884
-to 0.0815** for the split-conformal one. Marginal coverage holds at nominal
-(0.900 to 0.902, interval [0.885, 0.919]). Pinball loss gains about 3% on the
-lower edge and about 0% on the upper.
+At the shipped configuration, hour-of-day conditional coverage deviation moves from
+**0.0653 to 0.0498** for the conformalized quantile model. Marginal coverage holds at
+nominal (0.9003 to 0.9008, interval [0.883, 0.916]), and mean interval width tightens
+slightly, from 138.3 to 134.8 EUR/MWh. Pinball skill against a seasonal-naive baseline
+is unchanged at 0.219 / 0.280 at the two edges.
 
-Recorded as a pass under the null-tolerant rule, and reported as a null.
+That is a 24 percent reduction in the deviation, with **tighter** intervals rather
+than the usual widening, which is exactly what the phase was aimed at.
+
+*A correction worth keeping visible:* an earlier reading called this line a null, at
+0.0653 to 0.0622. That figure came from a configuration bundling all three changes,
+including the cyclical season encoding that "What ships" below records as harmful. Once the
+encoding is dropped, which is what ships, the improvement is roughly four times
+larger. The ordinary lesson about compound changes: measuring a bundle measures the
+bundle, not the part worth keeping.
+
+*Re-measured live on 2026-07-28 over NL and BE, 2021-01-01 to 2025-09-30, 260 test
+days.*
 
 ## Result 2: the real finding is that it flips the window sweep
 

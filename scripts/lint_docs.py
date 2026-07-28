@@ -23,6 +23,8 @@ underneath it. These make the checkable subset fail loudly instead:
   - a ``formulation*.md §R<n>.<m>`` reference, anywhere in the repo, names a
     section that file actually has (docstrings included, since the anchor check
     above only sees Markdown links under ``docs/``)
+  - a spec marked ``Implemented`` has no unticked box, and every spec carries the
+    ``Decisions`` section that the indexes send readers to
 
 Scope: committed Markdown under ``docs/`` plus ``README.md``. The em-dash ban
 applies to every file, ``STATE.md`` (a session work log) and the spec template
@@ -101,14 +103,28 @@ def rel(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
 
 
-def _spec_ids() -> set[str]:
-    """Phase IDs that have a real spec file, e.g. {"R1.4a", "R2.3"}."""
-    ids = set()
+def _phase_owners() -> dict[str, str]:
+    """Map each phase ID to the spec file that owns it, e.g. {"R1.2": "dispatch-core.md"}.
+
+    A spec claims phase IDs two ways: from its filename (``stochastic-dispatch.md``)
+    and from a ``**Phases:**`` line, which is how a *merged* spec declares the several
+    phases it absorbed. Reading both is what lets the ``Depends on:`` graph survive a
+    merge: a spec depending on R1.1 still resolves after R1.1 folded into `dispatch-core`.
+    """
+    owners: dict[str, str] = {}
     for p in SPECS:
+        if p.name in {"_TEMPLATE.md", "README.md"}:
+            continue
         m = re.match(r"(R\d+\.\d+[a-z]?)-", p.name)
         if m:
-            ids.add(m.group(1))
-    return ids
+            owners[m.group(1)] = p.name
+        line = re.search(
+            r"^\*\*Phases:\*\*(.*(?:\n(?!\*\*|\n).*)*)", p.read_text(encoding="utf-8"), re.M
+        )
+        if line:
+            for pid in PHASE_ID.findall(line.group(1)):
+                owners[pid] = p.name
+    return owners
 
 
 def _module_exists(dotted: str) -> bool:
@@ -136,28 +152,26 @@ def check_depends_graph(errors: list[str]) -> None:
     Catches the R1.4c -> R1.5 cycle (a leftover from the R1.5b rename) and bare "R1.4",
     which names no spec at all (the phases are R1.4a/b/c).
     """
-    known = _spec_ids()
+    owners = _phase_owners()
     edges: dict[str, set[str]] = {}
     for path in SPECS:
-        m = re.match(r"(R\d+\.\d+[a-z]?)-", path.name)
-        if not m:
-            continue  # _TEMPLATE.md
-        owner = m.group(1)
+        if path.name in {"_TEMPLATE.md", "README.md"}:
+            continue
         line = DEPENDS_LINE.search(path.read_text(encoding="utf-8"))
         if not line:
             continue
         deps = set()
         for dep in PHASE_ID.findall(line.group(1)):
-            if dep == owner:
-                continue
-            if dep not in known:
+            target = owners.get(dep)
+            if target is None:
                 errors.append(
-                    f"{rel(path)}: `Depends on:` names {dep}, which is not a spec "
-                    f"(known: {', '.join(sorted(known))})"
+                    f"{rel(path)}: `Depends on:` names {dep}, which no spec owns "
+                    f"(known: {', '.join(sorted(owners))})"
                 )
                 continue
-            deps.add(dep)
-        edges[owner] = deps
+            if target != path.name:  # a merged spec may list its own absorbed phases
+                deps.add(target)
+        edges[path.name] = deps
 
     # Cycle detection over the declared graph.
     state: dict[str, int] = {}
@@ -209,6 +223,41 @@ def check_anchors(errors: list[str]) -> None:
                     errors.append(
                         f"{rel(path)}:{n}: link to `{target}#{anchor}` matches no heading there"
                     )
+
+
+def check_spec_status(errors: list[str]) -> None:
+    """A spec claiming `Implemented` has no unticked box, and carries a `Decisions` section.
+
+    Ticking is the only record that a gate was actually run, and "we meant to tick it"
+    is indistinguishable from "it passed" a few weeks later. R2.1e shipped as
+    Implemented with seven unticked acceptance boxes and nothing caught it.
+
+    The `Decisions` heading is checked because two index files send readers there for
+    a phase's reasoning; four different names for that section had drifted in before
+    they were normalized.
+    """
+    status = re.compile(r"^\*\*Status:\*\*\s*(\w+)", re.M)
+    for path in SPECS:
+        if path.name in {"_TEMPLATE.md", "README.md"}:  # the template and the ledger
+            continue
+        text = path.read_text(encoding="utf-8")
+        m = status.search(text)
+        if not m:
+            errors.append(f"{rel(path)}: no `**Status:**` line")
+            continue
+        if m.group(1) == "Implemented":
+            open_boxes = [
+                n for n, line in enumerate(text.splitlines(), 1) if line.strip().startswith("- [ ]")
+            ]
+            if open_boxes:
+                lines = ", ".join(str(n) for n in open_boxes[:5])
+                more = f" (+{len(open_boxes) - 5} more)" if len(open_boxes) > 5 else ""
+                errors.append(
+                    f"{rel(path)}: status is Implemented but {len(open_boxes)} box(es) "
+                    f"are unticked, at line {lines}{more}"
+                )
+        if not re.search(r"^## Decisions\b", text, re.M):
+            errors.append(f"{rel(path)}: no `## Decisions` section (the phase's reasoning trail)")
 
 
 def check_formulation_sections(errors: list[str]) -> None:
@@ -330,6 +379,7 @@ def main() -> int:
     check_depends_graph(errors)
     check_anchors(errors)
     check_formulation_sections(errors)
+    check_spec_status(errors)
 
     if errors:
         print("Doc lint: FAIL")

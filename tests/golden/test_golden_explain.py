@@ -1,6 +1,6 @@
 """Golden oracles for R2.4 — shadow-price explainability.
 
-Contract: docs/specs/R2.4-explainability.md § "Golden oracles".
+Contract: docs/specs/explainability.md § "Golden oracles".
 Math: docs/formulation.md § "R2.4. Shadow-price explainability".
 Decision: docs/decisions/milp-dual-resolve-rule.md.
 

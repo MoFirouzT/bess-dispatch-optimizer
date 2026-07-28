@@ -58,7 +58,9 @@ forecaster → scenarios ┘
 Three packages sit deliberately **outside** the serving chain, each held there by its own contract:
 
 - `backtest`: an offline evaluation tool. It must not import the serving chain (`api`, `explain`, `stochastic`, `recourse`, `scenarios`, `forecaster`); it drives the optimizer directly.
-- `studies`: the multi-window value studies. The contract runs the *other* way, because a study legitimately imports the chain it measures: nothing in the chain may import `studies`. That single forbidden edge is what makes "studies are not the product" a mechanical fact rather than a claim. The seam against `stochastic` is that a function aggregating over windows is a study, while one reporting on a single scenario set belongs to the program.
+- `studies`: the multi-window value studies. The contract runs the *other* way, because a study legitimately imports the chain it measures: nothing in the chain may import `studies`. That single forbidden edge is what makes "studies are not the product" a mechanical fact rather than a claim.
+
+  **The seam, stated as a rule for future work:** a function that *aggregates over windows* is a study; a function that reports on a *single scenario set* is part of the program. That is why the Birge-Louveaux decision-value metrics stay in `bess.stochastic` while the multi-window harnesses moved out.
 - `data`: the ENTSO-E loaders (day-ahead prices; day-ahead load and wind/solar forecasts) and the ingestion guard that wraps the fetch. A leaf: it imports nothing else in `bess`.
 
 The headline invariant is `optimizer ⊥ api` (the optimizer never depends on the serving layer), which the layered contract gives for free.

@@ -6,7 +6,7 @@
 
 ## Context
 
-R2.1c (spec `docs/specs/R2.1c-exogenous-fundamentals.md`) adds exogenous
+R2.1c (spec `docs/specs/price-forecaster.md`) adds exogenous
 fundamentals to the price forecaster: the ENTSO-E day-ahead **load forecast** and
 **wind/solar generation forecast**, combined into residual load. This raises a
 leakage question the R2.1 price features never faced.

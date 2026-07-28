@@ -2,7 +2,7 @@
 concatenates their schedules, and reports the metrics + correctness quantities.
 
 Math: ``docs/formulation.md`` § "R1.4 — Backtest semantics". Spec:
-``docs/specs/R1.4a-backtest.md``. No new optimization math: the engine windows the
+``docs/specs/backtest.md``. No new optimization math: the engine windows the
 series, delegates to the baselines, and assembles the report.
 """
 

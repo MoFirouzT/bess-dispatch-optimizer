@@ -16,17 +16,17 @@ each page names the spec that governs its method.
 
 | Study | Question | Answer |
 | --- | --- | --- |
-| [Stochastic value](stochastic-value.md) | Does hedging across scenarios beat optimizing against the mean forecast? | **Yes.** Median +12 EUR per window, positive on 62% of 63 real days |
-| [Forecast value](forecast-value.md) | Does a better price forecast earn more euros? | **Null.** Distribution centred on zero despite clear statistical skill |
+| [Stochastic value](stochastic-value.md) | Does hedging across scenarios beat optimizing against the mean forecast? | **Yes.** Median +12.90 EUR per window, positive on 66% of 94 real days |
+| [Forecast value](forecast-value.md) | Does a better price forecast earn more euros? | **Null.** Median −19.81 EUR per window despite clear statistical skill |
 | [Tail value](tail-value.md) | Does pricing unprecedented spikes in the scenarios earn more euros? | **Null** at every recourse budget |
 | [Bid curves](bid-curves.md) | Does a price-contingent commitment beat a single blind schedule? | **Null**, but it surfaced an unpriced delivery gap |
-| [Target normalization](target-normalization.md) | Does de-levelling the forecast target improve the forecaster? | **Null** at the shipped window; a real gain at two years |
+| [Target normalization](target-normalization.md) | Does de-levelling the forecast target improve the forecaster? | **Yes**, and it flips which training window is best |
 | [Storage duration](storage-duration.md) | How much does the economics depend on the energy-to-power ratio? | Strongly. The annualized ceiling falls by roughly a quarter from 1 h to 4 h |
 | [Solve scaling](solve-scaling.md) | Does the program stay tractable as the horizon and scenario count grow? | Yes on both axes, at very different rates |
 
 ## Why the nulls are here rather than hidden
 
-Four of the seven came back null, and three of those share one mechanism:
+Three of the seven came back null, and all three share one mechanism:
 **intraday recourse adjusts after the price is known**, so a better *representation*
 of the day-ahead future has little left to buy. That is a result about this market
 and this asset, not a failure of the implementation, and each page says how it was

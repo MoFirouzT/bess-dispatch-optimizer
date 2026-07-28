@@ -4,7 +4,7 @@ Feature construction is exact arithmetic (no MILP, no learner), so these are
 un-fakeable like R2.1's leakage checks, not statistical. They pin: the
 residual-load arithmetic, the opt-in identity (fundamentals off ⇒ exactly R2.1),
 and the CONTEMPORANEOUS alignment of the day-ahead forecast features to the
-target ``t`` (not lagged like price). Spec: ``docs/specs/R2.1c-exogenous-fundamentals.md``.
+target ``t`` (not lagged like price). Spec: ``docs/specs/price-forecaster.md``.
 
 Pure pandas: runs without the ``forecast`` dependency group.
 """

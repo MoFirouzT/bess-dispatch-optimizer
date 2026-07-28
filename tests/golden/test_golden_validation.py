@@ -1,6 +1,6 @@
 """Golden oracles for the pre-flight validator — exact expected issue lists.
 
-Contract: docs/specs/R1.3-validation.md § "Golden oracles".
+Contract: docs/specs/dispatch-core.md § "Golden oracles".
 Math: docs/formulation.md § "R1.3 — Pre-flight feasibility (derived; no new model)".
 
 Pre-flight is pure, so each case pins an exact set of issue codes (and, for the

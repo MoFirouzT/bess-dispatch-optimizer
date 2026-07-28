@@ -1,6 +1,6 @@
 """Golden oracles for the R1.5 dispatch HTTP service (FastAPI TestClient).
 
-Contract: docs/specs/R1.5-serving.md § "Golden oracles". Pins the response schema
+Contract: docs/specs/serving.md § "Golden oracles". Pins the response schema
 to the engine: the service returns exactly what solve() returns, invalid input is a
 structured 422, and /health reports solver availability.
 """

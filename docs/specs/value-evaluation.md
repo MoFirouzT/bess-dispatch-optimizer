@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green 2026-07-20)
 **Release:** R2  **Depends on:** R2.1 (forecaster), R2.2 (scenarios), R2.3 (two-stage dispatch, out-of-sample VSS harness), R1.4a (walk-forward + leakage discipline)
+**Phases:** R2.5 (2026-07-20)
 
 ## Objective
 
@@ -29,7 +30,7 @@ The R2.3 "Future work (forecast-value baseline)" paragraph is superseded by this
 ## Interfaces
 
 ```python
-# src/bess/studies/vss_study.py (moved here from bess/stochastic/study.py by spec S1)
+# src/bess/studies/vss_study.py (moved here from bess/stochastic/study.py, 2026-07-28)
 @dataclass(frozen=True)
 class WindowVSS:
     window_start: pd.Timestamp
@@ -108,7 +109,7 @@ The first live runs showed exactly why a single FV number is not a claim: +46.77
 Additions (same formulation quantities, no new math):
 
 ```python
-# src/bess/studies/forecast_value.py (moved here from bess/stochastic/study.py by spec S1)
+# src/bess/studies/forecast_value.py (moved here from bess/stochastic/study.py, 2026-07-28)
 @dataclass(frozen=True)
 class WindowFV:
     window_start: pd.Timestamp
@@ -141,7 +142,7 @@ Walk-forward discipline: the forecaster is refit on data strictly before each ``
 - Imbalance/intraday market microstructure (the FV settlement mirrors R2.3's two-price construction)
 - Any optimizer change; any new dependency
 
-## Open questions
+## Decisions
 
 Phase-local formulation / interface / build decisions only. Roadmap and
 positioning questions stay in the Tier 0 planning log, never here.

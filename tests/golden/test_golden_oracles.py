@@ -1,6 +1,6 @@
 """Golden oracles — hand-solved exact values; the un-fakeable correctness gate.
 
-Contract: docs/specs/R1.1-deterministic-core.md § "Golden oracles".
+Contract: docs/specs/dispatch-core.md § "Golden oracles".
 Math: docs/formulation.md § "R1.1 — Deterministic core".
 
 All three use T=3, dt=1, a 1 MWh / 1 MW battery, e0 = e_tgt = 0, ramp disabled.

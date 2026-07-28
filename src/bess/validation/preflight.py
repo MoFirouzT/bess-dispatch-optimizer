@@ -1,7 +1,7 @@
 """Pre-flight validation — structured, typed checks that run *before* the solver.
 
 Formulation: ``docs/formulation.md`` § "R1.3 — Pre-flight feasibility (derived; no
-new model)". Spec: ``docs/specs/R1.3-validation.md``.
+new model)". Spec: ``docs/specs/dispatch-core.md``.
 
 Pure logic over ``(prices, BatterySpec, dt)`` — no config, no I/O, no solver. The
 spec is assumed already valid (Pydantic validates ``BatterySpec`` at construction),

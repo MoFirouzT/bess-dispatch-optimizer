@@ -2,6 +2,7 @@
 
 **Status:** Implemented (gate green)
 **Release:** R1  **Depends on:** R1.1 (core), R1.2 (degradation), R1.3 (validation)
+**Phases:** R1.4a (2026-06-26)
 
 ## Objective
 
@@ -181,7 +182,7 @@ A single-duration headline can therefore misstate the general result; see [stora
   - a **stronger information-limited baseline** (backward-induction DP, or MPC-with-forecast) as a tighter lower comparator sitting between greedy and rolling.
   Both are evaluation baselines only; they add no optimizer math. Relates to resolved decision 4 below.
 
-## Resolved decisions
+## Decisions
 
 1. **Fixture zone/year.**
     **Resolved:** the committed fixture is a **synthetic** NL-like calm hourly series (`data.fixtures.synthetic_day_ahead`, seeded, 2024 calendar), not a real slice (the repo commits no real or third-party price data).

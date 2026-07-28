@@ -1,6 +1,6 @@
 """Integration — R2.3 stochastic layer on real ENTSO-E day-ahead prices.
 
-Contract: docs/specs/R2.3-stochastic-recourse.md § "Acceptance gate" (integration).
+Contract: docs/specs/stochastic-dispatch.md § "Acceptance gate" (integration).
 Token-gated: skipped unless `ENTSOE_API_TOKEN` is set (never runs in CI). Nothing
 fetched here is committed — real prices are pulled at runtime and discarded.
 
@@ -12,7 +12,7 @@ price-path scenario (a historical distribution over day shapes). What it proves 
   (b) the CVaR-averse solution does not increase downside vs. the risk-neutral one.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python needs the
-Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
+Keychain roots — see docs/specs/data-feed.md § "Environment note".
 """
 
 import os

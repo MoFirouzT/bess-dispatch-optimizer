@@ -1,11 +1,15 @@
 # Forecast value: does a better forecast earn more euros?
 
-**Answer: null.** Over 63 real Dutch days the forecast-value distribution is
-centred on zero (**median −0.9 EUR per window**, **49% of windows positive**,
-quartiles −41 to +31), despite the conformal forecaster having clear and measured
-statistical skill over the seasonal-naive baseline it is compared against.
+**Answer: null, and if anything mildly negative.** Over 94 real Dutch days the
+forecast-value distribution has a **median of −19.81 EUR per window**, with **41% of
+windows positive** and a range of [−201, +145], despite the conformal forecaster
+having clear and measured statistical skill over the seasonal-naive baseline it is
+compared against.
 
-Governing spec: [R2.5](../specs/R2.5-value-evaluation.md); math:
+*Measured live on 2026-07-28 over real NL day-ahead prices, 2024-03-01 to
+2024-06-30, the same window and asset as the stochastic-value study.*
+
+Governing spec: [R2.5](../specs/value-evaluation.md); math:
 [formulation-evaluation.md § R2.5](../formulation-evaluation.md).
 
 ## The question
@@ -33,11 +37,11 @@ property test.
 
 ## Result
 
-![Per-window forecast value on real NL 2024-Q2 days: a histogram of 63 windows straddling zero with its median at roughly zero.](../figures/example-fv-distribution.svg)
+![Per-window forecast value on real NL 2024-Q2 days: a histogram of windows straddling zero with its median at roughly zero.](../figures/example-fv-distribution.svg)
 
-Single windows swing **±180 EUR** either way, which is why no single-window number
-is quoted anywhere in this project. Quoting one would be cherry-picking from a
-distribution whose centre is zero.
+Single windows swing about **±200 EUR** either way, which is why no single-window
+number is quoted anywhere in this project. Quoting one would be cherry-picking from a
+distribution whose centre is at best zero.
 
 ## Why
 

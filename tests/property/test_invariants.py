@@ -1,7 +1,7 @@
 """Property tests — invariants that hold for ANY valid input, checked against
 inputs the implementation did not choose.
 
-Contract: docs/specs/R1.1-deterministic-core.md § "Property tests".
+Contract: docs/specs/dispatch-core.md § "Property tests".
 Math: docs/formulation.md § "R1.1 — Deterministic core".
 
 Feasibility: every generated instance uses soc_initial == soc_terminal, so the

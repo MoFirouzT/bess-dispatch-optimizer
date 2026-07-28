@@ -1,6 +1,6 @@
 """Property gates for the R2.1e normalized target, features, and season encoding.
 
-Spec: ``docs/specs/R2.1e-target-normalization.md`` § "Property tests".
+Spec: ``docs/specs/target-normalization.md`` § "Property tests".
 
 Two of these carry most of the weight. **Opt-in identity** is the un-fakeable anchor
 that nothing else moved: with normalization off, the feature matrix must be

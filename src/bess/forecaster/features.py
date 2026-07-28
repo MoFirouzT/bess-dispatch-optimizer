@@ -1,6 +1,6 @@
 """Leakage-safe feature construction for the day-ahead price forecaster (R2.1).
 
-Spec: ``docs/specs/R2.1-forecaster.md``. Every feature for a target timestamp ``t``
+Spec: ``docs/specs/price-forecaster.md``. Every feature for a target timestamp ``t``
 is derived **strictly from prices of prior days**, which is exactly what is known at
 gate closure: day-ahead auctions publish a full day's curve at once, so at the
 D-gate-closure all prices for days ``≤ D-1`` are available. Lags are therefore

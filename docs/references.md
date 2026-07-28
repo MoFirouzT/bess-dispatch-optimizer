@@ -64,7 +64,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R2.1. Probabilistic forecaster (conformal intervals)
 
-*Selected at R2.1 draft ([spec](specs/R2.1-forecaster.md)); reconciled/verified before implementation.*
+*Selected at R2.1 draft ([spec](specs/price-forecaster.md)); reconciled/verified before implementation.*
 
 - **A. Angelopoulos & S. Bates, *A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification*** (tutorial); *governing reference* (the new theory: conformal prediction).
   - Split/inductive conformal and **distribution-free marginal coverage** under exchangeability → the coverage gate (empirical ≈ nominal under walk-forward). *(Verify the sections on split conformal + CQR.)*
@@ -95,7 +95,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R2.2. Scenario generation + reduction
 
-*Selected at R2.2 draft ([spec](specs/R2.2-scenarios.md)); reconciled/verified before implementation.*
+*Selected at R2.2 draft ([spec](specs/scenario-generation.md)); reconciled/verified before implementation.*
 
 - **J. Dupačová, N. Gröwe-Kuska & W. Römisch, *Scenario reduction in stochastic programming: an approach using probability metrics* (Math. Programming, Ser. A, 2003)**, with **H. Heitsch & W. Römisch, *Scenario reduction algorithms in stochastic programming* (Comput. Optim. Appl. 24, 2003)**: *governing reference* (the new theory: probability-metric scenario reduction).
   - The Kantorovich (Wasserstein) distance between discrete distributions, its **closed form under optimal redistribution** (deleted mass to the nearest kept atom), and **fast forward selection** / backward reduction → the reduction distance and greedy algorithm in [formulation-uncertainty.md: R2.2](formulation-uncertainty.md#r22-scenario-generation--reduction-uncertainty-representation-no-optimizer-change). *(Verify the theorem/section numbering and year before relying.)*
@@ -108,7 +108,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R2.2b. Extreme-value (peaks-over-threshold) tail for the scenario bootstrap
 
-*Selected at R2.2b draft ([spec](specs/R2.2b-spike-tail.md)); reconciled/verified before implementation. R2.2b adds no optimizer math and carries **no `formulation.md` section** (classified with R2.1b; the 600-line cap also forces it); the self-contained EVT theory lives in the spec and here.*
+*Selected at R2.2b draft ([spec](specs/scenario-tail.md)); reconciled/verified before implementation. R2.2b adds no optimizer math and carries **no `formulation.md` section** (classified with R2.1b; the 600-line cap also forces it); the self-contained EVT theory lives in the spec and here.*
 
 - **S. Coles, *An Introduction to Statistical Modeling of Extreme Values*, Springer, 2001, ch. 4 "Threshold Models":** *governing reference* (the new theory: peaks-over-threshold and the Generalized Pareto Distribution). Authority for the POT limit, the GPD $(\xi, \beta)$ tail, threshold selection (mean-residual-life / parameter-stability diagnostics), and return levels. Coles is a textbook and the standard EVT reference, so no textbook-first deviation is needed (unlike R2.2's paper-defined reduction). Ch. 4 verified as the threshold-models chapter before relying; edition/section confirmed against the publisher listing.
 - **J. Hosking & J. Wallis, *Parameter and quantile estimation for the generalized Pareto distribution* (Technometrics 29(3), 1987):** *secondary (estimator, pointer only).* The **probability-weighted-moments (PWM)** estimator used for the GPD fit: closed-form, so the fit is pure-numpy, deterministic, and golden-testable, and (per the paper) more reliable than MLE below ~500 samples, which fits the short day-ahead residual history. Reconciled to house style: the tail acts on the residual $r = y - \hat\mu$ (€/MWh, grid-side); a spliced spike is $\hat\mu + (\text{tail-augmented residual})$. *(PWM formulas restated and sanity-checked in the spec's design sketch.)*
@@ -118,7 +118,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R2.2c. Residual-load-conditional scenario tail
 
-*Selected at R2.2c draft ([spec](specs/R2.2c-conditional-tail.md)); reconciled/verified before implementation. No `formulation.md` section (same call as R2.2b); the conditional-EVT theory lives in the spec and here. [the tail conditioning channel](decisions/scenario-tail-construction.md) records the magnitude-channel choice.*
+*Selected at R2.2c draft ([spec](specs/scenario-tail-conditioning.md)); reconciled/verified before implementation. No `formulation.md` section (same call as R2.2b); the conditional-EVT theory lives in the spec and here. [the tail conditioning channel](decisions/scenario-tail-construction.md) records the magnitude-channel choice.*
 
 - **S. Coles, *An Introduction to Statistical Modeling of Extreme Values*, Springer, 2001, ch. 6 "Extremes of Nonstationary Sequences":** *governing reference* (the new theory: covariate-dependent GPD parameters through a link function). Authority for making the GPD scale a function of a covariate (here a log-link, $\beta(x)=\beta_0 e^{\gamma z}$). The R2.2b threshold-models chapter (ch. 4) still governs the base tail. Chapter title/number verified against the publisher listing before relying.
 - **J. Hosking & J. Wallis (1987), as R2.2b:** the base $(\xi, \beta_0)$ is still the unconditional PWM fit ($\beta_0$ is the scale at the mean covariate $z=0$); only the log-link slope $\gamma$ is added, fit by ordinary least squares of $\log(\text{excess})$ on the standardized residual load (pure-numpy, no `scipy`, golden-testable), clamped $\gamma \ge 0$. Reconciled to house style: the covariate $x$ is the R2.1c residual load (load $-$ wind $-$ solar, MW, per target hour).
@@ -128,7 +128,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ## R2.3. Risk-aware two-stage dispatch + intraday recourse
 
-*Selected at R2.3 draft ([spec](specs/R2.3-stochastic-recourse.md)); reconciled/verified before implementation. R2.3 introduces more than one new theory, so it names one governing spine with two subordinate-but-authoritative sub-concept references (open question 3, resolved: one phase, not an R2.3a/b split).*
+*Selected at R2.3 draft ([spec](specs/stochastic-dispatch.md)); reconciled/verified before implementation. R2.3 introduces more than one new theory, so it names one governing spine with two subordinate-but-authoritative sub-concept references (open question 3, resolved: one phase, not an R2.3a/b split).*
 
 - **J. R. Birge & F. Louveaux, *Introduction to Stochastic Programming*, 2nd ed., Springer, 2011**: *governing reference* (the spine: two-stage recourse and the value metrics).
   - First-stage / second-stage (recourse) split and **non-anticipativity** → the shared day-ahead commitment `g^DA` vs. per-scenario recourse `g^(s)`. *(Two-stage recourse chapters; verify.)*

@@ -89,6 +89,7 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 - **No governing reference; feature-engineering phase.** R2.1c adds exogenous predictors to the R2.1 forecaster and introduces no new modelling theory; Angelopoulos & Bates still governs the conformal wrapper and López de Prado the evaluation discipline.
 - **Residual load / merit order (domain context, not relied on):** the day-ahead price as the intersection of a step supply stack and demand, with *residual load* (load minus must-run wind/solar) as the position on the stack. Textbook-ubiquitous power-market context; used as motivation, not a cited method. The leakage-safe **contemporaneous alignment** of day-ahead forecast features is the project's own rule, recorded in [ADR-0024](decisions/0024-day-ahead-forecast-feature-alignment.md).
+- **Publication deadlines (verified 2026-07-26, relied on):** Commission Regulation (EU) No 543/2013, **Art. 6(1)(b)** (day-ahead total load forecast, at least two hours before day-ahead gate closure) and **Art. 14(1)(d)** (wind and solar generation forecast, by 18.00 on `D−1`, with intraday updates). Consulted via the consolidated text at [EUR-Lex](https://eur-lex.europa.eu/eli/reg/2013/543/oj/eng) and the article pages on legislation.gov.uk, whose UK-retained wording re-expresses 18.00 Brussels time as 5 p.m. These set the timing table in ADR-0024 and the reason wind/solar is not guaranteed before gate closure.
 
 ---
 

@@ -198,10 +198,18 @@ def fetch_day_ahead(
 #   query_load_forecast(zone)            -> DataFrame['Forecasted Load'], MW, 15-min, local tz
 #   query_wind_and_solar_forecast(zone)  -> DataFrame['Solar','Wind Offshore',
 #                                           'Wind Onshore'], MW, 15-min, local tz
-# Both are the **day-ahead forecasts** published before gate closure, so their value
-# for a target hour t is known when forecasting the price at t (the leakage-safe,
-# contemporaneous-alignment property; ADR-0024). We deliberately call the *forecast*
-# endpoints, never query_load (realized actuals), which would be look-ahead.
+# Both are **day-ahead forecasts** for day D published during D-1, so a value for a
+# target hour t exists before t (the leakage-safe contemporaneous-alignment property;
+# ADR-0024). We deliberately call the *forecast* endpoints, never query_load (realized
+# actuals), which would be look-ahead.
+#
+# Timing is NOT symmetric, and ADR-0024's "Publication timing" table is the reference:
+# the load forecast is due >=2 h before day-ahead gate closure (Reg. 543/2013 Art.
+# 6(1)(b)), but wind/solar only by 18:00 on D-1, i.e. *after* the auction clears, and is
+# then revised intraday (Art. 14(1)(d)). Consequences: alignment is sound for decisions
+# taken after day-ahead publication (every current use), not for a decision at gate
+# closure; and a historical wind/solar fetch may return a late revision rather than the
+# D-1 publication, which no test here can detect.
 
 
 def fetch_load_forecast(

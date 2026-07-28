@@ -54,9 +54,11 @@ def make_features(
     **Fundamentals (R2.1c, opt-in).** If ``fundamentals`` is given, its columns
     (a subset of ``load_da``/``wind_da``/``solar_da``, day-ahead forecasts in MW on
     the same UTC grid as ``prices``) are added **aligned to the target ``t`` itself**,
-    not shifted into the past. This is leakage-safe *because these are the day-ahead
-    forecasts published before gate closure* (see the spec / ADR-0024), so the value
-    for ``t`` is already known when forecasting ``π_t`` — never pass realized actuals.
+    not shifted into the past. This is leakage-safe *because these are published
+    forecasts for day ``D``, not outcomes* (see ADR-0024), so a value for ``t`` exists
+    before ``t`` occurs — never pass realized actuals. ADR-0024 scopes that safety:
+    load is published before day-ahead gate closure, wind/solar only after it, so a
+    decision taken *at* gate closure is not covered.
     When all three components are present, a ``residual_load = load_da − wind_da −
     solar_da`` column is added (the merit-order driver). ``fundamentals=None`` is
     byte-identical to the R2.1 feature matrix (the opt-in identity).

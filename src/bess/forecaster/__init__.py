@@ -17,21 +17,32 @@ from bess.forecaster.drift import (
     psi,
     seasonal_naive_forecast,
 )
-from bess.forecaster.evaluate import pinball_loss, seasonal_naive
+from bess.forecaster.evaluate import (
+    CoverageResult,
+    Fold,
+    coverage_ci,
+    pinball_loss,
+    rolling_origin_folds,
+    seasonal_naive,
+)
 from bess.forecaster.features import DEFAULT_LAGS, align_target, make_features
 
 __all__ = [
     "DEFAULT_LAGS",
+    "CoverageResult",
     "DriftMonitor",
     "DriftReport",
     "DriftStatus",
+    "Fold",
     "IntervalForecast",
     "PriceForecaster",
     "align_target",
     "classify_drift",
+    "coverage_ci",
     "make_features",
     "pinball_loss",
     "psi",
+    "rolling_origin_folds",
     "seasonal_naive",
     "seasonal_naive_forecast",
     "walk_forward_coverage",

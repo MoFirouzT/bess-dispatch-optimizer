@@ -20,12 +20,19 @@ from bess.forecaster.drift import (
 from bess.forecaster.evaluate import (
     CoverageResult,
     Fold,
+    coverage_by_hour,
     coverage_ci,
     pinball_loss,
     rolling_origin_folds,
     seasonal_naive,
 )
-from bess.forecaster.features import DEFAULT_LAGS, align_target, make_features
+from bess.forecaster.features import (
+    DEFAULT_LAGS,
+    align_target,
+    invert_standardized,
+    make_features,
+    rolling_baseline,
+)
 
 __all__ = [
     "DEFAULT_LAGS",
@@ -38,10 +45,13 @@ __all__ = [
     "PriceForecaster",
     "align_target",
     "classify_drift",
+    "coverage_by_hour",
     "coverage_ci",
+    "invert_standardized",
     "make_features",
     "pinball_loss",
     "psi",
+    "rolling_baseline",
     "rolling_origin_folds",
     "seasonal_naive",
     "seasonal_naive_forecast",

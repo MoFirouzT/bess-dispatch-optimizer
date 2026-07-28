@@ -1,7 +1,8 @@
 """Integration — R2.1 forecaster coverage on real ENTSO-E prices, walk-forward.
 
-Contract: docs/specs/R2.1-forecaster.md § "Gates" and
-docs/specs/R2.1d-evaluation-honesty.md § "Acceptance gate".
+Contract: docs/specs/R2.1-forecaster.md § "Gates",
+docs/specs/R2.1d-evaluation-honesty.md § "Acceptance gate", and
+docs/specs/R2.1e-target-normalization.md § "Acceptance gate".
 
 **What R2.1d changed here.** The original gate trained and tested inside a single
 Feb-to-Jun 2024 window and took the last 15 days as three contiguous folds, so every
@@ -24,6 +25,13 @@ synced without the group, never errors at collection); the `integration` marker 
 `ENTSOE_API_TOKEN` skip/deselect keep it off every CI job. Nothing fetched here is
 committed. Run locally with: `uv run --group forecast pytest
 tests/integration/test_forecaster_live.py -s` (token loaded).
+
+**What R2.1e added.** The conditional-coverage axis: coverage *per hour of day*, the
+property ADR-0014 chose CQR for and which nothing had ever tested. R2.1e's normalized
+target is gated here against the raw model on identical folds, null-tolerantly. The
+cyclical season encoding and the rolling-stat features were measured and deliberately
+**not** shipped (see the R2.1e spec § "Measured results"), so the shipped model here
+differs from R2.1d only in the quantile-crossing fix.
 
 Network setup (this machine): a TLS-intercepting proxy means uv-Python may need the
 Keychain roots — see docs/specs/R1.4b-entsoe-loader.md § "Environment note".
@@ -306,4 +314,102 @@ def test_rolling_recalibration_recovers_out_of_season_coverage(method):
         f"{method}: rolling recalibration moved coverage {stale_cov:.3f} -> "
         f"{recal_cov:.3f}, not a material recovery; the drift module's documented "
         "'recalibrate, don't retrain' response does not work on this regime shift"
+    )
+
+
+# --- R2.1e: conditional coverage and the normalized target --------------------
+
+#: The R2.1e model. `normalize_target` only; the cyclical season encoding and the
+#: rolling-stat features were measured and are NOT shipped (see the module note below).
+_NORMALIZED = dict(normalize_target=True)
+
+
+@requires_token
+def test_normalization_does_not_worsen_conditional_coverage():
+    """The R2.1e headline gate: coverage *conditional on hour of day*.
+
+    Conformal prediction guarantees only **marginal** coverage, so a forecaster can sit
+    exactly on nominal overall while over-covering calm nights and under-covering
+    volatile evening peaks. That is the property ADR-0014 chose CQR for, and until
+    R2.1e nothing measured it. R2.1d exposed the symptom from the other side: pooled
+    coverage 0.900 with per-fold coverage running 0.617 to 1.000.
+
+    Null-tolerant, in the R2.1c / R2.5 style: normalization must **improve or tie**.
+    A measured null is a pass and is recorded as a finding; only a material worsening
+    fails. Both arms run on identical folds so the comparison is like for like.
+    """
+    prices = _span_prices()
+
+    raw = walk_forward_coverage(
+        prices, confidence_level=0.9, method="cqr", return_detail=True, **_WF, **_SEED
+    )
+    norm = walk_forward_coverage(
+        prices,
+        confidence_level=0.9,
+        method="cqr",
+        return_detail=True,
+        **_WF,
+        **_SEED,
+        **_NORMALIZED,
+    )
+
+    print(
+        f"\nR2.1e conditional coverage (NL 2021-2025, {raw.n_test_days} test days, cqr):"
+        f"\n  raw        : coverage={raw.coverage:.4f} max hour dev={raw.max_hour_deviation:.4f}"
+        f"  width={raw.mean_width:.1f}"
+        f"\n  normalized : coverage={norm.coverage:.4f} max hour dev={norm.max_hour_deviation:.4f}"
+        f"  width={norm.mean_width:.1f}"
+        f"\n  by hour (raw)  : {' '.join(f'{h:.2f}' for h in raw.by_hour)}"
+        f"\n  by hour (norm) : {' '.join(f'{h:.2f}' for h in norm.by_hour)}"
+    )
+
+    # Marginal coverage must still survive, decided on the interval as in R2.1d.
+    assert _overlaps((norm.ci_low, norm.ci_high), _GATE_BAND), (
+        f"normalized coverage interval [{norm.ci_low:.3f}, {norm.ci_high:.3f}] lies "
+        f"wholly outside {_GATE_BAND}"
+    )
+    # Improve or tie. The tolerance admits a null, not a regression.
+    assert norm.max_hour_deviation <= raw.max_hour_deviation + 0.02, (
+        f"normalization worsened hour-of-day coverage: max deviation "
+        f"{raw.max_hour_deviation:.4f} -> {norm.max_hour_deviation:.4f}"
+    )
+
+
+@requires_token
+def test_normalization_narrows_but_does_not_close_the_season_gap():
+    """R2.1e open question 4, resolved by measurement: it helps, and it is not enough.
+
+    The pin above measures a stale fit carried across a season boundary. If R2.1e had
+    lifted that coverage into the band, the pin would have done its job and been
+    rewritten to assert the improvement. Measured 2026-07-28, it does not:
+
+      * cqr   0.7880 -> 0.8195 (width 98.9 -> 136.2)
+      * split 0.8165 -> 0.8305 (width 102.3 -> 151.4)
+
+    So de-levelling recovers roughly a third of the cqr gap and pays about 38 percent
+    more width for it, but both stay under the 0.85 floor. The pin therefore stands
+    unchanged, and this test records the partial result next to it so the limitation
+    is not overstated as untouched, nor the fix overstated as complete. Rolling
+    recalibration remains the effective response (see the gate above it).
+    """
+    train = _guarded_prices(_TRAIN_WINDOW)
+    winter = _guarded_prices(_WINTER_WINDOW)
+
+    covs = {}
+    for tag, kw in (("raw", {}), ("normalized", _NORMALIZED)):
+        f = PriceForecaster(confidence_level=0.9, method="cqr", **_SEED, **kw).fit(train)
+        fc = f.predict_interval(winter)
+        realized = winter.loc[fc.point.index]
+        covs[tag] = float(((realized >= fc.lower) & (realized <= fc.upper)).mean())
+
+    print(f"\nR2.1e out-of-season (cqr): raw={covs['raw']:.4f} normalized={covs['normalized']:.4f}")
+
+    assert covs["normalized"] > covs["raw"], (
+        "normalization no longer improves out-of-season coverage; the R2.1e finding "
+        "that de-levelling recovers part of the season gap has regressed"
+    )
+    assert covs["normalized"] < _GATE_BAND[0], (
+        f"normalized out-of-season coverage {covs['normalized']:.3f} now reaches the "
+        f"gate band {_GATE_BAND} — the season limitation may be fixed; re-check the "
+        "R2.1 claim and rewrite this test rather than relaxing it"
     )

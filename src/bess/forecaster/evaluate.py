@@ -166,6 +166,29 @@ def coverage_ci(
     return float(lo), float(hi)
 
 
+def coverage_by_hour(hits: np.ndarray, hours: np.ndarray, *, n_hours: int = 24) -> np.ndarray:
+    """Empirical coverage per hour-of-day bucket.
+
+    The **conditional**-coverage axis (R2.1e). Conformal prediction guarantees only
+    *marginal* coverage, so a forecaster can sit exactly on nominal overall while
+    over-covering calm nights and under-covering volatile evening peaks. That split is
+    invisible to a pooled number, and it is the property ADR-0014 chose CQR for:
+    hour-adaptive interval width. Returns ``NaN`` for an hour with no
+    observations rather than pretending to a rate it never measured.
+    """
+    hits = np.asarray(hits, dtype=bool)
+    hours = np.asarray(hours, dtype=int)
+    if hits.shape != hours.shape:
+        raise ValueError("hits and hours must have the same shape")
+
+    out = np.full(n_hours, np.nan)
+    for h in range(n_hours):
+        mask = hours == h
+        if mask.any():
+            out[h] = float(hits[mask].mean())
+    return out
+
+
 @dataclass(frozen=True)
 class CoverageResult:
     """Pooled walk-forward coverage with its day-block interval and sharpness."""
@@ -176,6 +199,8 @@ class CoverageResult:
     mean_width: float
     n_test_days: int
     per_fold: tuple[float, ...]
+    by_hour: tuple[float, ...] = ()
+    max_hour_deviation: float = float("nan")
 
 
 def _price_days(prices: pd.Series) -> pd.DatetimeIndex:
@@ -230,6 +255,8 @@ def walk_forward_coverage(
     covered_by_day: list[np.ndarray] = []
     per_fold: list[float] = []
     widths: list[float] = []
+    hits_all: list[np.ndarray] = []
+    hours_all: list[np.ndarray] = []
     for fold in folds:
         forecaster = PriceForecaster(
             confidence_level=confidence_level,
@@ -253,6 +280,8 @@ def walk_forward_coverage(
         # Grouped by day, so the bootstrap can resample whole days (R2.1d).
         for _, day_idx in pd.Series(hit, index=f_norm[block_mask]).groupby(level=0):
             covered_by_day.append(day_idx.to_numpy(dtype=bool))
+        hits_all.append(hit)
+        hours_all.append(pd.DatetimeIndex(targets).hour.to_numpy())
         per_fold.append(float(hit.mean()))
         widths.append(float((hi - lo).mean()))
 
@@ -263,6 +292,7 @@ def walk_forward_coverage(
         return coverage, mean_width
 
     ci_low, ci_high = coverage_ci(covered_by_day, level=ci_level, n_boot=n_boot, seed=seed)
+    hourly = coverage_by_hour(np.concatenate(hits_all), np.concatenate(hours_all))
     return CoverageResult(
         coverage=coverage,
         ci_low=ci_low,
@@ -270,6 +300,8 @@ def walk_forward_coverage(
         mean_width=mean_width,
         n_test_days=len(covered_by_day),
         per_fold=tuple(per_fold),
+        by_hour=tuple(hourly),
+        max_hour_deviation=float(np.nanmax(np.abs(hourly - confidence_level))),
     )
 
 

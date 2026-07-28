@@ -35,13 +35,29 @@ def _synthetic_fundamentals(prices: pd.Series, *, seed: int = 0) -> pd.DataFrame
     )
 
 
-def test_interval_ordering():
-    prices = synthetic_day_ahead(days=90, seed=5)
-    train, test = prices[: 70 * 24], prices[70 * 24 :]
-    fc = PriceForecaster(confidence_level=0.9, method="cqr", **_FAST).fit(train)
-    out = fc.predict_interval(test)
-    assert (out.lower <= out.point + 1e-9).all()
-    assert (out.point <= out.upper + 1e-9).all()
+@pytest.mark.parametrize("method", ["cqr", "split"])
+@pytest.mark.parametrize("seed", [0, 1, 3, 9, 10, 11, 15, 16, 18, 20, 26])
+def test_interval_ordering(method, seed):
+    """`lower <= point <= upper` at every target, swept over seeds.
+
+    This assertion was in the R2.1 spec and in `formulation-r2.md` §R2.1 from the
+    start, but the test behind it ran a **single** seed and passed by luck. Measured
+    2026-07-28: on 10 of 30 synthetic seeds the shipped CQR model put the median
+    outside its own interval (12 `lower > point` and 9 `point > upper` points), because
+    CQR's three quantile models are fit independently and only the lower/upper pair is
+    conformalized. The seeds listed here are exactly the ones that exhibited it, so
+    this test is red against the pre-fix model rather than merely wider.
+
+    `lower > upper` never occurred, so the interval always carried its conformal
+    guarantee and no coverage result was affected; the fix clips the point into the
+    interval and leaves the interval untouched.
+    """
+    prices = synthetic_day_ahead(days=60, seed=seed)
+    fc = PriceForecaster(method=method, **_FAST).fit(prices).predict_interval(prices)
+
+    assert (fc.lower <= fc.point).all(), f"{method}/seed {seed}: point below its lower bound"
+    assert (fc.point <= fc.upper).all(), f"{method}/seed {seed}: point above its upper bound"
+    assert (fc.lower <= fc.upper).all(), f"{method}/seed {seed}: interval inverted"
 
 
 def test_wider_interval_at_higher_confidence():
@@ -204,3 +220,67 @@ def test_graceful_fallback_when_fundamentals_missing(caplog):
     pd.testing.assert_series_equal(
         base.predict_interval(test).point, degraded.predict_interval(test).point
     )
+
+
+# --- R2.1e: normalized target -------------------------------------------------
+
+
+def test_normalize_target_off_is_identical_to_r21d():
+    """The opt-in identity: `normalize_target=False` cannot move the shipped model.
+
+    Spec oracle 5. This is the un-fakeable anchor that R2.1e changed nothing for
+    existing callers; every other gate in the phase is statistical.
+    """
+    prices = synthetic_day_ahead(days=60, seed=5)
+
+    before = PriceForecaster(**_FAST).fit(prices).predict_interval(prices)
+    after = (
+        PriceForecaster(normalize_target=False, season_encoding="month", **_FAST)
+        .fit(prices)
+        .predict_interval(prices)
+    )
+
+    pd.testing.assert_series_equal(before.point, after.point)
+    pd.testing.assert_series_equal(before.lower, after.lower)
+    pd.testing.assert_series_equal(before.upper, after.upper)
+
+
+@pytest.mark.parametrize("method", ["cqr", "split"])
+def test_normalized_forecast_returns_prices_in_order(method):
+    """With normalization on, output is still price-space and still ordered.
+
+    The interval is produced in standardized space and inverted, so this checks the
+    inversion actually ran: bounds must straddle realistic price magnitudes rather
+    than sitting near zero, and `lower <= point <= upper` must survive the transform.
+    """
+    prices = synthetic_day_ahead(days=60, seed=6)
+
+    fc = (
+        PriceForecaster(method=method, normalize_target=True, rolling_stats=True, **_FAST)
+        .fit(prices)
+        .predict_interval(prices)
+    )
+
+    assert (fc.lower <= fc.point).all()
+    assert (fc.point <= fc.upper).all()
+    assert (fc.width > 0).all()
+    # Inverted back to price space: the point path must live near the realized level,
+    # which a forecast left in standardized units (mean ~0) would not.
+    assert abs(fc.point.mean() - prices.loc[fc.point.index].mean()) < 0.5 * prices.std()
+
+
+def test_normalization_changes_the_forecast():
+    """Non-vacuity: the flag must actually reach the model.
+
+    Without this, a plumbing bug that dropped `normalize_target` on the floor would
+    leave every other R2.1e test passing, since they would all be measuring the R2.1d
+    model twice.
+    """
+    prices = synthetic_day_ahead(days=60, seed=7)
+
+    plain = PriceForecaster(**_FAST).fit(prices).predict_interval(prices)
+    normed = PriceForecaster(normalize_target=True, **_FAST).fit(prices).predict_interval(prices)
+
+    shared = plain.point.index.intersection(normed.point.index)
+    assert len(shared) > 0
+    assert not np.allclose(plain.point.loc[shared], normed.point.loc[shared])

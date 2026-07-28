@@ -2,7 +2,7 @@
 
 Contract: docs/specs/R2.4-explainability.md § "Golden oracles".
 Math: docs/formulation.md § "R2.4. Shadow-price explainability".
-Decision: docs/decisions/0023-milp-dual-resolve-rule.md.
+Decision: docs/decisions/milp-dual-resolve-rule.md.
 
 The water value is the SoC-balance dual, read off the solved R1.1/R1.2 dispatch by
 fix-and-resolve. Oracle 1 is the load-bearing case: three re-solve rules return the
@@ -30,7 +30,8 @@ def run_of(exp, t):
 def _resolve_idle_rule(prices, spec, idle_rule):
     """Re-solve the fixed-commitment LP under one idle rule, return (objective, duals).
 
-    Reproduces the three candidate rules of ADR-0023 on a schedule that charges,
+    Reproduces the three candidate rules of docs/decisions/milp-dual-resolve-rule.md on a schedule
+    that charges,
     idles, discharges. Trading periods fix ``u`` by direction; the idle period differs:
     ``fix_u`` keeps u=0, ``fix_zero`` also clamps its power to zero, ``free_idle``
     relaxes both exclusion caps to the natural power caps.
@@ -64,7 +65,8 @@ def _resolve_idle_rule(prices, spec, idle_rule):
 
 
 def test_the_three_idle_rules_disagree_at_one_objective():
-    """ADR-0023's load-bearing measurement, pinned in executable form.
+    """docs/decisions/milp-dual-resolve-rule.md's load-bearing measurement, pinned in executable
+    form.
 
     On oracle 1's instance the three re-solve rules return the *same* objective (190)
     but water values of 200 / 100 / 10; only free_idle recovers the true dV/de_0 = 100.

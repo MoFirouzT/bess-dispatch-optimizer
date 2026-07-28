@@ -1,4 +1,4 @@
-# ADR-0023: The re-solve rule for MILP duals (fix-and-resolve with a relaxed idle tie-break)
+# The re-solve rule for MILP duals (fix-and-resolve with a relaxed idle tie-break)
 
 **Status:** Accepted
 **Date:** 2026-07-16

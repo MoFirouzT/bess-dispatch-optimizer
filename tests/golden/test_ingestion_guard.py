@@ -160,7 +160,7 @@ def test_oracle3b_resolution_change_is_not_called_a_gap():
     nothing is absent: the feed is complete and correct, it just is not the
     single-frequency series the internal schema carries. Reporting `schema:gap` sends
     an operator hunting for timestamps that were never missing — the conflation
-    ADR-0012 exists to prevent, one level down.
+    docs/decisions/separate-ingestion-breaker.md exists to prevent, one level down.
 
     Still ANOMALY: the engine cannot consume a mixed-resolution series, so falling
     back is right. Only the *label* was wrong.
@@ -248,7 +248,8 @@ def test_fetch_schema_failure_keeps_the_validators_diagnosis(caplog):
     The loader raises messages like "gaps / irregular freq — steps seen: [15min, 1h]";
     the guard used to keep only `type(exc).__name__` and report `schema:valueerror`, so
     a timezone error, a duplicate timestamp, a resolution change and a truncated window
-    were all the same string. That is the conflation ADR-0012 exists to prevent, and it
+    were all the same string. That is the conflation docs/decisions/separate-ingestion-breaker.md
+    exists to prevent, and it
     left the operator with a Python builtin's name as the entire diagnosis.
     """
     lkg = _clean_day(seed=8)

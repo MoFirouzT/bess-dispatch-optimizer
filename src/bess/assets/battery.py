@@ -35,7 +35,8 @@ class BatterySpec(BaseModel):
 
     Units: power MW, `capacity` MWh, efficiency per-unit. SoC fields
     (`soc_min` / `soc_initial` / `soc_terminal`) are **per-unit** fractions of
-    `capacity` (size-independent config; see conventions §2 and ADR-0009) — the
+    `capacity` (size-independent config; see conventions §2 and
+    docs/decisions/soc-per-unit-in-config.md) — the
     asset converts them to absolute MWh at registration. Defaults match the R1.1
     sanity band — a 1 MWh / 1 MW (1-hour, 1C) asset.
     """

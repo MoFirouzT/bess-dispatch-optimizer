@@ -1,11 +1,12 @@
 """Shadow-price explainability — the SoC-balance dual as a water value (R2.4).
 
 Formulation: ``docs/formulation.md`` § "R2.4. Shadow-price explainability".
-Decision: ``docs/decisions/0023-milp-dual-resolve-rule.md``.
+Decision: ``docs/decisions/milp-dual-resolve-rule.md``.
 
 A MILP has no LP dual, so the water value is read off by **fix-and-resolve**: solve
 the dispatch, fix the mutual-exclusion commitment, and re-solve the resulting LP. The
-one subtlety is the idle tie-break (ADR-0023): at an idle period both ``u_t = 0`` and
+one subtlety is the idle tie-break (docs/decisions/milp-dual-resolve-rule.md): at an idle period
+both ``u_t = 0`` and
 ``u_t = 1`` are optimal and the solver's choice moves the reported dual. The shipped
 rule relaxes both exclusion caps at idle periods with ``pi_t >= 0`` (which recovers
 the true ``dV/de_0``), keeps the commitment fixed at negative-priced idle periods
@@ -40,7 +41,7 @@ class DualityError(RuntimeError):
 
     The relaxation admitted an action the dispatch model forbids (a SoC-neutral
     round trip the market pays for at a negative price), so the duals are not ones
-    the model supports and are not reported. See ADR-0023.
+    the model supports and are not reported. See docs/decisions/milp-dual-resolve-rule.md.
     """
 
 
@@ -71,7 +72,7 @@ class PeriodExplanation:
     reason: str
     # Band edges eta_ch*(mu_t - c_deg) and (mu_t + c_deg)/eta_dis, reported iff the
     # period's run is pinned; None on an unpinned run (the band would contradict the
-    # action). At a pinned period the band holds; see ADR-0023.
+    # action). At a pinned period the band holds; see docs/decisions/milp-dual-resolve-rule.md.
     band_low_eur_mwh: float | None
     band_high_eur_mwh: float | None
     # Slippage (EUR/MWh grid-side) an executed trade absorbs before it flips; None at
@@ -105,7 +106,8 @@ def _resolve(
     solver: str,
     milp_objective: float,
 ) -> list[float]:
-    """Fix the commitment (idle rule per ADR-0023), re-solve the LP, return the duals.
+    """Fix the commitment (idle rule per docs/decisions/milp-dual-resolve-rule.md), re-solve the LP,
+    return the duals.
 
     ``fallback_u`` is the commitment forced at negative-priced idle periods (0 or 1);
     both are sound, and comparing the two detects tie-break invariance. Raises
@@ -141,7 +143,8 @@ def _resolve(
     if abs(obj - milp_objective) > 1e-6 * max(1.0, abs(milp_objective)):
         raise DualityError(
             f"re-solved objective {obj} != MILP objective {milp_objective}: "
-            "the relaxation admitted an action the model forbids (ADR-0023)"
+            "the relaxation admitted an action the model forbids "
+            "(docs/decisions/milp-dual-resolve-rule.md)"
         )
     return [model.dual[model.soc_balance[t]] for t in sorted(model.T)]
 
@@ -189,7 +192,8 @@ def explain_schedule(
     Groups periods into flat runs and, when any negative-priced idle (fallback) period
     exists, re-solves that tie-break the other way to mark each run pinned or not (one
     extra LP for the horizon). Bands are reported on pinned runs only. Raises
-    ``DualityError`` if a re-solved LP objective does not equal the MILP's (ADR-0023).
+    ``DualityError`` if a re-solved LP objective does not equal the MILP's
+    (docs/decisions/milp-dual-resolve-rule.md).
     """
     schedule = solve(prices, battery, dt=dt, solver=solver)
     n = len(prices)

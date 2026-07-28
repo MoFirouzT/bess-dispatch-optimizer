@@ -24,7 +24,8 @@ def test_psi_zero_on_identical_and_grows_with_shift():
 
 
 def test_classify_precedence_staleness_wins_when_both_fire():
-    # error_ratio high AND psi high → STALENESS (checked first, ADR-0015).
+    # error_ratio high AND psi high → STALENESS (checked first,
+    # docs/decisions/drift-classification-precedence.md).
     both = classify_drift(forecaster_mae=20.0, naive_mae=10.0, psi_value=0.5)
     assert both.status is DriftStatus.STALENESS
 

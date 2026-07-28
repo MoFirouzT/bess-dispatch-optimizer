@@ -6,7 +6,7 @@ beat the mean-value plan by a **median of about +12 EUR per window**, positive o
 **62% of 63 windows**, quartiles −8 to +33, for a 2 MWh / 1 MW asset.
 
 Governing spec: [R2.5](../specs/R2.5-value-evaluation.md); protocol:
-[ADR-0021](../decisions/0021-mpc-recourse-out-of-sample-vss.md); math:
+[the recourse and out-of-sample protocol](../decisions/risk-aware-two-stage-design.md); math:
 [formulation-evaluation.md § R2.5](../formulation-evaluation.md).
 
 ## The question

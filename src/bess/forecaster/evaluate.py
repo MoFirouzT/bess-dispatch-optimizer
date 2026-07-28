@@ -173,7 +173,8 @@ def coverage_by_hour(hits: np.ndarray, hours: np.ndarray, *, n_hours: int = 24) 
     The **conditional**-coverage axis (R2.1e). Conformal prediction guarantees only
     *marginal* coverage, so a forecaster can sit exactly on nominal overall while
     over-covering calm nights and under-covering volatile evening peaks. That split is
-    invisible to a pooled number, and it is the property ADR-0014 chose CQR for:
+    invisible to a pooled number, and it is the property docs/decisions/cqr-over-split-conformal.md
+    chose CQR for:
     hour-adaptive interval width. Returns ``NaN`` for an hour with no
     observations rather than pretending to a rate it never measured.
     """

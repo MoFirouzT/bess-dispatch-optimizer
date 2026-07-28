@@ -87,7 +87,7 @@ R2's payoff is handling price **uncertainty at decision time**, measured by the 
 **Headline metric.**
 Report $V^{\mathrm{greedy}}/V^\star$ and $V^{\mathrm{roll}}/V^\star$ together (heuristic and optimal, as % of perfect foresight).
 $V^{\mathrm{roll}}/V^\star$ alone saturates near 1 for a short-duration asset and cannot discriminate; the greedy-to-rolling gap carries the R1 signal, and VSS (R2.3) carries the R2 signal.
-Because these ratios move with storage duration, they are reported across {1h, 2h, 4h} rather than for a single asset ([ADR-0022](decisions/0022-storage-duration-reported-axis.md)).
+Because these ratios move with storage duration, they are reported across {1h, 2h, 4h} rather than for a single asset ([storage duration as a reported axis](decisions/storage-duration-reported-axis.md)).
 
 ### Sanity band (gate D)
 
@@ -111,16 +111,16 @@ if code and this section disagree, this governs.
 ### Per-window out-of-sample VSS (a distribution, not a number)
 
 R2.3's gate measured VSS $>0$ out-of-sample on a *designed* value-generating instance.
-This protocol asks whether that value is a property of the market rather than of the design, by repeating the ADR-0021 measurement over arbitrary real delivery windows.
+This protocol asks whether that value is a property of the market rather than of the design, by repeating the [the recourse and out-of-sample protocol](decisions/risk-aware-two-stage-design.md) measurement over arbitrary real delivery windows.
 
 A **window** $w$ is a UTC calendar day (the §R1.4 boundary) with realized price path $y^{(w)}$.
 Its **training scenario set** $S_w$ is $n$ equiprobable day-paths drawn with replacement from the $H$ complete days strictly before $w$ (an empirical bootstrap over recent day shapes; the §R1.4 information set, so nothing at or after $w$ enters).
 Fit both first-stage commitments on $S_w$: $g^{RP}$ (risk-neutral two-stage optimum) and $g^{EV}$ (deterministic solve at the mean path $\bar\pi_w$ of $S_w$).
-Score each commitment fixed, with optimal within-budget recourse, on the single realized path (an $S=1$ evaluation set), the day-ahead leg settling at $\bar\pi_w$ for both, exactly the ADR-0021 protocol:
+Score each commitment fixed, with optimal within-budget recourse, on the single realized path (an $S=1$ evaluation set), the day-ahead leg settling at $\bar\pi_w$ for both, exactly the [the recourse and out-of-sample protocol](decisions/risk-aware-two-stage-design.md) protocol:
 
 $$\boxed{ \mathrm{VSS}_w = v_w\bigl(g^{RP}\bigr) - v_w\bigl(g^{EV}\bigr), }$$
 
-where $v_w(g)$ is that held-out score. $\mathrm{VSS}_w$ carries no sign guarantee (out-of-sample, per ADR-0021); the reported object is the **empirical distribution** $\{\mathrm{VSS}_w\}$ over all windows with enough history (median, quartiles, share $>0$), never a single number.
+where $v_w(g)$ is that held-out score. $\mathrm{VSS}_w$ carries no sign guarantee (out-of-sample, per [the recourse and out-of-sample protocol](decisions/risk-aware-two-stage-design.md)); the reported object is the **empirical distribution** $\{\mathrm{VSS}_w\}$ over all windows with enough history (median, quartiles, share $>0$), never a single number.
 
 ### Forecast value (euros, not statistics)
 

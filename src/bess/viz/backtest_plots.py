@@ -165,7 +165,8 @@ def plot_ingestion_guard(
     discharge up / charge down) over the price curve (line). The top panel is the
     *rejected* feed (grey price, fault region shaded) — dispatching on it would run
     on corrupt prices; the bottom is the guard's fallback (amber price). The overall
-    provenance caption makes the ADR-0013 composition explicit: a solve on stale
+    provenance caption makes the docs/decisions/separate-ingestion-breaker.md composition explicit:
+    a solve on stale
     data is degraded, not healthy.
     """
     hours = list(range(len(corrupted_prices)))
@@ -353,7 +354,8 @@ def plot_duration_sweep(
     *,
     title: str = "Storage duration sweep — capture ratio and per-MWh value",
 ) -> Figure:
-    """The ADR-0022 duration axis (no new math): run the backtest across storage
+    """The docs/decisions/storage-duration-reported-axis.md duration axis (no new math): run the
+    backtest across storage
     durations and show the two effects a single-duration headline hides.
 
     Left: rolling / ceiling capture ratio vs duration — falls as duration rises,

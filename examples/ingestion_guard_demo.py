@@ -4,7 +4,8 @@
 Treats a synthetic day-ahead series as the "fetch": one day is delivered frozen at a
 bit-identical **arbitrary** price. The guard classifies it, falls back to the
 last-known-good day, and the dispatch then solves on the *trustworthy* prices. The
-overall provenance composes the two breakers (ADR-0013): a solve that is optimal on
+overall provenance composes the two breakers (docs/decisions/separate-ingestion-breaker.md): a solve
+that is optimal on
 stale fallback data is reported **degraded**, not healthy.
 
 The frozen value is deliberately *not* €0.00. The stuck-feed check keys on the

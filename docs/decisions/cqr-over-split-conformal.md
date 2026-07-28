@@ -1,4 +1,4 @@
-# ADR-0014: Conformalized quantile regression (CQR) over split conformal as the forecaster default
+# Conformalized quantile regression (CQR) over split conformal as the forecaster default
 
 **Status:** Accepted
 **Date:** 2026-07-01

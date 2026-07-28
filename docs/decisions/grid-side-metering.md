@@ -1,4 +1,4 @@
-# ADR-0003: Grid-side metering, efficiency in the SoC balance, never in the objective
+# Grid-side metering, efficiency in the SoC balance, never in the objective
 
 **Status:** Accepted
 **Date:** 2026-06-24 *(estimated; project foundation)*

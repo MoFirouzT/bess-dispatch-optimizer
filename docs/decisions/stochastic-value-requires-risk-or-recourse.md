@@ -1,4 +1,4 @@
-# ADR-0007: Stochastic value requires a risk-aware objective and/or genuine recourse (avoid the VSS=0 trap)
+# Stochastic value requires a risk-aware objective and/or genuine recourse (avoid the VSS=0 trap)
 
 **Status:** Accepted
 **Date:** 2026-06-24 *(estimated; project foundation)*
@@ -34,7 +34,7 @@ design.
 ## Consequences
 
 - **Easier:** the stochastic layer is designed from the start to produce
-  measurable value; the R1 deterministic solve ([ADR-0004](0004-two-release-structure.md))
+  measurable value; the deterministic solve
   is the honest baseline VSS is computed against.
 - **Harder:** rules out the simplest risk-neutral two-stage model; the objective
   and recourse structure need deliberate design.

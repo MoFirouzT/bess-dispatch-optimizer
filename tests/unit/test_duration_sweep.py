@@ -1,4 +1,4 @@
-"""Unit test for the duration sweep (ADR-0022 reporting).
+"""Unit test for the duration sweep (docs/decisions/storage-duration-reported-axis.md reporting).
 
 Contract: docs/specs/R1.4a-backtest.md § "Duration as a reported axis".
 The sweep is additive reporting over the existing engine; correctness at

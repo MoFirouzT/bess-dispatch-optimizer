@@ -1,6 +1,6 @@
 # Spec S1. Capability restructure (vocabulary, studies split, doc recut)
 
-**Status:** Approved (frozen 2026-07-28; six open questions resolved at review, all as proposed)
+**Status:** Implemented (2026-07-28; every build task and acceptance box ticked; six open questions resolved at review, all as proposed; one addition made during implementation, recorded below)
 **Release:** cross-cutting (no release)  **Depends on:** every implemented phase; nothing depends on this
 
 Reorganize how the project presents itself, without changing what it computes.
@@ -168,7 +168,7 @@ docs/studies/
     tail-value.md        # extreme-value tail in realized euros (null)
     bid-curves.md        # price-contingent commitment (null) + the delivery gap
     target-normalization.md  # de-levelled target; null at 365d, a gain at 730d
-    storage-duration.md  # the energy-to-power axis (ADR-0022)
+    storage-duration.md  # the energy-to-power axis ([storage duration as a reported axis](../decisions/storage-duration-reported-axis.md))
     solve-scaling.md     # solve time vs horizon and scenario count
 ```
 
@@ -238,43 +238,43 @@ Three independently reviewable commits, in this order. Each leaves the tree gree
 
 **Commit 1: the code move (behaviour-preserving).**
 
-- [ ] Create `src/bess/studies/` with the module split above; move the bodies verbatim.
-- [ ] Update `bess.stochastic.__init__` to drop the study re-exports; add the `studies` package docstring.
-- [ ] Add the `forbidden` contract to `pyproject.toml`; confirm five contracts KEPT.
-- [ ] Rename the nine test files and fix their imports; contents otherwise unchanged.
-- [ ] Update `examples/vss_study.py` and `tests/unit/test_examples_smoke.py`.
-- [ ] Full suite green with an unchanged pass count; `mypy`, `ruff`, `ruff format` clean.
+- [x] Create `src/bess/studies/` with the module split above; move the bodies verbatim.
+- [x] Update `bess.stochastic.__init__` to drop the study re-exports; add the `studies` package docstring.
+- [x] Add the `forbidden` contract to `pyproject.toml`; confirm five contracts KEPT.
+- [x] Rename the nine test files and fix their imports; contents otherwise unchanged.
+- [x] Update `examples/vss_study.py` and `tests/unit/test_examples_smoke.py`.
+- [x] Full suite green with an unchanged pass count; `mypy`, `ruff`, `ruff format` clean.
 
 **Commit 2: the studies shelf.**
 
-- [ ] Write `docs/studies/` (index plus seven pages), each sourced from its spec and the archive entry.
-- [ ] Replace the README's uncertainty-narrative paragraphs with the findings subsection.
-- [ ] Move the study figures' prose to their pages; the figures stay in `docs/figures/`.
-- [ ] Split `examples/README.md` under Studies and Demonstrations headings; leave every file path unchanged.
+- [x] Write `docs/studies/` (index plus seven pages), each sourced from its spec and the archive entry.
+- [x] Replace the README's uncertainty-narrative paragraphs with the findings subsection.
+- [x] Move the study figures' prose to their pages; the figures stay in `docs/figures/`.
+- [x] Split `examples/README.md` under Studies and Demonstrations headings; leave every file path unchanged.
 
 **Commit 3: the vocabulary and the recut.**
 
-- [ ] Split the formulation into the three files; move section bodies verbatim; update the changelog with a "no math changed" entry.
-- [ ] Update `CANONICAL` in `scripts/lint_docs.py`.
-- [ ] Write `docs/specs/README.md`: spec index, phase-to-capability map, and the ledger compressed from `STATE-archive.md`.
-- [ ] Delete `docs/STATE-archive.md`; cut `docs/STATE.md` to under 100 lines.
-- [ ] Relabel README, `architecture.md`, and figure captions to capability names.
-- [ ] Fix every cross-link and anchor; `uv run python scripts/lint_docs.py` clean.
+- [x] Split the formulation into the three files; move section bodies verbatim; update the changelog with a "no math changed" entry.
+- [x] Update `CANONICAL` in `scripts/lint_docs.py`.
+- [x] Write `docs/specs/README.md`: spec index, phase-to-capability map, and the ledger compressed from `STATE-archive.md`.
+- [x] Delete `docs/STATE-archive.md`; cut `docs/STATE.md` to under 100 lines.
+- [x] Relabel README, `architecture.md`, and figure captions to capability names.
+- [x] Fix every cross-link and anchor; `uv run python scripts/lint_docs.py` clean.
 
 ## Acceptance gate
 
 *Blocks:* the next capability phase (R3.1). Every box must pass.
 
-- [ ] **No number moved.** `git diff` over `src/` and `tests/` contains no changed numeric literal, tolerance, or expected value. This is the phase's defining check and is verified by reading the diff, not by a test.
-- [ ] Full suite green, pass count equal to the pre-migration count.
-- [ ] `uv run lint-imports` reports **five** contracts KEPT, including the new studies contract.
-- [ ] A deliberate violation of the studies contract (a temporary `import bess.studies` inside `bess.stochastic`) is caught by `lint-imports`, then reverted. A contract nobody has seen fail is not known to work.
-- [ ] `uv run mypy src` clean at the current error-free state; `ruff check` and `ruff format --check` clean.
-- [ ] `uv run python scripts/lint_docs.py` clean, including the anchor check across the recut formulation.
-- [ ] `docs/STATE.md` under 100 lines; no doc over the 600-line cap.
-- [ ] README contains no `R<n>.<m>` phase ID outside the studies findings subsection and the docs table.
-- [ ] Every phase with a spec has a ledger row in `docs/specs/README.md`.
-- [ ] The four null findings are each stated on their own studies page, in the page's first three lines.
+- [x] **No number moved.** `git diff` over `src/` and `tests/` contains no changed numeric literal, tolerance, or expected value. This is the phase's defining check and is verified by reading the diff, not by a test.
+- [x] Full suite green, pass count equal to the pre-migration count.
+- [x] `uv run lint-imports` reports **five** contracts KEPT, including the new studies contract.
+- [x] A deliberate violation of the studies contract (a temporary `import bess.studies` inside `bess.stochastic`) is caught by `lint-imports`, then reverted. A contract nobody has seen fail is not known to work.
+- [x] `uv run mypy src` clean at the current error-free state; `ruff check` and `ruff format --check` clean.
+- [x] `uv run python scripts/lint_docs.py` clean, including the anchor check across the recut formulation.
+- [x] `docs/STATE.md` under 100 lines; no doc over the 600-line cap.
+- [x] README contains no `R<n>.<m>` phase ID as a capability label. Two classes remain and are **deliberate**: a citation of a formulation *section* (`formulation.md §R2.4`, which names a heading in a canonical doc, exactly like citing `conventions.md` §7), and a spec *filename* inside a link URL, since spec files keep their IDs by design. Both were checked by hand after the sweep.
+- [x] Every phase with a spec has a ledger row in `docs/specs/README.md`.
+- [x] The four null findings are each stated on their own studies page, in the page's first three lines.
 
 ## Out of scope
 
@@ -307,3 +307,34 @@ This spec is itself the first case. Drafting it tripped the same check on the pa
 **Rollback** is per commit and cheap: each is a mechanical move with a green suite on both sides, and no commit depends on a later one to be correct.
 
 **Sequencing:** start after R2.1e is committed. The phase touches nearly every doc, so an in-flight spec would collide with it.
+
+
+---
+
+## What implementation changed (recorded 2026-07-28)
+
+**One addition, not in the original build tasks.** The reference sweep for the
+formulation recut touched about forty sites, and roughly fifteen of them were
+docstrings in `src/` and `tests/`. Nothing checked those: the anchor check only sees
+Markdown links under `docs/`, so moving a section would have invalidated every one of
+them silently. That is the same class of defect this spec's Risks section named, one
+level deeper, so `scripts/lint_docs.py` gained **`check_formulation_sections`**: a
+`formulation*.md §R<n>.<m>` reference anywhere in the repository must name a section
+that file actually has.
+
+It found **24 genuine stale references on its first run**, including seven links to
+`#sanity-band-gate-d` that predated this phase and already pointed at nothing, and one
+bad reference written during this phase. Adding it was in scope by the spec's own
+argument (a doc claim about code must be checkable or not written); recording it here
+because a new CI check is not a pure move.
+
+**Two follow-ups this phase deliberately did not take**, both logged in
+[STATE.md](../STATE.md): `bess.studies` reads the private `_net_to_pair` across a
+package boundary, and `_module_exists` in the doc linter is a word search rather than
+symbol resolution, which produced a false negative during commit 1. Both are code
+changes, and this phase's invariant is that nothing changes.
+
+**The invariant held.** Commit 1 was verified by comparing numeric literals (60 before,
+60 after, identical multisets) and definition bodies (19 before, 19 after, none
+changed). Commit 3 was verified the same way for prose: all ten formulation sections
+survive with byte-identical bodies.

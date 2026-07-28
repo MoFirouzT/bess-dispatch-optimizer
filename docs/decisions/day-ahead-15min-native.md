@@ -1,4 +1,4 @@
-# ADR-0006: Day-ahead is 15-minute native; the R1.1 hourly core is a deliberate simplification
+# Day-ahead is 15-minute native; the R1.1 hourly core is a deliberate simplification
 
 **Status:** Accepted
 **Date:** 2026-06-24 *(estimated; project foundation)*
@@ -30,7 +30,7 @@ as a deliberate, documented simplification for hand-verifiable optima;
   (throughput, degradation, energy) has to scale with `dt`, not assume one hour.
 - **Enforced by:** `dt` as a `solve()` argument; the R1.4b loader emitting 60/15-
   minute series; the drift monitor's wall-clock-hours framing
-  ([ADR-0015](0015-drift-staleness-before-regime.md)) so thresholds survive the
+  ([drift classification precedence](drift-classification-precedence.md)) so thresholds survive the
   resolution change.
 
 ## Failure mode

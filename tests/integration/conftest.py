@@ -9,7 +9,8 @@ each parquet on `(kind, zone, start, end)`, so a moving window (the guard's
 "last complete month") simply misses and re-fetches when it moves.
 
 The cache lives under `data/cache/`, gitignored: nothing fetched is committed
-(ADR-0005). It is pure derived data and safe to delete at any time.
+(docs/decisions/no-committed-market-data.md). It is pure derived data and safe to delete at any
+time.
 """
 
 import os

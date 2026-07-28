@@ -200,10 +200,12 @@ def fetch_day_ahead(
 #                                           'Wind Onshore'], MW, 15-min, local tz
 # Both are **day-ahead forecasts** for day D published during D-1, so a value for a
 # target hour t exists before t (the leakage-safe contemporaneous-alignment property;
-# ADR-0024). We deliberately call the *forecast* endpoints, never query_load (realized
+# docs/decisions/forecast-feature-alignment.md). We deliberately call the *forecast* endpoints,
+# never query_load (realized
 # actuals), which would be look-ahead.
 #
-# Timing is NOT symmetric, and ADR-0024's "Publication timing" table is the reference:
+# Timing is NOT symmetric, and docs/decisions/forecast-feature-alignment.md's "Publication timing"
+# table is the reference:
 # the load forecast is due >=2 h before day-ahead gate closure (Reg. 543/2013 Art.
 # 6(1)(b)), but wind/solar only by 18:00 on D-1, i.e. *after* the auction clears, and is
 # then revised intraday (Art. 14(1)(d)). Consequences: alignment is sound for decisions

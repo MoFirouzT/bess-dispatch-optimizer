@@ -4,7 +4,7 @@ Math: ``docs/formulation.md`` § "R1.4 — Backtest semantics" (the greedy basel
 This is an *alternative dispatch strategy* over the same ``(prices, spec, dt)`` as
 ``optimizer.core.solve``, returning a ``Schedule``. It lives in ``optimizer`` (not
 ``backtest``) so both the offline backtest and the R1.5 serving circuit breaker can
-use it without the serving chain depending on the offline harness (ADR-0010).
+use it without the serving chain depending on the offline harness.
 
 ``optimizer`` imports ``assets`` only and must never import ``api`` (import-linter).
 """

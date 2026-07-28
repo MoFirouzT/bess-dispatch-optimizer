@@ -1,4 +1,4 @@
-"""Composition of the two circuit breakers (R1.4c, ADR-0013).
+"""Composition of the two circuit breakers (R1.4c, docs/decisions/separate-ingestion-breaker.md).
 
 Spec: ``docs/specs/R1.4c-ingestion-guard.md`` § "Acceptance gate" — the shared
 degradation vocabulary, demonstrated end-to-end on synthetic data: a fetch that

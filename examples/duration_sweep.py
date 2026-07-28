@@ -4,7 +4,8 @@
 Storage duration is the energy-to-power ratio (a 1 MWh / 1 MW asset is 1-hour;
 4 MWh / 1 MW is 4-hour). The optimizer math is scale-invariant in duration, but the
 economics are not, so a single-duration headline can misstate the general result
-(ADR-0022). This runs the walk-forward backtest at {1h, 2h, 4h} with power fixed and
+(docs/decisions/storage-duration-reported-axis.md). This runs the walk-forward backtest at {1h, 2h,
+4h} with power fixed and
 reports the capture ratio and per-MWh ceiling per duration.
 
 The **committed** figure is built from real ENTSO-E NL day-ahead prices; to reproduce it:

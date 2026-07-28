@@ -4,7 +4,7 @@
 On the same real Dutch quarter, the annualized net ceiling falls from about
 **€33k per MWh-installed per year at 1 hour to about €24k at 4 hours**.
 
-Governing decision: [ADR-0022](../decisions/0022-storage-duration-reported-axis.md).
+Governing decision: [storage duration as a reported axis](../decisions/storage-duration-reported-axis.md).
 
 ## The question
 

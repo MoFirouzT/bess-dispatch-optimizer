@@ -72,7 +72,8 @@ def test_band_shifts_up_with_volatility():
     This is the token-free half of the seasonal-shift check. It gates the **engine's
     mechanism** (wider spread ⇒ proportionally higher ceiling, each inside its own
     band) across volatility regimes in CI, where no real volatile slice can be
-    committed (ADR-0005). It does **not** prove the real-world claim that NL summer
+    committed (docs/decisions/no-committed-market-data.md). It does **not** prove the real-world
+    claim that NL summer
     is more volatile than NL Q1 — that is a fact about the market, not the code, and
     stays in the token-gated `tests/integration/test_entsoe_live.py`.
     """

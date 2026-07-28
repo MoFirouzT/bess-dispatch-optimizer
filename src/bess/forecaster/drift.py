@@ -8,7 +8,8 @@ accuracy and, when it degrades, classifies *why*:
 - **model staleness** — this model decayed relative to a naive seasonal baseline
   (``forecaster_MAE / naive_MAE`` high), while inputs are stable → retrain.
 
-Precedence (ADR-0015): staleness is checked first — even under a regime shift a
+Precedence (docs/decisions/drift-classification-precedence.md): staleness is checked first — even
+under a regime shift a
 healthy model should degrade no worse than naive, so being materially worse than
 naive is model-specific decay regardless of input movement.
 
@@ -96,7 +97,8 @@ def classify_drift(
     n_coverage: int | None = None,
     min_coverage_samples: int = DEFAULT_MIN_COVERAGE_SAMPLES,
 ) -> DriftReport:
-    """Classify a window from its metrics (ADR-0015 + ADR-0016).
+    """Classify a window from its metrics (docs/decisions/drift-classification-precedence.md +
+    docs/decisions/drift-classification-precedence.md).
 
     Precedence: STALENESS (worse than naive) > REGIME_SHIFT (inputs moved) >
     MISCALIBRATION (intervals under-cover) > HEALTHY. Staleness first so model-specific

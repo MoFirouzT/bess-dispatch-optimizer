@@ -1,4 +1,4 @@
-# ADR-0011: Circuit-breaker semantics for the dispatch endpoint
+# Circuit-breaker semantics for the dispatch endpoint
 
 **Status:** Accepted
 **Date:** 2026-06-26

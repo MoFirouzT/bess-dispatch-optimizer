@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Value-evaluation study (R2.5) — the per-window out-of-sample VSS distribution.
 
-Repeats the ADR-0021 out-of-sample VSS measurement over every UTC-day window of a
+Repeats the docs/decisions/risk-aware-two-stage-design.md out-of-sample VSS measurement over every
+UTC-day window of a
 price series (train on the trailing days, score the fixed commitments on the
 realized path) and reports the distribution: median, quartiles, share of windows
 above zero. This is the honest form of the R2.3 value claim — a property of the

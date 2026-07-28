@@ -49,7 +49,8 @@ class BacktestReport:
 class DurationResult:
     """One backtest at a given storage duration (energy-to-power ratio, hours).
 
-    Reporting only (ADR-0022): the optimizer is scale-invariant in the ratings, so
+    Reporting only (docs/decisions/storage-duration-reported-axis.md): the optimizer is
+    scale-invariant in the ratings, so
     each ``report`` is a plain ``run_backtest`` at ``capacity = power * duration_h``.
     """
 
@@ -207,7 +208,8 @@ def run_duration_sweep(
     durations: Sequence[float] = (1.0, 2.0, 4.0),
     **backtest_kwargs: object,
 ) -> list[DurationResult]:
-    """Run ``run_backtest`` across storage durations, holding power fixed (ADR-0022).
+    """Run ``run_backtest`` across storage durations, holding power fixed
+    (docs/decisions/storage-duration-reported-axis.md).
 
     Storage duration is the energy-to-power ratio in hours; for each ``d`` the
     capacity is ``power * d`` where ``power = base_spec.p_discharge_max`` (the

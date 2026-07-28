@@ -1,6 +1,7 @@
 """Unit tests for the dispatch circuit breaker (bess.api.service.dispatch).
 
-Contract: docs/specs/R1.5-serving.md § "Property tests" + ADR-0011. The breaker is
+Contract: docs/specs/R1.5-serving.md § "Property tests" +
+docs/decisions/dispatch-circuit-breaker.md. The breaker is
 a pure function with injectable solve_fn/greedy_fn, so each branch (optimal,
 greedy fallback, invalid input) is forced deterministically without HTTP or real
 solver stress.

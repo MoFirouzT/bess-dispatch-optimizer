@@ -1,6 +1,7 @@
 """Intraday recourse as a receding-horizon (MPC) policy (R2.3).
 
-Formulation: ``docs/formulation-uncertainty.md`` § R2.3, ADR-0021. Executes the committed
+Formulation: ``docs/formulation-uncertainty.md`` § R2.3,
+docs/decisions/risk-aware-two-stage-design.md. Executes the committed
 action, then re-solves the remaining horizon at the updated realised prices,
 carrying SoC as the linking state. The plant model is the R1.1 SoC dynamics; the
 disturbance is the price forecast. Because each sub-problem re-plans to the same

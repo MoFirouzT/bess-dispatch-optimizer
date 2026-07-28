@@ -78,7 +78,8 @@ def value_of_stochastic_solution(
 
 @dataclass
 class OutOfSampleVSS:
-    """Out-of-sample decision-value metrics (all EUR; ADR-0021).
+    """Out-of-sample decision-value metrics (all EUR;
+    docs/decisions/risk-aware-two-stage-design.md).
 
     ``rp_oos`` / ``eev_oos`` are the *held-out* expected profits of the RP and EV
     first-stage commitments (fit on the training scenarios), evaluated with optimal
@@ -106,7 +107,8 @@ def out_of_sample_vss(
 ) -> OutOfSampleVSS:
     """Fit the commitments on ``train``, score them on held-out ``evaluation`` paths.
 
-    The honest VSS ([ADR-0021](../decisions/0021-mpc-recourse-out-of-sample-vss.md)):
+    The honest VSS
+    ([docs/decisions/risk-aware-two-stage-design.md](../decisions/risk-aware-two-stage-design.md)):
     the RP and EV first-stage decisions are fit on the training scenarios, then each
     is *fixed* and evaluated with optimal within-budget recourse on the disjoint
     evaluation realisations. The day-ahead leg settles at the training price for

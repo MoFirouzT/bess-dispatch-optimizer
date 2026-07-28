@@ -127,8 +127,10 @@ def make_features(
     (a subset of ``load_da``/``wind_da``/``solar_da``, day-ahead forecasts in MW on
     the same UTC grid as ``prices``) are added **aligned to the target ``t`` itself**,
     not shifted into the past. This is leakage-safe *because these are published
-    forecasts for day ``D``, not outcomes* (see ADR-0024), so a value for ``t`` exists
-    before ``t`` occurs — never pass realized actuals. ADR-0024 scopes that safety:
+    forecasts for day ``D``, not outcomes* (see docs/decisions/forecast-feature-alignment.md), so a
+    value for ``t`` exists
+    before ``t`` occurs — never pass realized actuals. docs/decisions/forecast-feature-alignment.md
+    scopes that safety:
     load is published before day-ahead gate closure, wind/solar only after it, so a
     decision taken *at* gate closure is not covered.
     When all three components are present, a ``residual_load = load_da − wind_da −

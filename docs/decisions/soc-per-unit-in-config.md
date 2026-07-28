@@ -1,4 +1,4 @@
-# ADR-0009: SoC expressed per-unit in config, absolute MWh in the model
+# SoC expressed per-unit in config, absolute MWh in the model
 
 **Status:** Accepted
 **Date:** 2026-06-24

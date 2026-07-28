@@ -24,7 +24,7 @@ The `R<n>.<m>` phase IDs used across `docs/specs/` are delivery labels, not arch
 
 1. [README](../README.md): what the project is and why.
 2. **This file**: the map.
-3. [formulation.md](formulation.md): the math. Start at *Conventions* (the grid-side metering rule), then R1.1. Uncertainty and evaluation are in its two companion files.
+3. [formulation.md](formulation.md): the math. Start at *Conventions* (the grid-side metering rule), then the deterministic core. Uncertainty and evaluation are in its two companion files.
 4. [conventions.md](conventions.md): units, sign/metering, time, naming. Locked; changes need an ADR.
 5. [glossary.md](glossary.md) and [market_reference.md](market_reference.md): domain background, read as needed.
 6. [studies/](studies/): what the stack was measured to be worth, nulls included.
@@ -46,8 +46,8 @@ forecaster → scenarios ┘
 | Layer | Responsibility |
 | --- | --- |
 | `assets` | Physical battery model: `BatterySpec`, the SoC balance and physics constraints it registers on a Pyomo model. |
-| `validation` | Pre-flight feasibility checks (R1.3); structured, typed errors before the solver runs. |
-| `optimizer` | Builds the objective, owns the solve, returns a `Schedule`. The deterministic core. |
+| `validation` | Pre-flight feasibility checks; structured, typed errors before the solver runs. |
+| `optimizer` | Builds the objective, owns the solve, returns a `Schedule`. The deterministic core. It also owns the greedy heuristic, which lives here rather than in `backtest` so the serving breaker can reuse it without the serving chain depending on the offline harness. |
 | `recourse` | Rolling-horizon / MPC re-optimization. |
 | `stochastic` | The risk-aware two-stage program: scenario-based optimization and its decision-value metrics. |
 | `explain` | Shadow prices and dispatch explanations. |
@@ -67,8 +67,8 @@ The headline invariant is `optimizer ⊥ api` (the optimizer never depends on th
 
 ## Two circuit breakers
 
-Two circuit breakers live at **different layers** and must stay separate (see [ADR-0012](decisions/0012-separate-ingestion-breaker.md)):
-the **ingestion** breaker (R1.4c) guards the *fetch* in the `data` leaf, and the **solver** breaker (R1.5) guards the *solve* in `api`.
+Two circuit breakers live at **different layers** and must stay separate (see [two separate circuit breakers](decisions/separate-ingestion-breaker.md)):
+the **ingestion** breaker guards the *fetch* in the `data` leaf, and the **solver** breaker guards the *solve* in `api`.
 The ingestion guard is a data-layer reliability piece, not part of serving.
 
 ---
@@ -91,6 +91,6 @@ Specs, the README, and ADRs *point to* the formulation; they never restate an eq
 ## Solver & stack
 
 - **Modeling:** [Pyomo](https://www.pyomo.org/), which builds the MILP.
-- **Solver:** [HiGHS](https://highs.dev/) via `highspy` / Pyomo's `appsi_highs`. R1.2's degradation is a **linear** wear cost (the linear DoD-stress case of Xu 2018 / Shi 2017; see [formulation.md: R1.2](formulation.md#r12-degradation-cost)), native to the LP. A future nonlinear-convex degradation would use the epigraph form rather than SOS2, since HiGHS has no native SOS support.
+- **Solver:** [HiGHS](https://highs.dev/) via `highspy` / Pyomo's `appsi_highs`. Degradation is a **linear** wear cost (the linear DoD-stress case of Xu 2018 / Shi 2017; see [formulation.md: R1.2](formulation.md#r12-degradation-cost)), native to the LP. A future nonlinear-convex degradation would use the epigraph form rather than SOS2, since HiGHS has no native SOS support.
 - **Config:** [Pydantic v2](https://docs.pydantic.dev/), typed model parameters from YAML, validated at startup.
 - **Time series:** `pandas`, tz-aware UTC index (see [conventions.md: Time](conventions.md#1-time)).

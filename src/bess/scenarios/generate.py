@@ -1,6 +1,7 @@
 """Scenario generation: residual-path bootstrap off the R2.1 forecast (R2.2).
 
-See ``docs/formulation-uncertainty.md`` § R2.2 and ADR-0017. A scenario is a full-horizon
+See ``docs/formulation-uncertainty.md`` § R2.2 and docs/decisions/residual-path-bootstrap.md. A
+scenario is a full-horizon
 price path ``π^(s) = μ̂ + r^(j)`` where ``r^(j)`` is a whole-day forecast-error
 vector resampled (with replacement) from the forecaster's residual history.
 Resampling whole vectors preserves the intra-day error correlation.
@@ -78,7 +79,8 @@ def generate_scenarios(
     tail: TailModel | ConditionalTailModel | None = None,
     tail_covariate: np.ndarray | None = None,
 ) -> ScenarioSet:
-    """Residual-path bootstrap (ADR-0017), optionally with an extreme-value tail (R2.2b/c).
+    """Residual-path bootstrap (docs/decisions/residual-path-bootstrap.md), optionally with an
+    extreme-value tail (R2.2b/c).
 
     ``forecast`` supplies the point path via ``forecast.point`` (a ``pd.Series``
     indexed by target timestamp). ``residuals`` is an ``(M, T)`` matrix of

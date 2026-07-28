@@ -13,16 +13,19 @@ happened before 2026-07-28.
 
 ## Current phase
 
-**S1 capability restructure, in progress.** Spec:
-[`specs/S1-capability-restructure.md`](specs/S1-capability-restructure.md), Approved
-and frozen 2026-07-28, six open questions resolved as proposed.
+**No active phase.** Releases 1 and 2 are complete; Release 3 has not started.
 
-Commits 1 and 2 are done and committed; commit 3 (vocabulary, formulation recut,
-this ledger) is in the working tree. The phase's governing invariant is that **no
-number moves**, verified for commit 1 by comparing numeric literals and definition
-bodies before and after the move.
+S1 (capability restructure) is implemented, in four commits: the `bess.studies`
+extraction, the studies doc shelf, the vocabulary plus formulation recut, and the
+decision-record consolidation (26 numbered ADRs to 17 subject-named records). Spec:
+[`specs/S1-capability-restructure.md`](specs/S1-capability-restructure.md).
+Its governing invariant, that **no number moves**, was verified mechanically rather
+than by eye: numeric literals and definition bodies for the code move, and
+byte-identical section bodies for the formulation recut.
 
-Releases 1 and 2 are complete. Release 3 has not started.
+Full suite 373 passed / 29 skipped; ruff/format/mypy(48)/lint-imports(**5** KEPT,
+the new one forbidding the serving chain from importing `bess.studies`)/docs-lint(59)
+all clean.
 
 ## Capability status
 
@@ -42,14 +45,12 @@ Releases 1 and 2 are complete. Release 3 has not started.
 
 ## Next (recommended order)
 
-1. **Finish S1.** Commit 3 is in the tree; the remaining work is the README
-   capability list and the stale test badge.
-2. **Re-window the value studies.** R2.5, R2.5b and R2.6 all still rest on NL
+1. **Re-window the value studies.** R2.5, R2.5b and R2.6 all still rest on NL
    Mar-Jun 2024, so all three headline nulls are single-sample. R2.1d built the
    instrument to fix this (`rolling_origin_folds` over 2021-01-01..2025-09-30, 1734
    days), and applying it one level up is the change most likely to move a headline
    claim in this project. Needs its own spec; none is drafted.
-3. **Release 3**, phase ids in `planning/` (Tier 0): R3.1 imbalance-settlement
+2. **Release 3**, phase ids in `planning/` (Tier 0): R3.1 imbalance-settlement
    recourse, R3.2 grid-connection cap, R3.3 ancillary co-optimization, R3.4 price
    impact. R2.6's own result argues for **R3.1**: it measured a delivery gap of 4 to
    8 MWh per day on a 2 MWh asset and left it unpriced.

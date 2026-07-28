@@ -4,7 +4,8 @@ Spec: ``docs/specs/R2.1-forecaster.md``; theory summary: ``formulation-uncertain
 Wraps a gradient-boosted base learner in a MAPIE conformal calibrator so the output
 is a **calibrated interval**, not a point. Two methods:
 
-- ``"cqr"`` (default, [ADR-0014](../../docs/decisions/0014-cqr-over-split-conformal.md)) —
+- ``"cqr"`` (default,
+[docs/decisions/cqr-over-split-conformal.md](../../docs/decisions/cqr-over-split-conformal.md)) —
   conformalized quantile regression over three prefit LightGBM quantile models
   ``[lower, upper, median]``; interval width adapts to the (heteroscedastic) price.
 - ``"split"`` — split conformal over one point model; constant-width baseline.

@@ -11,8 +11,10 @@ Spec: ``docs/specs/R1.4c-ingestion-guard.md``. Where the R1.5 breaker wraps the
 
 On either failure class the guard falls back to the last-known-good cached
 series and logs the specific check that fired, so an operator sees *which layer*
-failed (ADR-0012). A schedule later computed on a substituted series is degraded,
-not healthy — the shared vocabulary that lets the two breakers compose (ADR-0013).
+failed (docs/decisions/separate-ingestion-breaker.md). A schedule later computed on a substituted
+series is degraded,
+not healthy — the shared vocabulary that lets the two breakers compose
+(docs/decisions/separate-ingestion-breaker.md).
 
 **The domain trap (designed-in):** zero and negative day-ahead prices are
 legitimate in BE/NL (high-renewable windows). The checks therefore key on feed
@@ -40,7 +42,8 @@ _logger = logging.getLogger(__name__)
 # Default sanity band = EPEX SDAC harmonised clearing-price limits + headroom:
 # min −600 €/MWh (from 2026-05-28), max 4000 €/MWh base + one +1000 escalation
 # step. A value outside this cannot be a real day-ahead clearing price. This is a
-# market technical bound, not the year-specific §5 revenue band (spec / ADR-0012).
+# market technical bound, not the year-specific §5 revenue band (spec /
+# docs/decisions/separate-ingestion-breaker.md).
 DEFAULT_SANITY_BAND: tuple[float, float] = (-600.0, 5000.0)
 
 # Stuck-feed thresholds, in wall-clock hours (converted to a slot count per the
@@ -295,7 +298,8 @@ def _degraded(
     ``reason`` is the stable, greppable token; ``detail`` carries the underlying
     diagnosis (e.g. the validator's message) into the log and the hard-stop error.
     Without it the operator sees only the token, which for a fetch-path schema
-    failure is the same string for every cause: exactly the conflation ADR-0012
+    failure is the same string for every cause: exactly the conflation
+    docs/decisions/separate-ingestion-breaker.md
     exists to prevent.
     """
     _logger.warning(
@@ -359,7 +363,8 @@ def guarded_fetch(
 def compose_provenance(feed_status: FeedStatus, solve_mode: str) -> str:
     """Combine ingestion status and solver mode into one overall provenance label.
 
-    The shared degradation vocabulary of ADR-0013: a schedule solved on non-healthy
+    The shared degradation vocabulary of docs/decisions/separate-ingestion-breaker.md: a schedule
+    solved on non-healthy
     (e.g. stale fallback) data is degraded *regardless* of the solver mode, so a
     consumer cannot read ``mode="optimal"`` and conclude the result is trustworthy.
     Returns ``"healthy"`` only when the feed is healthy *and* the solver returned an

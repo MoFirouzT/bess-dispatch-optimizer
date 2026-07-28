@@ -1,4 +1,4 @@
-# ADR-0018: Fast forward selection is the primary reducer; k-means is the compared baseline
+# Fast forward selection is the primary reducer; k-means is the compared baseline
 
 **Status:** Accepted
 **Date:** 2026-07-08
@@ -19,7 +19,7 @@ Use **fast forward selection** (Heitsch-Römisch) as the primary reducer: greedi
 the kept set to minimize the Kantorovich distance to the original, then redistribute each
 deleted atom's probability to its nearest kept atom. Keep **k-means** (centroids as
 representatives, cluster mass as probability) as the baseline the gate compares against,
-mirroring the CQR-vs-split baseline pattern of [ADR-0014](0014-cqr-over-split-conformal.md).
+mirroring the CQR-vs-split baseline pattern of [CQR over split conformal](cqr-over-split-conformal.md).
 
 ## Rationale
 

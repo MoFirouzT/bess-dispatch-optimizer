@@ -5,7 +5,8 @@ integration): generate + reduce on real ENTSO-E data and assert the trade-off
 curve shape holds. Token-gated: skipped unless `ENTSOE_API_TOKEN` is set;
 deselected in CI via the `integration` marker. Nothing fetched here is committed.
 
-Generation is the residual-path bootstrap (ADR-0017): the "point forecast" is the
+Generation is the residual-path bootstrap (docs/decisions/residual-path-bootstrap.md): the "point
+forecast" is the
 mean real day shape and the residual history is each real day's deviation from it,
 so the generated paths are driven by genuine ENTSO-E intra-day error structure (no
 forecast group needed — `generate_scenarios` only reads `forecast.point`). What it
@@ -49,7 +50,8 @@ def test_generate_and_reduce_trade_off_on_real_prices():
     index = pd.date_range("2026-01-01", periods=24, freq="h", tz="UTC")
 
     # Residual-path bootstrap driven by real data: μ̂ = mean day, residuals = each
-    # real day minus μ̂ (the whole-day error vectors ADR-0017 resamples).
+    # real day minus μ̂ (the whole-day error vectors docs/decisions/residual-path-bootstrap.md
+    # resamples).
     point = pd.Series(days.mean(axis=0), index=index, name="price_eur_mwh")
     residuals = days - point.to_numpy()
     forecast = SimpleNamespace(point=point)  # generate_scenarios only reads `.point`

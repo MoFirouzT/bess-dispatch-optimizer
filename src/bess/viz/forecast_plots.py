@@ -115,7 +115,8 @@ def plot_drift_regions(
         cmap=cmap, norm=norm, shading="auto", alpha=0.55, rasterized=True,
     )  # fmt: skip
 
-    # The two threshold lines the classifier keys on (ADR-0015 precedence).
+    # The two threshold lines the classifier keys on
+    # (docs/decisions/drift-classification-precedence.md precedence).
     ax.axvline(staleness_ratio, color="#264653", lw=1.2, ls="--", alpha=0.7)
     ax.axhline(psi_warn, color="#264653", lw=1.2, ls="--", alpha=0.7)
 

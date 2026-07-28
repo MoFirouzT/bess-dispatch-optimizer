@@ -33,7 +33,8 @@ def synthetic_day_ahead(days: int = 90, seed: int = 42, spread_scale: float = 1.
     peak-to-trough spread without shifting the price level: ``2.0`` is a volatile
     month, the default ``1.0`` the calm one. It lets the band gate run across
     volatility regimes token-free (a *real* volatile slice cannot be committed;
-    see ADR-0005). At the default the arithmetic is untouched, so the series is
+    see docs/decisions/no-committed-market-data.md). At the default the arithmetic is untouched, so
+    the series is
     bit-identical to before the parameter existed.
     """
     rng = np.random.default_rng(seed)

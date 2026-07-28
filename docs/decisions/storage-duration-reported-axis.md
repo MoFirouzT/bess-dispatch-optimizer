@@ -1,4 +1,4 @@
-# ADR-0022: Storage duration is a reported axis for economic and value comparisons
+# Storage duration is a reported axis for economic and value comparisons
 
 **Status:** Accepted
 **Date:** 2026-07-14
@@ -63,7 +63,7 @@ requirement, not a model change.
   README or `formulation.md` must state its duration. The R1.4 reporting note
   ([formulation.md: R1.4](../formulation-evaluation.md#r14-backtest-semantics))
   points here; VSS is defined in
-  [ADR-0007](0007-stochastic-value-requires-risk-or-recourse.md) and R2.3.
+  [stochastic value requires risk or recourse](stochastic-value-requires-risk-or-recourse.md) and R2.3.
 
 ## Failure mode
 

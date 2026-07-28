@@ -7,7 +7,8 @@ recourse budget ``|g^(s) − g^DA| ≤ ρ·P̄``. The objective is the CVaR mean
 combination ``(1−λ)·E[profit] − λ·CVaR_α(loss)`` (Rockafellar-Uryasev). Settling
 the day-ahead volume at the scenario-mean price ``π̄`` and the intraday deviation
 at ``π^(s)`` makes ``g^DA`` enter only through the budget, so a finite ρ gives a
-strictly positive value of the stochastic solution (§R2.3, ADR-0019/0020).
+strictly positive value of the stochastic solution (§R2.3,
+docs/decisions/risk-aware-two-stage-design.md/0020).
 
 This module imports ``optimizer`` / ``assets`` only (import-linter core chain).
 """

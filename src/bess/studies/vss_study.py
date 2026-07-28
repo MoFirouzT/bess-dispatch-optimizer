@@ -1,7 +1,8 @@
 """Per-window out-of-sample VSS: is VSS > 0 a market property or an instance one? (R2.5)
 
 Formulation: ``docs/formulation-evaluation.md`` § R2.5; spec:
-``docs/specs/R2.5-value-evaluation.md``. Repeats the ADR-0021 measurement over
+``docs/specs/R2.5-value-evaluation.md``. Repeats the docs/decisions/risk-aware-two-stage-design.md
+measurement over
 arbitrary UTC-day windows of a real price series, so the reported object is a
 *distribution* rather than a single number. Not sign-asserted: a negative window
 is a finding, not a failure.
@@ -25,7 +26,9 @@ class WindowVSS:
     window_start: pd.Timestamp
     rp_oos: float  # held-out score of the stochastic (RP) commitment
     eev_oos: float  # held-out score of the mean-value (EV) commitment
-    vss_oos: float  # rp_oos − eev_oos; carries no sign guarantee (ADR-0021)
+    # rp_oos − eev_oos; carries no sign guarantee, see
+    # docs/decisions/risk-aware-two-stage-design.md
+    vss_oos: float
 
 
 def vss_across_windows(
@@ -39,7 +42,8 @@ def vss_across_windows(
 ) -> list[WindowVSS]:
     """The per-window out-of-sample VSS distribution (formulation §R2.5).
 
-    Each window repeats the ADR-0021 protocol: fit the RP and EV commitments on
+    Each window repeats the docs/decisions/risk-aware-two-stage-design.md protocol: fit the RP and
+    EV commitments on
     the window's training scenarios, score each fixed (with optimal within-budget
     recourse, the day-ahead leg settling at the training mean) on the realized
     path. The caller reports the distribution; no single-number summary is

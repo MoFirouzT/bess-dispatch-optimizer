@@ -162,7 +162,8 @@ def test_recourse_stays_within_the_budget_of_its_own_branch(seed: int, rho: floa
 
 @pytest.mark.parametrize("k", [0.5, 4.0])
 def test_scale_invariance(k: float) -> None:
-    """Scaling the asset scales the objective by exactly k (ADR-0009, per-unit SoC)."""
+    """Scaling the asset scales the objective by exactly k
+    (docs/decisions/soc-per-unit-in-config.md, per-unit SoC)."""
     scen = _rand_set(0)
     big = _BATT.model_copy(
         update={

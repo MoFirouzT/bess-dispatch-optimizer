@@ -1,4 +1,4 @@
-# ADR-0024: Day-ahead forecast features are aligned contemporaneously to the target
+# Day-ahead forecast features are aligned contemporaneously to the target
 
 **Status:** Accepted
 **Date:** 2026-07-24

@@ -27,7 +27,8 @@ committed. Run locally with: `uv run --group forecast pytest
 tests/integration/test_forecaster_live.py -s` (token loaded).
 
 **What R2.1e added.** The conditional-coverage axis: coverage *per hour of day*, the
-property ADR-0014 chose CQR for and which nothing had ever tested. R2.1e's normalized
+property docs/decisions/cqr-over-split-conformal.md chose CQR for and which nothing had ever tested.
+R2.1e's normalized
 target is gated here against the raw model on identical folds, null-tolerantly. The
 cyclical season encoding and the rolling-stat features were measured and deliberately
 **not** shipped (see the R2.1e spec § "Measured results"), so the shipped model here
@@ -330,7 +331,8 @@ def test_normalization_does_not_worsen_conditional_coverage():
 
     Conformal prediction guarantees only **marginal** coverage, so a forecaster can sit
     exactly on nominal overall while over-covering calm nights and under-covering
-    volatile evening peaks. That is the property ADR-0014 chose CQR for, and until
+    volatile evening peaks. That is the property docs/decisions/cqr-over-split-conformal.md chose
+    CQR for, and until
     R2.1e nothing measured it. R2.1d exposed the symptom from the other side: pooled
     coverage 0.900 with per-fold coverage running 0.617 to 1.000.
 

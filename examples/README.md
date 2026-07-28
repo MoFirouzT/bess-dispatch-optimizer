@@ -108,7 +108,7 @@ Illustrative only (synthetic data): distance to the original set falls smoothly 
 more scenarios are kept, at a reduction cost that grows with the kept count. The
 k-means baseline reaches a slightly lower raw distance (its centroids are averaged
 paths), while forward selection keeps genuine price paths and carries the
-Kantorovich stability guarantee (ADR-0018).
+Kantorovich stability guarantee ([forward selection over k-means](../docs/decisions/forward-selection-over-kmeans.md)).
 
 ## `stochastic_demo.py` (token)
 
@@ -125,7 +125,7 @@ uv run --group examples python examples/stochastic_demo.py
 The frontier trades expected profit for lower downside as risk aversion grows; the
 VSS rises from 0 (no recourse) to a positive interior and falls back toward 0
 (unlimited recourse), which is the escape from the VSS = 0 trap, with a finite
-budget the source of value (ADR-0019 / ADR-0020).
+budget the source of value ([the risk-aware two-stage design](../docs/decisions/risk-aware-two-stage-design.md)).
 
 ## `spike_tail_demo.py` and `conditional_tail_demo.py`
 

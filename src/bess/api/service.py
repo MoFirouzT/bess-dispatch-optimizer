@@ -1,4 +1,5 @@
-"""Dispatch circuit breaker — the serving-side decision logic (ADR-0011).
+"""Dispatch circuit breaker — the serving-side decision logic
+(docs/decisions/dispatch-circuit-breaker.md).
 
 Pure function over ``(prices, spec, dt)`` with injectable ``solve_fn``/``greedy_fn``
 so each branch is testable without HTTP or real solver stress. Two failure classes,

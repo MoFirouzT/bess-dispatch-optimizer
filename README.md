@@ -78,7 +78,7 @@ The numbers below are from a worked example over a 91-day 2024-Q2 ENTSO-E NL day
 
 Rolling is each day's independent optimum (solved empty-to-empty with full knowledge of that day only), so the whole €84 gap to the ceiling (1.0%) is pure cross-day carry: overnight SoC a per-day agent cannot justify without tomorrow's prices. Wear is priced, not ignored: it removes nearly a third of gross ceiling revenue (€11,643 gross → €8,139 net) and cuts the degradation-blind greedy floor harder. Annualized, this volatile quarter puts the net ceiling near €33k per MWh-installed per year; a calmer year sits lower.
 
-Storage duration (energy-to-power ratio) is a reported axis, not a fixed choice: a longer asset arbitrages a flatter slice of the daily spread, so on the same real quarter the annualized ceiling falls from ~€33k/MWh·yr at 1 h to ~€24k at 4 h ([ADR-0022](docs/decisions/0022-storage-duration-reported-axis.md); run [`examples/duration_sweep.py`](examples/duration_sweep.py) for the {1h, 2h, 4h} sweep).
+Storage duration (energy-to-power ratio) is a reported axis, not a fixed choice: a longer asset arbitrages a flatter slice of the daily spread, so on the same real quarter the annualized ceiling falls from ~€33k/MWh·yr at 1 h to ~€24k at 4 h ([the duration study](docs/studies/storage-duration.md); run [`examples/duration_sweep.py`](examples/duration_sweep.py) for the {1h, 2h, 4h} sweep).
 
 ![Optimal dispatch on the widest-spread real day (2024-05-01): the battery charges through the cheap overnight hours and a deeply negative-priced midday, then discharges into the morning and evening price peaks, returning to empty by end of day.](docs/figures/example-dispatch-day.svg)
 
@@ -112,42 +112,27 @@ A spike is a scarcity event, so it does not fall uniformly across the day: it co
 
 ![Conditional scenario tail: historical spike sizes (excess over the threshold) plotted against residual load, with the fitted conditional Generalized Pareto scale rising over the flat unconditional one; spikes are systematically larger on high-residual-load (tight-margin) hours, which the unconditional tail spreads uniformly.](docs/figures/example-conditional-tail.svg)
 
-Reproduce the two tail figures with `uv run --group examples python examples/spike_tail_demo.py` and `examples/conditional_tail_demo.py` (both synthetic by design: they demonstrate the tail mechanism, not a market result). These refinements sharpen the scenario *representation*, but a sharper representation is not the same as more money, and the difference is measured rather than assumed. Running the two-stage dispatch on the tail-augmented scenarios versus the plain bootstrap over real NL days gives a per-window value **centred on zero at every recourse budget**, because the intraday recourse already captures a realized spike after the fact. So the extreme-value tail makes the scenario set more faithful without changing what the battery earns on this asset; the VSS and forecast-value numbers below use the plain bootstrap and the tail leaves them unmoved.
+Reproduce the two tail figures with `uv run --group examples python examples/spike_tail_demo.py` and `examples/conditional_tail_demo.py` (both synthetic by design: they demonstrate the tail mechanism, not a market result).
 
-That machinery only earns its place if it beats simply optimizing against the mean forecast. It does, and not only on a designed instance. Repeating the out-of-sample measurement over **every UTC day of a real NL quarter** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of about +12 EUR** for the 2 MWh / 1 MW study asset, positive on **62% of 63 windows** (quartiles −8 to +33). The negative windows are real and reported: on a calm day the mean-value plan is fine, so the stochastic edge is a distribution, not a constant (R2.5).
+That machinery only earns its place if it beats simply optimizing against the mean forecast. It does, and not only on a designed instance. Repeating the out-of-sample measurement over **every UTC day of a real NL quarter** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of about +12 EUR** for the 2 MWh / 1 MW study asset, positive on **62% of 63 windows**. The negative windows are real and reported: on a calm day the mean-value plan is fine, so the stochastic edge is a distribution, not a constant.
 
 ![Per-window out-of-sample VSS on real NL 2024-Q2 days: a histogram of 63 windows straddling zero with its median clearly positive; the stochastic commitment usually, but not always, beats the mean-value plan out-of-sample.](docs/figures/example-vss-distribution.svg)
 
-Reproduce with `uv run --group examples python examples/vss_study.py` (token, synthetic fallback otherwise).
+Reproduce with `uv run --group examples python examples/vss_study.py` (token, synthetic fallback otherwise). The mechanism, the risk/return frontier, and the full per-window distribution are in [docs/studies/stochastic-value.md](docs/studies/stochastic-value.md).
 
-The forecast layer is also held to a euro standard, not just a statistical one. The R2.5 **forecast-value baseline** feeds the same two-stage dispatch two scenario sets that differ only in the forecast behind them (conformal vs. seasonal-naive, forecaster refit walk-forward) and compares realized-path profit per window. Over the same 63 real windows the answer is a null, and it is reported as one: the FV distribution is **centred on zero** (median −0.9 EUR/window, 49% of windows positive, quartiles −41 to +31), despite the forecaster's clear statistical skill above. Single windows swing ±180 EUR either way, which is why no single-window number is quoted: the scenario spread plus intraday recourse already hedge day-shape error, so point-forecast accuracy adds little further dispatch value. The stochastic *structure* (the VSS above) earns real money; the fancier *forecast* does not yet, and the honest claim is exactly that.
+### What was measured, and what came back null
 
-![Per-window forecast value on real NL 2024-Q2 days: a histogram of 63 windows straddling zero with its median at roughly zero; conformal-forecast scenarios and seasonal-naive scenarios lead to plans of nearly equal realized value.](docs/figures/example-fv-distribution.svg)
+The stochastic *structure* earns money. Three attempts to earn more by feeding it a better picture of tomorrow did not, and they are reported as nulls rather than quietly dropped:
 
-The mechanism behind the VSS is the intraday recourse budget ρ: the value **rises then falls with ρ** (zero recourse and unlimited recourse both collapse to the mean-value plan; the value lives in between). Trading expected profit for downside protection traces a mean-CVaR frontier.
+| Question | Answer |
+| --- | --- |
+| Does a better price forecast earn more euros than a seasonal-naive one? | [**Null.**](docs/studies/forecast-value.md) Centred on zero over 63 real days, despite clear statistical skill |
+| Does pricing unprecedented spikes in the scenarios earn more? | [**Null**](docs/studies/tail-value.md) at every recourse budget |
+| Does a price-contingent bid curve beat a single blind schedule? | [**Null**](docs/studies/bid-curves.md) on euros, but it surfaced an unpriced delivery gap of 4 to 8 MWh per day on a 2 MWh asset |
 
-<table>
-  <tr>
-    <td width="50.7%"><img src="docs/figures/example-vss-curve.svg" alt="Value of the stochastic solution vs. the intraday recourse budget: zero at both ends, strictly positive in between, peaking where recourse is scarce enough to matter but ample enough to adapt."></td>
-    <td width="50%"><img src="docs/figures/example-risk-return-frontier.svg" alt="Mean-CVaR risk/return frontier: raising the risk weight trades expected profit for a smaller downside (CVaR of loss), graded rather than a single point."></td>
-  </tr>
-</table>
+All three share one mechanism: **intraday recourse adjusts after the price is known**, so a sharper day-ahead picture has little left to buy. Each was separated from a broken comparison by a designed instance where the effect *is* detected, and each carries golden and property gates on its scoring arithmetic. The full set, including how the nulls were validated, is in **[docs/studies/](docs/studies/)**.
 
-The VSS and frontier figures are built from real NL day-ahead prices reshaped into daily scenarios; reproduce with `examples/stochastic_demo.py` (token, synthetic fallback otherwise). (The reduction figure above is synthetic by design: it demonstrates the algorithm's trade-off, not a market result.)
-
-Solve time scales benignly on both axes; [`examples/benchmark_scaling.py`](examples/benchmark_scaling.py) reports it (numbers are from a local run, so treat them as relative). The deterministic MILP grows with the horizon (one binary plus a few continuous variables per period); the two-stage program grows with the scenario count (S + 1 coupled copies of the physics), which is exactly the cost the R2.2 reduction (~300 → ~50 paths) keeps bounded:
-
-| Deterministic | Periods | Median solve |
-| --- | --- | --- |
-| 1 day | 24 | ~9 ms |
-| 1 week | 168 | ~29 ms |
-| 1 month | 720 | ~120 ms |
-
-| Two-stage, 24 h | Binaries | Median solve |
-| --- | --- | --- |
-| 10 scenarios | 264 | ~0.5 s |
-| 30 scenarios | 744 | ~1.0 s |
-| 50 scenarios | 1,224 | ~2.0 s |
+Solve time scales benignly on both axes ([details](docs/studies/solve-scaling.md)): the deterministic MILP grows with the horizon, from ~9 ms for a day to ~120 ms for a month, while the two-stage program grows with the scenario count, from ~0.5 s at 10 scenarios to ~2.0 s at 50. That second axis is exactly the cost the R2.2 reduction (~300 → ~50 paths) keeps bounded.
 
 The plotting dependency is optional: `uv sync --group examples` installs it.
 
@@ -193,6 +178,7 @@ Start with [docs/architecture.md](docs/architecture.md) for the map, then dive i
 | [docs/glossary.md](docs/glossary.md) | Domain + optimization terms, each with a common-error note |
 | [docs/market_reference.md](docs/market_reference.md) | How the BE/NL day-ahead market actually works |
 | [docs/references.md](docs/references.md) | Source references, for the phases that use one |
+| [docs/studies/](docs/studies/) | Measured questions about the stack, nulls included |
 | [docs/specs/](docs/specs/) | Per-phase work orders |
 
 Assumes some familiarity with linear/integer programming; battery and power-market terms are defined in the [glossary](docs/glossary.md).

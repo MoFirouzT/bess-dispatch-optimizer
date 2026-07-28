@@ -61,7 +61,7 @@ requirement, not a model change.
 - **Enforced by:** the R1.4 backtest and the R2 evaluation report emit a
   duration-indexed result ({1h, 2h, 4h}); a single-duration headline in the
   README or `formulation.md` must state its duration. The R1.4 reporting note
-  ([formulation.md: R1.4](../formulation.md#r14-backtest-semantics))
+  ([formulation.md: R1.4](../formulation-evaluation.md#r14-backtest-semantics))
   points here; VSS is defined in
   [ADR-0007](0007-stochastic-value-requires-risk-or-recourse.md) and R2.3.
 

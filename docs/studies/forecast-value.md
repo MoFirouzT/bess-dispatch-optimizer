@@ -6,7 +6,7 @@ quartiles −41 to +31), despite the conformal forecaster having clear and measu
 statistical skill over the seasonal-naive baseline it is compared against.
 
 Governing spec: [R2.5](../specs/R2.5-value-evaluation.md); math:
-[formulation-r2.md § R2.5](../formulation-r2.md).
+[formulation-evaluation.md § R2.5](../formulation-evaluation.md).
 
 ## The question
 

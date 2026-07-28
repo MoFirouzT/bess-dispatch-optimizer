@@ -13,8 +13,10 @@ this file maps the system's layers to the code's packages and points to [formula
 ## What the system does
 
 The optimizer takes a **day-ahead price curve** and a **battery spec** (power, energy, efficiency, ramp, SoC window) and returns the revenue-maximizing charge/discharge schedule, formulated as a deterministic MILP and solved with HiGHS.
-Release 1 builds this deterministic core and a leakage-safe backtest around it.
-Release 2 is complete: probabilistic price forecasting with conformal intervals (R2.1), conditioned on day-ahead fundamentals / residual load (R2.1c), with a forecast-drift monitor (R2.1b); scenario generation and reduction (R2.2) with an extreme-value (R2.2b), residual-load-conditional (R2.2c) tail; risk-aware two-stage optimization with intraday recourse (R2.3); dual-based explainability (R2.4); and value-evaluation hardening (R2.5) are all implemented.
+On top of that sit the uncertainty capabilities: a conformal price forecaster conditioned on residual load and watched by a drift monitor, scenario generation with an extreme-value tail, risk-aware two-stage optimization with intraday recourse, and dual-based explainability.
+All eight capabilities are complete and gated.
+
+The `R<n>.<m>` phase IDs used across `docs/specs/` are delivery labels, not architecture; the map between them and the capabilities below is in the [phase ledger](specs/README.md).
 
 ---
 
@@ -22,10 +24,11 @@ Release 2 is complete: probabilistic price forecasting with conformal intervals 
 
 1. [README](../README.md): what the project is and why.
 2. **This file**: the map.
-3. [formulation.md](formulation.md): the math. Start at *Conventions* (the grid-side metering rule), then R1.1.
+3. [formulation.md](formulation.md): the math. Start at *Conventions* (the grid-side metering rule), then R1.1. Uncertainty and evaluation are in its two companion files.
 4. [conventions.md](conventions.md): units, sign/metering, time, naming. Locked; changes need an ADR.
 5. [glossary.md](glossary.md) and [market_reference.md](market_reference.md): domain background, read as needed.
-6. [specs/&lt;phase&gt;.md](specs/): the frozen work order for a given phase, with its test contract.
+6. [studies/](studies/): what the stack was measured to be worth, nulls included.
+7. [specs/&lt;phase&gt;.md](specs/): the frozen work order for a given phase, with its test contract.
 
 ---
 
@@ -44,34 +47,25 @@ forecaster → scenarios ┘
 | --- | --- |
 | `assets` | Physical battery model: `BatterySpec`, the SoC balance and physics constraints it registers on a Pyomo model. |
 | `validation` | Pre-flight feasibility checks (R1.3); structured, typed errors before the solver runs. |
-| `optimizer` | Builds the objective, owns the solve, returns a `Schedule`. The deterministic core (R1.1/R1.2). |
-| `recourse` | Rolling-horizon / MPC re-optimization (R2.3). |
-| `stochastic` | Scenario-based and risk-aware optimization (R2.3). |
-| `explain` | Shadow prices and dispatch explanations (R2.4). |
+| `optimizer` | Builds the objective, owns the solve, returns a `Schedule`. The deterministic core. |
+| `recourse` | Rolling-horizon / MPC re-optimization. |
+| `stochastic` | The risk-aware two-stage program: scenario-based optimization and its decision-value metrics. |
+| `explain` | Shadow prices and dispatch explanations. |
 | `api` | The serving entry point. |
-| `forecaster` | Probabilistic price forecasting (conformal intervals), day-ahead fundamentals features, and a forecast-drift monitor (R2.1/R2.1c/R2.1b). |
-| `scenarios` | Scenario generation from forecasts, with an extreme-value / residual-load-conditional tail, feeding `stochastic` (R2.2/R2.2b/R2.2c). |
+| `forecaster` | Probabilistic price forecasting (conformal intervals), day-ahead fundamentals features, and a forecast-drift monitor. |
+| `scenarios` | Scenario generation from forecasts, with an extreme-value / residual-load-conditional tail, feeding `stochastic`. |
 
-Two layers sit deliberately **outside** the serving chain:
+Three packages sit deliberately **outside** the serving chain, each held there by its own contract:
 
-- `backtest`: an offline evaluation tool (R1.4a). It must not import the serving chain (`api`, `explain`, `stochastic`, `recourse`, `scenarios`, `forecaster`); it drives the optimizer directly.
-- `data`: the ENTSO-E loaders (day-ahead prices, R1.4b; day-ahead load and wind/solar forecasts, R2.1c) and the ingestion guard that wraps the fetch (R1.4c). A leaf: it imports nothing else in `bess`.
+- `backtest`: an offline evaluation tool. It must not import the serving chain (`api`, `explain`, `stochastic`, `recourse`, `scenarios`, `forecaster`); it drives the optimizer directly.
+- `studies`: the multi-window value studies. The contract runs the *other* way, because a study legitimately imports the chain it measures: nothing in the chain may import `studies`. That single forbidden edge is what makes "studies are not the product" a mechanical fact rather than a claim. The seam against `stochastic` is that a function aggregating over windows is a study, while one reporting on a single scenario set belongs to the program.
+- `data`: the ENTSO-E loaders (day-ahead prices; day-ahead load and wind/solar forecasts) and the ingestion guard that wraps the fetch. A leaf: it imports nothing else in `bess`.
 
 The headline invariant is `optimizer ⊥ api` (the optimizer never depends on the serving layer), which the layered contract gives for free.
 
 ---
 
-## Release 1 by concern
-
-The phase numbers are delivery labels and do not line up one-to-one with the layers above.
-Grouped by concern, Release 1 is four blocks:
-
-| Concern | Modules | Phases |
-| --- | --- | --- |
-| Core optimizer | `assets`, `validation`, `optimizer` | R1.1 physics, R1.2 degradation, R1.3 pre-flight validation |
-| Data layer | `data` | R1.4b ENTSO-E loader, R1.4c ingestion guard |
-| Evaluation | `backtest` | R1.4a leakage-safe backtest, baselines, sanity band |
-| Serving | `api` | R1.5 FastAPI wrapper + solver circuit breaker |
+## Two circuit breakers
 
 Two circuit breakers live at **different layers** and must stay separate (see [ADR-0012](decisions/0012-separate-ingestion-breaker.md)):
 the **ingestion** breaker (R1.4c) guards the *fetch* in the `data` leaf, and the **solver** breaker (R1.5) guards the *solve* in `api`.
@@ -84,8 +78,9 @@ The ingestion guard is a data-layer reliability piece, not part of serving.
 The doc set is layered by stability and purpose (the full rule is in [CLAUDE.md](../CLAUDE.md) §2):
 
 - **Tier 1 (public face):** [README](../README.md), this file. Stable, minimal, project-only.
-- **Tier 2 (canonical references):** [formulation.md](formulation.md) (the math), [glossary.md](glossary.md), [references.md](references.md), [decisions/](decisions/) (ADRs: the *why* behind locked choices).
-- **Tier 3 (per-phase work orders):** [specs/](specs/). One per phase: scope, interfaces, and the golden/property test contract.
+- **Tier 2 (canonical references):** the formulation, split by subject into [formulation.md](formulation.md) (the deterministic model and its duals), [formulation-uncertainty.md](formulation-uncertainty.md), and [formulation-evaluation.md](formulation-evaluation.md); plus [glossary.md](glossary.md), [references.md](references.md), and [decisions/](decisions/) (ADRs: the *why* behind locked choices).
+- **Tier 3 (per-phase work orders):** [specs/](specs/). One per phase: scope, interfaces, and the golden/property test contract, indexed by the [phase ledger](specs/README.md).
+- **Findings:** [studies/](studies/). What the measurement protocols returned, nulls included.
 - **Tier 0 (`planning/`):** gitignored, never committed. The master plan lives here.
 
 The governing rule: **one source of truth per fact.**

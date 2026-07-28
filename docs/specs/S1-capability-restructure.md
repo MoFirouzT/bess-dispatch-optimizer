@@ -194,7 +194,7 @@ Only the derived files change:
 | `docs/formulation-evaluation.md` | R1.4 backtest semantics, R2.5 value metrics, R2.6 curve scoring | ~150 lines |
 
 The current split is by release, which cuts through the subject: R2.4's water value is the dual of R1.1's SoC balance and reads next to it, while R1.4's revenue ordering is measurement protocol that reads next to R2.5's.
-`docs/formulation-r2.md` is deleted, and its `CANONICAL` entry in `scripts/lint_docs.py` is replaced by the two new files.
+The old release-split file is deleted, and its `CANONICAL` entry in `scripts/lint_docs.py` is replaced by the two new files.
 
 ### STATE: a ledger, not a journal
 

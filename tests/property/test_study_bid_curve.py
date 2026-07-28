@@ -1,4 +1,4 @@
-"""Property invariants for the R2.6 bid-curve value study (formulation-r2 §R2.6).
+"""Property invariants for the R2.6 bid-curve value study (formulation-uncertainty §R2.6).
 
 - the curve read is monotone and agrees with the branch it came from;
 - obligation scoring generalizes §R2.5's schedule scoring (they agree wherever both

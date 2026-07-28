@@ -20,6 +20,9 @@ underneath it. These make the checkable subset fail loudly instead:
   - ``Depends on:`` IDs name real specs, and the graph is acyclic
   - cross-doc ``file.md#anchor`` links resolve to a real heading
   - specs carry no instruction that was already carried out
+  - a ``formulation*.md §R<n>.<m>`` reference, anywhere in the repo, names a
+    section that file actually has (docstrings included, since the anchor check
+    above only sees Markdown links under ``docs/``)
 
 Scope: committed Markdown under ``docs/`` plus ``README.md``. The em-dash ban
 applies to every file, ``STATE.md`` (a session work log) and the spec template
@@ -49,7 +52,8 @@ ALL_DOCS = sorted((ROOT / "docs").glob("**/*.md")) + [ROOT / "README.md"]
 # Canonical Tier-1/2 docs that must declare what they take as given (rule 5).
 CANONICAL = [
     "docs/formulation.md",
-    "docs/formulation-r2.md",
+    "docs/formulation-uncertainty.md",
+    "docs/formulation-evaluation.md",
     "docs/architecture.md",
     "docs/conventions.md",
     "docs/glossary.md",
@@ -207,6 +211,54 @@ def check_anchors(errors: list[str]) -> None:
                     )
 
 
+def check_formulation_sections(errors: list[str]) -> None:
+    """A `formulation*.md ... §R<n>.<m>` reference names a section that exists there.
+
+    The formulation is split across three files by subject, and the split is invisible
+    to a docstring: naming the wrong companion file next to a section number reads
+    perfectly well and points nowhere. Module and test docstrings are the exposed
+    surface, because the anchor check above only sees Markdown links inside ``docs/``,
+    so a section that moves files leaves every ``src/`` reference to it silently wrong.
+
+    Scope is therefore the whole repository, not just the doc set. ``planning/`` is
+    excluded: it is Tier 0, gitignored, and not ours to keep consistent.
+    """
+    owners: dict[str, set[str]] = {}
+    for path in sorted(ROOT.glob("docs/formulation*.md")):
+        secs = re.findall(r"^## (R\d+\.\d+[a-z]?)\.", path.read_text(encoding="utf-8"), re.M)
+        owners[path.name] = set(secs)
+    if not owners:
+        errors.append("docs: no formulation*.md files found")
+        return
+
+    # `formulation-uncertainty.md` (any quoting) followed by a section marker. The
+    # separator may span one newline, since docstrings wrap mid-reference; matching
+    # over the whole text rather than line by line keeps each reference counted once.
+    ref = re.compile(
+        r"formulation(-[a-z]+)?\.md`{0,2}[^§\n]{0,60}\n?[^§\n]{0,20}§\s?(R\d+\.\d+[a-z]?)"
+    )
+    skip = {
+        ".venv", ".git", ".mypy_cache", ".pytest_cache",
+        ".ruff_cache", ".hypothesis", "planning",
+    }  # fmt: skip
+    for path in sorted(ROOT.rglob("*")):
+        if path.suffix not in {".py", ".md"} or any(s in path.parts for s in skip):
+            continue
+        text = path.read_text(encoding="utf-8")
+        for m in ref.finditer(text):
+            line_no = text.count("\n", 0, m.start()) + 1
+            if "lint-ok" in text.splitlines()[line_no - 1]:
+                continue
+            name = f"formulation{m.group(1) or ''}.md"
+            section = m.group(2)
+            if name not in owners:
+                errors.append(f"{rel(path)}:{line_no}: `{name}` is not a formulation file")
+            elif section not in owners[name]:
+                home = [f for f, s in owners.items() if section in s]
+                where = f"; §{section} lives in {home[0]}" if home else ""
+                errors.append(f"{rel(path)}:{line_no}: `{name}` has no §{section} section{where}")
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -277,6 +329,7 @@ def main() -> int:
 
     check_depends_graph(errors)
     check_anchors(errors)
+    check_formulation_sections(errors)
 
     if errors:
         print("Doc lint: FAIL")

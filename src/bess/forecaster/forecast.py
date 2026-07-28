@@ -1,6 +1,6 @@
 """Probabilistic day-ahead price forecaster: LightGBM + conformal intervals (R2.1).
 
-Spec: ``docs/specs/R2.1-forecaster.md``; theory summary: ``formulation-r2.md`` §R2.1.
+Spec: ``docs/specs/R2.1-forecaster.md``; theory summary: ``formulation-uncertainty.md`` §R2.1.
 Wraps a gradient-boosted base learner in a MAPIE conformal calibrator so the output
 is a **calibrated interval**, not a point. Two methods:
 
@@ -237,7 +237,7 @@ class PriceForecaster:
         # 30 synthetic seeds the median fell outside its interval (12 `lower > point`
         # and 9 `point > upper` points in total). `lower > upper` never occurred, so the
         # *interval* was always valid and no coverage number is affected; what was
-        # violated is the ordering invariant the R2.1 spec and `formulation-r2.md` §R2.1
+        # violated is the ordering invariant the R2.1 spec and `formulation-uncertainty.md` §R2.1
         # both assert. The old `test_interval_ordering` passed on one lucky seed; it is
         # now swept over seeds so it cannot pass by luck again.
         #

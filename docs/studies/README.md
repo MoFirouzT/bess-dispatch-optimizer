@@ -7,7 +7,7 @@ forbids the serving layers from reaching into it.
 
 *Assumes:*
 the capability map in [architecture.md](../architecture.md);
-the evaluation semantics in [formulation-r2.md](../formulation-r2.md) § R2.5;
+the evaluation semantics in [formulation-evaluation.md](../formulation-evaluation.md) § R2.5;
 each page names the spec that governs its method.
 
 ---

@@ -1,4 +1,4 @@
-"""Golden oracles for R2.6: price-contingent day-ahead bid curves (formulation-r2 §R2.6).
+"""Golden oracles for R2.6: price-contingent day-ahead bid curves (formulation-uncertainty §R2.6).
 
 Every number below is hand-computed on a designed instance, not read off a solver.
 The arithmetic is deliberately trivial: a 2 MWh / 1 MW battery at eta = 1 with

@@ -6,7 +6,7 @@ On 33 real Dutch days the bid-curve value has a **median of −0.00 EUR at ρ = 
 positive). The number that is **not** null is the delivery gap.
 
 Governing spec: [R2.6](../specs/R2.6-bid-curves.md); math:
-[formulation-r2.md § R2.6](../formulation-r2.md).
+[formulation-uncertainty.md § R2.6](../formulation-uncertainty.md).
 
 ## The question
 

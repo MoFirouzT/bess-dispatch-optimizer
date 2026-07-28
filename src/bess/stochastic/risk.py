@@ -1,6 +1,6 @@
 """CVaR of a discrete loss distribution (Rockafellar-Uryasev).
 
-Formulation: ``docs/formulation-r2.md`` § R2.3. Pure numpy; the exact discrete
+Formulation: ``docs/formulation-uncertainty.md`` § R2.3. Pure numpy; the exact discrete
 Conditional Value-at-Risk and its Value-at-Risk minimiser, used both as the
 gate's hand-checkable oracle and to score a solved two-stage schedule.
 """

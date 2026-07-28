@@ -1,4 +1,4 @@
-"""Golden oracles for the R2.6 bid-curve value study (formulation-r2 §R2.6, evaluation).
+"""Golden oracles for the R2.6 bid-curve value study (formulation-uncertainty §R2.6, evaluation).
 
 Two things are pinned here, both exactly:
 

@@ -1,4 +1,4 @@
-"""Property invariants for R2.6: price-contingent bid curves (formulation-r2 §R2.6).
+"""Property invariants for R2.6: price-contingent bid curves (formulation-uncertainty §R2.6).
 
 Structural guarantees the delta promises for *any* scenario set:
 

@@ -1,9 +1,9 @@
 """Bid-curve value: does a price-contingent commitment beat a blind schedule? (R2.6)
 
-Spec: ``docs/specs/R2.6-bid-curves.md``; formulation: ``docs/formulation-r2.md``
-§ R2.6 (evaluation semantics). Compares a monotone (price, quantity) curve
-resolved at the realized clearing price against a single scalar schedule, both
-fitted on the same training set and scored identically.
+Spec: ``docs/specs/R2.6-bid-curves.md``; formulation:
+``docs/formulation-uncertainty.md`` § R2.6 (evaluation semantics). Compares a
+monotone (price, quantity) curve resolved at the realized clearing price against a
+single scalar schedule, both fitted on the same training set and scored identically.
 
 Not sign-asserted; the measured value was a null. The quantity that was not null
 is the **delivery gap**, reported beside each profit: volume promised and not
@@ -61,7 +61,7 @@ def bid_curve_value_from_sets(
     training set (the only difference is ``bid_curve``), the curve is resolved at the
     realized clearing prices, and both are scored the same way: as quantity
     obligations entering the recourse budget, with the recourse dispatch carrying the
-    R1.1 physics (formulation-r2 § R2.6). Scoring them identically is what makes the
+    R1.1 physics (formulation-uncertainty § R2.6). Scoring them identically is what makes the
     difference attributable to contingency rather than to the evaluation.
 
     The delivery gap ``Σ_t |g_t − g^DA_t|`` is reported beside each profit: it is the

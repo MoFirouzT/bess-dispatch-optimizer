@@ -1,6 +1,6 @@
 """Scenario generation: residual-path bootstrap off the R2.1 forecast (R2.2).
 
-See ``docs/formulation-r2.md`` § R2.2 and ADR-0017. A scenario is a full-horizon
+See ``docs/formulation-uncertainty.md`` § R2.2 and ADR-0017. A scenario is a full-horizon
 price path ``π^(s) = μ̂ + r^(j)`` where ``r^(j)`` is a whole-day forecast-error
 vector resampled (with replacement) from the forecaster's residual history.
 Resampling whole vectors preserves the intra-day error correlation.

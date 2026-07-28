@@ -1,6 +1,6 @@
 """Risk-aware two-stage dispatch over a scenario set (R2.3).
 
-Formulation: ``docs/formulation-r2.md`` § R2.3. A non-anticipative day-ahead net
+Formulation: ``docs/formulation-uncertainty.md`` § R2.3. A non-anticipative day-ahead net
 schedule ``g^DA`` (first stage) plus per-scenario recourse dispatch ``g^(s)``
 (second stage, full R1.1 physics at the realised price ``π^(s)``), coupled by a
 recourse budget ``|g^(s) − g^DA| ≤ ρ·P̄``. The objective is the CVaR mean-risk

@@ -1,15 +1,16 @@
-# BESS Dispatch Formulation, Release 2
+# BESS Dispatch Formulation: uncertainty
 
-*The single source of truth for the Release-2 optimization math.*
+*The single source of truth for how the project represents and optimizes under price uncertainty.*
 
-Continues [formulation.md](formulation.md), which holds the preamble, the house conventions, the model at a glance, and the Release-1 sections (R1.1 to R1.4).
-The split happened when the single file reached its 600-line cap; no math changed with it.
-The same rules apply here: specs, the README, and ADRs **point here**, they never restate equations, and each phase that changes the optimizer math appends a section.
+Companion to [formulation.md](formulation.md), which holds the preamble, the house conventions, the deterministic model, and the duals read off it.
+This file holds the forecast, the scenario representation, the two-stage program, and the bid curve: everything whose subject is *not knowing the price*.
+Measurement protocols live in [formulation-evaluation.md](formulation-evaluation.md).
+The same rules apply here: specs, the README, and ADRs **point here**, they never restate equations.
 
 *Assumes: [formulation.md](formulation.md) and the house notation in [Conventions](conventions.md) (grid-side power, per-unit SoC, `π / e / η / Δt`).
 The R1.1 dispatch model is reused unchanged as the per-scenario physics throughout; battery and power-market terms are defined in the [glossary](glossary.md).*
 
-GitHub renders the `$$…$$` LaTeX below. The changelog for both files is at the end of [formulation.md](formulation.md#changelog).
+GitHub renders the `$$…$$` LaTeX below. The changelog for all three files is at the end of [formulation.md](formulation.md#changelog).
 
 ---
 
@@ -114,96 +115,6 @@ The gate is: measured VSS $> 0$ **out-of-sample** on the designed value-generati
 **Considered but out of scope:** the Bertsimas-Sim $\Gamma$-budget robust counterpart (an alternative to CVaR, noted not built; [ADR-0020](decisions/0020-cvar-mean-risk-over-robust.md)); hard chance constraints as a separate mechanism (the soft CVaR objective stands in); multistage ($>2$-stage) trees; Benders / L-shaped decomposition (R2.4 / optional Julia); an explicit intraday order-book or imbalance-settlement market model (the recourse re-trades against a realized price, it does not model market microstructure; R3 scope).
 
 **Forecast-value baseline.** The metrics above measure the value of *stochastic optimization* (VSS), but not the value of *forecast skill*: R2.1/R2.2 score the forecaster statistically, and R2.3 optimizes over whatever scenario set it is handed. The baseline that closes that loop, running the same two-stage dispatch on scenarios from a seasonal-naive forecast versus the R2.1 conformal forecast and comparing realized-price profit in euros, is built in §R2.5 below.
-
----
-
-## R2.4. Shadow-price explainability (derived; no optimizer change)
-
-*No governing reference; standard LP duality.
-The water value and no-trade band below are algebraic corollaries of R1.1/R1.2 stationarity, not imported.
-The term "water value" is borrowed from hydro-thermal scheduling as context only; see [references.md: R2.4](references.md#r24-shadow-price-explainability).*
-
-This section adds **no constraints, variables, or objective terms**.
-It records the dual quantities the explainability layer ([specs/R2.4-explainability.md](specs/R2.4-explainability.md)) reads off the *solved* R1.1/R1.2 dispatch. If the code and this derivation ever disagree, this governs.
-
-**A MILP has no duals, so fix-and-resolve.** The dispatch is a MILP (the binary $u_t$, constraint (3)), which has no LP dual. Take the optimal commitment $u^\star$, fix it, and re-solve the resulting LP; its duals are the reported values. Fixing $u=u^\star$ restricts the feasible set to a subset that still contains the MILP optimum, so the LP optimum equals it exactly, and the duals are valid for perturbations too small to change $u^\star$.
-
-### The water value
-
-Let $\mu_t$ (€/MWh) be the dual of the SoC balance (1). It is the marginal value of one extra MWh stored at the end of $t$: $\mu_1 = \partial V^\star/\partial e_0$. Stationarity in $e_t$ gives $\mu_t = \mu_{t+1} + \beta_t$, where $\beta_t$ is the net SoC-bound multiplier at $t$, so
-
-$$\boxed{ e_{\min} < e_t < e_{\max} \implies \mu_t = \mu_{t+1}. }$$
-
-The water value is **flat while SoC is interior** and steps only where the battery hits a bound, so one number explains a whole run of periods.
-
-**$\mu$ belongs to the chosen optimum, not to the price path.** Where $V^\star$ has a kink in $e_0$ its subdifferential is an interval and every point of that interval is a valid marginal value; where the *primal* optimum is non-unique, two equally optimal dispatches report different endpoints of it. A worked instance: $\pi=[0,-1,-1,0,0,0]$ on a 0.75 MWh / 2 MW asset ($\eta=1$, $e_0=e^{\mathrm{tgt}}$ half full, $\Delta t=0.5$) empties at $t_1$ and is then paid to absorb one full charge, which it can take at $t_2$ **or** $t_3$ for the same objective; the plan that charges at $t_2$ reports $\mu_2=-1$ and the plan that idles there reports $\mu_2=0$. So a claim of the form "$\mu$ is invariant under a transformation that leaves the price path alone" holds **only where the transformation leaves the dispatch alone**, which is the same kink caveat the finite-difference check carries. The tie-break invariance of [ADR-0023](decisions/0023-milp-dual-resolve-rule.md) detects the ambiguity only when it surfaces as a negative-priced idle period; a plan that trades through the kink cannot see it.
-
-### The no-trade band
-
-Stationarity in $p^{ch}_t, p^{dis}_t$ with the R1.2 wear $D_t = c^{deg}\tau_t$ gives the sign conditions $p^{ch}_t > 0 \implies \pi_t \le \eta^{ch}(\mu_t - c^{deg})$ and $p^{dis}_t > 0 \implies \pi_t \ge (\mu_t + c^{deg})/\eta^{dis}$, so the battery idles exactly when
-
-$$\boxed{ \eta^{ch}\bigl(\mu_t - c^{deg}\bigr) \le \pi_t \le \frac{\mu_t + c^{deg}}{\eta^{dis}}. }$$
-
-The band's width is created by round-trip loss and wear, not by the price; at $\eta^{rt}=1, c^{deg}=0$ it collapses to $\pi_t = \mu_t$ (exact indifference). A **transaction cost** $\kappa$ per grid-side MWh widens it flat by $\kappa$ on each side (outside the $\eta$ factors, as a market fee on grid energy, unlike the $\eta$-scaled wear), giving a per-trade **breakeven slippage** (the margin by which an executed trade clears its $\kappa=0$ threshold, $\ge 0$ by optimality). This is a read-off from the solved schedule, not a re-optimization: it changes no objective term.
-
-### The idle tie-break (gate-critical)
-
-At an idle period both $u_t=0$ and $u_t=1$ are optimal, and constraint (3) gates each direction on $u_t$, so the solver's arbitrary tie-break moves the reported $\mu_t$. The shipped rule **relaxes both exclusion caps to the natural power caps $\bar P^{ch}, \bar P^{dis}$ at idle periods with $\pi_t \ge 0$** (which imposes both band edges at once and recovers $\partial V^\star/\partial e_0$), keeps $u^\star$ fixed at negative-priced idle periods, and **asserts the re-solved LP objective equals the MILP's** on every solve ([ADR-0023](decisions/0023-milp-dual-resolve-rule.md)). The restriction is necessary: at $\eta^{rt}<1$ a freed idle period at a negative price runs a SoC-neutral round trip the market pays for, which R1.1's exclusion forbids, so the relaxed LP would beat the MILP by $\sum_{t\text{ idle},\pi_t<0}\lvert\pi_t\rvert(1-\eta^{ch}\eta^{dis})\bar P\Delta t$; the equality assertion is the guard. A band is reported only where $\mu_t$ is **tie-break invariant** (both tie-breaks agree, tested with one extra LP), a property of the flat run.
-
-### Worked example (ties to golden oracle 1)
-
-$T=3$, $\pi=[10,100,200]$, a 1 MW / **2 MWh** battery, $e_0=e^{\mathrm{tgt}}=0$, $\eta=1$, ramp off, no wear. The MILP charges at $t_1$, **idles at $t_2$**, discharges at $t_3$; objective 190. The water value is $\mu=[100,100,100]$ (SoC stays interior, so it is flat), equal to $\partial V^\star/\partial e_0=100$: a marginal stored MWh clears at $t_2$'s price, not $t_3$'s (power is already capped at $t_3$). The two rejected tie-break rules report 200 and 10 at the *same* objective 190, which is why oracle 1 pins the rule. Breakeven slippage is $100-10=90$ at the charge and $200-100=100$ at the discharge.
-
-**Considered but out of scope:** duals of the R2.3 two-stage program (a different object, pricing the recourse budget); parametric ranging (how far $\pi_t$ moves before $u^\star$ changes); a transaction cost as an *objective term* (re-optimizing under $\kappa$, its own future delta, distinct from the read-off above); Benders / L-shaped decomposition; bid-curve construction from the water value (R3).
-
----
-
-## R2.5. Value evaluation hardening (evaluation semantics; no optimizer change)
-
-*No governing reference:
-the quantities below are evaluation protocols over the existing §R2.3 program (Birge-Louveaux metrics under the §R1.4 leakage discipline) plus the standard quantile (pinball) loss.
-See [references.md: R2.3](references.md#r23-risk-aware-two-stage-dispatch--intraday-recourse) for the underlying machinery.*
-
-This section adds **no constraints, variables, or objective terms**.
-It defines the three quantities the evaluation layer ([specs/R2.5-value-evaluation.md](specs/R2.5-value-evaluation.md)) reports over the existing optimizer;
-if code and this section disagree, this governs.
-
-### Per-window out-of-sample VSS (a distribution, not a number)
-
-R2.3's gate measured VSS $>0$ out-of-sample on a *designed* value-generating instance.
-This protocol asks whether that value is a property of the market rather than of the design, by repeating the ADR-0021 measurement over arbitrary real delivery windows.
-
-A **window** $w$ is a UTC calendar day (the §R1.4 boundary) with realized price path $y^{(w)}$.
-Its **training scenario set** $S_w$ is $n$ equiprobable day-paths drawn with replacement from the $H$ complete days strictly before $w$ (an empirical bootstrap over recent day shapes; the §R1.4 information set, so nothing at or after $w$ enters).
-Fit both first-stage commitments on $S_w$: $g^{RP}$ (risk-neutral two-stage optimum) and $g^{EV}$ (deterministic solve at the mean path $\bar\pi_w$ of $S_w$).
-Score each commitment fixed, with optimal within-budget recourse, on the single realized path (an $S=1$ evaluation set), the day-ahead leg settling at $\bar\pi_w$ for both, exactly the ADR-0021 protocol:
-
-$$\boxed{ \mathrm{VSS}_w = v_w\bigl(g^{RP}\bigr) - v_w\bigl(g^{EV}\bigr), }$$
-
-where $v_w(g)$ is that held-out score. $\mathrm{VSS}_w$ carries no sign guarantee (out-of-sample, per ADR-0021); the reported object is the **empirical distribution** $\{\mathrm{VSS}_w\}$ over all windows with enough history (median, quartiles, share $>0$), never a single number.
-
-### Forecast value (euros, not statistics)
-
-The same fixed-commitment scoring, applied to two scenario sets that differ **only in the forecast** feeding the §R2.2 residual-path bootstrap: the R2.1 conformal forecast (its point path and residual history) versus a seasonal-naive forecast (same hour one week prior, with its own residual history).
-With $g^{\text{conf}}$ and $g^{\text{naive}}$ the risk-neutral two-stage commitments fit on the respective sets,
-
-$$\boxed{ \mathrm{FV} = v\bigl(g^{\text{conf}}\bigr) - v\bigl(g^{\text{naive}}\bigr). }$$
-
-FV is distinct from EV/EEV (which use one set's mean rather than contrasting forecasters) and is **reported with provenance, not asserted positive**: whether forecast skill converts to dispatch euros on a given window is the finding the protocol exists to measure.
-Like the VSS above, FV is reported **per window as a distribution** (median, quartiles, share $>0$) over all scoreable UTC days, with the forecaster refit walk-forward (fit strictly before each block of windows); a single window's sign is noise, the distribution's center is the finding.
-
-### Pinball (quantile) loss and skill
-
-For target $y$, quantile prediction $\hat q$ at level $\tau\in(0,1)$:
-
-$$\boxed{ \ell_\tau(y,\hat q) = \max\{\tau (y-\hat q),\ (\tau-1)(y-\hat q)\} }$$
-
-averaged over a §R1.4-style walk-forward test block, reported at the R2.1 interval edges $\tau=\alpha/2,\ 1-\alpha/2$.
-The **skill ratio** divides the conformal forecaster's loss by the seasonal-naive predictor's at the same $\tau$; below 1 means skill.
-Sanity identity: at $\tau=\tfrac12$ the pinball loss equals half the mean absolute error.
-This gives R2.1 an *accuracy* number beside its *calibration* (coverage) number; the two are independent axes (a wide, well-calibrated interval has coverage without skill).
-
-**Considered but out of scope:** CRPS and full-distribution scores (pinball at the shipped interval edges matches what R2.1 emits); formal significance testing of forecast-accuracy differences (Diebold-Mariano); retraining-cadence optimization (§R2.1b owns the drift decision); an intraday/imbalance settlement model (the scoring reuses §R2.3's two-price construction).
 
 ---
 

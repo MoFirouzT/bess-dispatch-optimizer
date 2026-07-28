@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-332_(311_CI_%2B_21_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-402_(373_CI_%2B_29_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -32,34 +32,26 @@ $$e_t = e_{t-1} + \eta^{ch} p^{ch}_t \Delta t - \tfrac{p^{dis}_t}{\eta^{dis}} \D
 plus power, energy, and ramp limits, a binary that forbids simultaneous charge and discharge, and a terminal-SoC target. The degradation cost $D_t = c^{deg} \tau_t$ is linear in per-period storage-side throughput (the linear DoD-stress case of the Xu 2018 / Shi 2017 cycle-based model), so it stays native to the LP. Release 2 extends this into a two-stage stochastic program with a CVaR risk term and intraday recourse (§R2.3).
 
 The one non-obvious design choice is that **all power is metered grid-side**, so degradation is a cost subtracted from cash rather than an efficiency factor, and never touches the SoC balance.
-The complete model, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md) (start with its "Model at a glance" summary); the Release 2 sections live alongside it in [docs/formulation-r2.md](docs/formulation-r2.md).
+The complete model, every constraint, and the governing references are in [docs/formulation.md](docs/formulation.md) (start with its "Model at a glance" summary); the uncertainty layer is in [docs/formulation-uncertainty.md](docs/formulation-uncertainty.md) and the measurement protocols in [docs/formulation-evaluation.md](docs/formulation-evaluation.md).
 
 ## Status
 
-**Deterministic core and serving (Release 1), complete**, gated by golden + property tests:
+Both releases are complete and gated by golden + property tests. Eight capabilities:
 
-- **R1.1**: deterministic MILP dispatch core
-- **R1.2**: linear degradation cost on throughput
-- **R1.3**: pre-flight feasibility checks
-- **R1.4** (backtest, data, and data reliability):
-  - **R1.4a**: walk-forward backtest with greedy / rolling / perfect-foresight baselines
-  - **R1.4b**: live ENTSO-E day-ahead loader (BE/NL)
-  - **R1.4c**: anomaly-aware ingestion guard, a *second* circuit breaker on the data feed, classifying each fetch outage / anomalous-but-present / healthy before it can reach the solver
-- **R1.5**: FastAPI dispatch service with a graceful-degradation circuit breaker (greedy fallback on solver timeout), Dockerized
+| Capability | What it does |
+| --- | --- |
+| **Dispatch core** | The deterministic MILP: grid-side physics, a linear wear cost on throughput, and closed-form feasibility checks ahead of the solver |
+| **Backtest** | Walk-forward evaluation against greedy, rolling, and perfect-foresight baselines, with a provable ordering between them |
+| **Data feed** | Live ENTSO-E day-ahead loader (BE/NL) behind an anomaly-aware ingestion guard, a *second* circuit breaker that classifies every fetch before it can reach the solver |
+| **Serving** | FastAPI dispatch service with a graceful-degradation breaker (greedy fallback on solver timeout), Dockerized |
+| **Price forecaster** | LightGBM quantile models under conformal prediction for calibrated day-ahead price *intervals* (**~90% empirical coverage** on real NL), conditioned on **residual load** (**~17%** lower pinball loss), watched by a drift monitor that attributes degradation to a regime shift, staleness, or miscalibration |
+| **Scenario generation** | Residual-path bootstrap into probability-weighted price paths, reduced ~300 → ~50 within a Kantorovich tolerance, with an extreme-value tail that prices spikes beyond the historical maximum (realized prices above the generator's ceiling fall from **7.4% to 1.0%**) and concentrates them on tight-margin hours |
+| **Stochastic dispatch** | A CVaR mean-risk two-stage MILP with intraday MPC recourse, whose **value over a mean-forecast plan is measured out of sample** |
+| **Dispatch explainability** | The state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades |
 
-**Release 2 (forecasting → stochastic optimization), complete**, gated by golden + property tests:
+Alongside these, seven [studies](docs/studies/) measure what the stack is worth. Four came back null, and are reported as nulls.
 
-- **R2.1**: probabilistic price forecaster: LightGBM quantile models wrapped in conformal prediction (MAPIE) for calibrated day-ahead price *intervals*; on real NL prices the nominal 90% interval achieves **~89% empirical coverage** under a leakage-safe walk-forward (see [Value under uncertainty](#value-under-uncertainty-release-2))
-- **R2.1b**: rolling drift monitor: attributes a degrading forecast to a *regime shift* (wait), *model staleness* (retrain), or *miscalibration* (recalibrate), so the flag is actionable
-- **R2.1c**: exogenous day-ahead fundamentals features: ENTSO-E load and wind/solar forecasts combined into **residual load** (the supply-stack position that actually drives price), which cuts the forecaster's walk-forward pinball loss by **~17%** on real NL while holding nominal coverage (see [Value under uncertainty](#value-under-uncertainty-release-2))
-- **R2.2**: scenario generation and reduction: residual-path bootstrap into probability-weighted price paths, reduced ~300 → ~50 within a Kantorovich tolerance
-- **R2.2b**: extreme-value scenario tail: a peaks-over-threshold Generalized Pareto fit spliced onto the residual bootstrap, so scenarios can price spikes beyond the historical maximum (realized spikes above the plain generator's support ceiling fall from **7.4% to 1.0%** on real NL)
-- **R2.2c**: residual-load-conditional tail: the spike scale rises with residual load, so spikes concentrate on tight-margin hours (a measured **~69%** heavier tail on tight versus slack hours on real NL)
-- **R2.3**: risk-aware two-stage dispatch with intraday MPC recourse: a CVaR mean-risk MILP with a measured **value of the stochastic solution (VSS) > 0** out-of-sample, plus a risk/return frontier (see [Value under uncertainty](#value-under-uncertainty-release-2))
-- **R2.4**: dual-based explainability: the state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades (see [Why it holds](#why-it-holds-release-2))
-- **R2.5**: value evaluation hardening: the VSS re-measured as a **per-window distribution** over real NL days (median positive, ~62% of windows), a **forecast-value baseline** in euros whose per-window distribution comes out centred on zero (a null reported as a null), and **pinball skill** reported beside coverage (see [Value under uncertainty](#value-under-uncertainty-release-2))
-- **R2.5b**: tail dispatch value: whether the R2.2b/R2.2c scenario tail earns real euros, measured the same way as the forecast-value baseline; the per-window value is **centred on zero at every recourse budget** (another null, reported as one: the intraday recourse already captures a realized spike), so the scenario generator is refined enough
-- **R2.6**: price-contingent **bid curves**: a day-ahead auction takes a monotone (price, quantity) curve per hour, not a schedule, so the commitment becomes a function of that hour's clearing price. Value on real NL days is **another null**, and the number that is not null is the **delivery gap**: the commitment promises several times the battery's capacity over a day and does not deliver it, which imbalance settlement would price
+The phase-by-phase build record, including what each phase concluded, is the [phase ledger](docs/specs/README.md).
 
 ## Example results
 
@@ -138,7 +130,7 @@ The plotting dependency is optional: `uv sync --group examples` installs it.
 
 ### Why it holds (Release 2)
 
-A schedule says *what* the battery does; the dual of the state-of-charge balance says *why*. That shadow price is the **water value**: the marginal worth of a stored MWh, borrowed from hydro-reservoir scheduling. It is flat while the battery is neither full nor empty and steps at a SoC bound, and it defines a **no-trade band** on price: charge only below the band, discharge only above it, hold in between. The band's width comes from round-trip loss and wear, not from the price, so an idle hour at a high price is explained rather than asserted, and each executed trade reports its breakeven slippage. `POST /explain` returns the schedule and this explanation from a single solve; the details are in [formulation-r2.md §R2.4](docs/formulation-r2.md#r24-shadow-price-explainability-derived-no-optimizer-change) and [ADR-0023](docs/decisions/0023-milp-dual-resolve-rule.md).
+A schedule says *what* the battery does; the dual of the state-of-charge balance says *why*. That shadow price is the **water value**: the marginal worth of a stored MWh, borrowed from hydro-reservoir scheduling. It is flat while the battery is neither full nor empty and steps at a SoC bound, and it defines a **no-trade band** on price: charge only below the band, discharge only above it, hold in between. The band's width comes from round-trip loss and wear, not from the price, so an idle hour at a high price is explained rather than asserted, and each executed trade reports its breakeven slippage. `POST /explain` returns the schedule and this explanation from a single solve; the details are in [formulation.md §R2.4](docs/formulation.md#r24-shadow-price-explainability-derived-no-optimizer-change) and [ADR-0023](docs/decisions/0023-milp-dual-resolve-rule.md).
 
 ![Water value and no-trade band over a day: the shadow price of stored energy (flat within a run, stepping at SoC bounds) and the shaded price band it induces; at the €175 hour the price sits inside the band, so the battery idles and holds its charge for the later €200 peak.](docs/figures/example-water-value.svg)
 
@@ -173,7 +165,8 @@ Start with [docs/architecture.md](docs/architecture.md) for the map, then dive i
 | Doc | What it is |
 | --- | --- |
 | [docs/formulation.md](docs/formulation.md) | **The math**: single source of truth for every constraint and objective term (Release 1; preamble, conventions, changelog) |
-| [docs/formulation-r2.md](docs/formulation-r2.md) | The same, for Release 2: forecasting, scenarios, the two-stage program, duals, evaluation, bid curves |
+| [docs/formulation-uncertainty.md](docs/formulation-uncertainty.md) | Not knowing the price: forecast, scenarios, the two-stage program, bid curves |
+| [docs/formulation-evaluation.md](docs/formulation-evaluation.md) | What a reported number means: backtest information set, revenue ordering, value protocols |
 | [docs/conventions.md](docs/conventions.md) | Locked conventions: units, sign/metering, time, naming |
 | [docs/glossary.md](docs/glossary.md) | Domain + optimization terms, each with a common-error note |
 | [docs/market_reference.md](docs/market_reference.md) | How the BE/NL day-ahead market actually works |

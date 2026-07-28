@@ -1,6 +1,6 @@
 """stochastic — risk-aware (CVaR mean-risk) two-stage dispatch + VSS reporting.
 
-Formulation: ``docs/formulation-r2.md`` § R2.3. Optimizes dispatch over a
+Formulation: ``docs/formulation-uncertainty.md`` § R2.3. Optimizes dispatch over a
 ``scenarios.ScenarioSet`` with a non-anticipative day-ahead commitment and
 budget-limited intraday recourse, and measures the value of the stochastic
 solution. Imports ``recourse`` / ``optimizer``; fed by ``forecaster`` /

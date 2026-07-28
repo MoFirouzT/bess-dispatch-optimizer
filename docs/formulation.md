@@ -2,7 +2,8 @@
 
 *The single source of truth for the optimization math.*
 
-This file holds the canonical mathematics of the optimizer.
+This file holds the canonical mathematics of the **deterministic** model: the physics, the wear cost, the feasibility conditions it implies, and the dual quantities read off a solved dispatch.
+Uncertainty (forecast, scenarios, the two-stage program, bid curves) is in [formulation-uncertainty.md](formulation-uncertainty.md); measurement protocols are in [formulation-evaluation.md](formulation-evaluation.md).
 Specs, the README, and ADRs **point here**; they never restate equations.
 Each phase that changes the optimizer math appends a section; nothing is duplicated elsewhere.
 Pure engineering / data-reliability phases (R1.4c ingestion guard, R1.5 serving, R2.1b drift monitor) introduce no optimizer math and intentionally have no section here.
@@ -17,6 +18,8 @@ Each section summarizes only the theory the project implements;
 Battery and power-market terms are defined in the [glossary](glossary.md); each section is self-contained, so read Conventions first.*
 
 GitHub renders the `$$…$$` LaTeX below.
+
+---
 
 ---
 
@@ -315,102 +318,58 @@ Pre-flight therefore tests the ramp-free condition only (a sound fast filter) an
 
 ---
 
-## R1.4. Backtest semantics
+## R2.4. Shadow-price explainability (derived; no optimizer change)
 
-*No governing reference:
-walk-forward evaluation and the decision-time (no-look-ahead) information set are standard time-series backtesting practice, not a technique traceable to a single source.
-See [references.md: R1.4](references.md#r14-backtest-walk-forward-baselines-sanity-band) for domain-context pointers;
-the leakage-control machinery specific to a fitted model (purged CV, embargo) is deferred to R2.1.*
+*No governing reference; standard LP duality.
+The water value and no-trade band below are algebraic corollaries of R1.1/R1.2 stationarity, not imported.
+The term "water value" is borrowed from hydro-thermal scheduling as context only; see [references.md: R2.4](references.md#r24-shadow-price-explainability).*
 
 This section adds **no constraints, variables, or objective terms**.
-It defines the three revenue quantities the backtest ([specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)) reports and the leakage discipline they obey;
-all built from the *existing* R1.1/R1.2 optimizer.
-If code and this section disagree, this governs.
+It records the dual quantities the explainability layer ([specs/R2.4-explainability.md](specs/R2.4-explainability.md)) reads off the *solved* R1.1/R1.2 dispatch. If the code and this derivation ever disagree, this governs.
 
-### The information set (gate closure)
+**A MILP has no duals, so fix-and-resolve.** The dispatch is a MILP (the binary $u_t$, constraint (3)), which has no LP dual. Take the optimal commitment $u^\star$, fix it, and re-solve the resulting LP; its duals are the reported values. Fixing $u=u^\star$ restricts the feasible set to a subset that still contains the MILP optimum, so the LP optimum equals it exactly, and the duals are valid for perturbations too small to change $u^\star$.
 
-The whole day-ahead block for delivery day $d$ is committed at a single gate (≈12:00 CET on $d-1$).
-So at decision time the agent knows **all** of day $d$'s prices, but **none** of day $d+1$'s.
-Write $\Pi_d$ for the price vector of day $d$.
-The decision for day $d$ may depend on $\Pi_d$ and on the SoC carried in from $d-1$, and on **nothing from $d'>d$**: this is the leakage boundary (gate C; the gates are lettered in [specs/R1.4a-backtest.md](specs/R1.4a-backtest.md)).
+### The water value
 
-### Three revenue quantities
+Let $\mu_t$ (€/MWh) be the dual of the SoC balance (1). It is the marginal value of one extra MWh stored at the end of $t$: $\mu_1 = \partial V^\star/\partial e_0$. Stationarity in $e_t$ gives $\mu_t = \mu_{t+1} + \beta_t$, where $\beta_t$ is the net SoC-bound multiplier at $t$, so
 
-Let $V(\boldsymbol\pi; e_0,e^{\mathrm{tgt}})$ be the optimal objective of the R1.1/R1.2 MILP on price vector $\boldsymbol\pi$ with the given SoC endpoints, over a horizon that starts and ends empty unless stated.
-All three quantities are **net of degradation**: each is the R1.2 objective (grid-side cash flow minus $\sum_t D_t$), so when wear is priced the greedy floor is scored net of its own $D_t$ too, on the same $\tau_{\max}$ basis, keeping the ordering below valid (with no degradation, $D_t\equiv 0$ and each reduces to gross arbitrage).
+$$\boxed{ e_{\min} < e_t < e_{\max} \implies \mu_t = \mu_{t+1}. }$$
 
-- **Perfect-foresight ceiling** $V^\star$:
- one **full-horizon** solve over the entire concatenated series with $e_0=e_{\text{end}}=0$ and SoC free to carry **across** day boundaries.
-    This is the theoretical maximum; nothing can exceed it.
-- **Rolling deployable value**
- $V^{\mathrm{roll}}=\sum_d V(\Pi_d; 0,0)$: **per-day** solves, each starting and ending empty.
- In a *deterministic* day-ahead setting the agent has no information about $\Pi_{d+1}$ at the day-$d$ gate, so it has no basis to carry SoC overnight;
- per-day independence (terminal SoC $=0$) is the honest myopic model.
-    Each day's solve is still **intraday-optimal**.
-- **Greedy floor** $V^{\mathrm{greedy}}$:
-    a percentile rule (charge below the day's 20th price-percentile, discharge above the 80th), defined fully in the spec.
-    A feasible but suboptimal policy;
-    it ignores the round-trip-efficiency breakeven, so it can even trade at a loss.
+The water value is **flat while SoC is interior** and steps only where the battery hits a bound, so one number explains a whole run of periods.
 
-**Day boundary (UTC).**
-A "day" here is a **UTC calendar day** (00:00–24:00 UTC): the engine windows the series by calendar-day grouping, and the rolling solves empty at each UTC midnight.
-That is 1 h (CET) or 2 h (CEST) after the local BE/NL market midnight, so the boundary falls in the calm early-morning hours where the battery is naturally near-empty, not mid-day.
-UTC alignment keeps every window a clean 24 periods (a local-day grouping would give ragged 23/25-hour windows at the DST transitions) and matches the UTC time convention ([conventions.md](conventions.md));
-the resulting 1-to-2-hour offset from the market day is immaterial to a rolling backtest that empties at each boundary.
+**$\mu$ belongs to the chosen optimum, not to the price path.** Where $V^\star$ has a kink in $e_0$ its subdifferential is an interval and every point of that interval is a valid marginal value; where the *primal* optimum is non-unique, two equally optimal dispatches report different endpoints of it. A worked instance: $\pi=[0,-1,-1,0,0,0]$ on a 0.75 MWh / 2 MW asset ($\eta=1$, $e_0=e^{\mathrm{tgt}}$ half full, $\Delta t=0.5$) empties at $t_1$ and is then paid to absorb one full charge, which it can take at $t_2$ **or** $t_3$ for the same objective; the plan that charges at $t_2$ reports $\mu_2=-1$ and the plan that idles there reports $\mu_2=0$. So a claim of the form "$\mu$ is invariant under a transformation that leaves the price path alone" holds **only where the transformation leaves the dispatch alone**, which is the same kink caveat the finite-difference check carries. The tie-break invariance of [ADR-0023](decisions/0023-milp-dual-resolve-rule.md) detects the ambiguity only when it surfaces as a negative-priced idle period; a plan that trades through the kink cannot see it.
 
-### Provable ordering (a correctness gate)
+### The no-trade band
 
-$$\boxed{ V^{\mathrm{greedy}} \le V^{\mathrm{roll}} \le V^\star, \qquad 0 \le V^{\mathrm{roll}}. }$$
+Stationarity in $p^{ch}_t, p^{dis}_t$ with the R1.2 wear $D_t = c^{deg}\tau_t$ gives the sign conditions $p^{ch}_t > 0 \implies \pi_t \le \eta^{ch}(\mu_t - c^{deg})$ and $p^{dis}_t > 0 \implies \pi_t \ge (\mu_t + c^{deg})/\eta^{dis}$, so the battery idles exactly when
 
-![Three nested revenue levels on one axis: zero, the greedy floor, the rolling per-day deployable value, and the perfect-foresight ceiling. The greedy-to-rolling gap is the value of optimization; the rolling-to-ceiling gap is cross-day arbitrage, small for a short-duration asset. The reported headline pairs both levels against the ceiling, since rolling-over-ceiling alone saturates near 1.](figures/backtest-bounds.svg)
+$$\boxed{ \eta^{ch}\bigl(\mu_t - c^{deg}\bigr) \le \pi_t \le \frac{\mu_t + c^{deg}}{\eta^{dis}}. }$$
 
-- $V^{\mathrm{roll}}\le V^\star$:
- the rolling schedule returns to $e=0$ each midnight, so it is a **feasible** trajectory for the full-horizon problem, the ceiling can only do at least as well.
-- $V^{\mathrm{greedy}}\le V^{\mathrm{roll}}$:
-    the greedy schedule is feasible for each day's MILP (it too ends the day empty), and the per-day MILP is optimal over all such schedules.
-- $0 \le V^{\mathrm{roll}}$:
- idle is feasible in every per-day solve, so each *optimal* per-day value is non-negative (likewise $0 \le V^\star$).
- $V^{\mathrm{greedy}}\ge 0$ is **not** guaranteed: greedy can trade at a loss, so the zero floor bounds the optimal quantities only.
+The band's width is created by round-trip loss and wear, not by the price; at $\eta^{rt}=1, c^{deg}=0$ it collapses to $\pi_t = \mu_t$ (exact indifference). A **transaction cost** $\kappa$ per grid-side MWh widens it flat by $\kappa$ on each side (outside the $\eta$ factors, as a market fee on grid energy, unlike the $\eta$-scaled wear), giving a per-trade **breakeven slippage** (the margin by which an executed trade clears its $\kappa=0$ threshold, $\ge 0$ by optimality). This is a read-off from the solved schedule, not a re-optimization: it changes no objective term.
 
-The two gaps in the ladder measure different things:
+### The idle tie-break (gate-critical)
 
-- **$V^{\mathrm{roll}}-V^{\mathrm{greedy}}$** is the value of **optimization** over a naive percentile heuristic.
-    Both agents empty each day, so this is a clean same-horizon contrast; it is the informative R1 comparison.
-- **$V^\star-V^{\mathrm{roll}}$** is the value of **cross-day foresight**:
- overnight-carry revenue a deterministic day-ahead agent cannot reach, having no information about $\Pi_{d+1}$ at the day-$d$ gate.
- For a short-duration asset this gap is small by physics (a battery that empties nightly has little to carry overnight), so $V^{\mathrm{roll}}$ sits just under $V^\star$.
-    It widens with storage duration (a 1-hour asset shows almost none; a 4-hour asset shows more).
+At an idle period both $u_t=0$ and $u_t=1$ are optimal, and constraint (3) gates each direction on $u_t$, so the solver's arbitrary tie-break moves the reported $\mu_t$. The shipped rule **relaxes both exclusion caps to the natural power caps $\bar P^{ch}, \bar P^{dis}$ at idle periods with $\pi_t \ge 0$** (which imposes both band edges at once and recovers $\partial V^\star/\partial e_0$), keeps $u^\star$ fixed at negative-priced idle periods, and **asserts the re-solved LP objective equals the MILP's** on every solve ([ADR-0023](decisions/0023-milp-dual-resolve-rule.md)). The restriction is necessary: at $\eta^{rt}<1$ a freed idle period at a negative price runs a SoC-neutral round trip the market pays for, which R1.1's exclusion forbids, so the relaxed LP would beat the MILP by $\sum_{t\text{ idle},\pi_t<0}\lvert\pi_t\rvert(1-\eta^{ch}\eta^{dis})\bar P\Delta t$; the equality assertion is the guard. A band is reported only where $\mu_t$ is **tie-break invariant** (both tie-breaks agree, tested with one extra LP), a property of the flat run.
 
-This overnight gap is an upper bound on what any carry strategy could add; it is **not** what R2 targets.
-R2's payoff is handling price **uncertainty at decision time**, measured by the value of the stochastic solution (VSS) in R2.3, a quantity distinct from the deterministic overnight gap that does not vanish when that gap does.
+### Worked example (ties to golden oracle 1)
 
-**Headline metric.**
-Report $V^{\mathrm{greedy}}/V^\star$ and $V^{\mathrm{roll}}/V^\star$ together (heuristic and optimal, as % of perfect foresight).
-$V^{\mathrm{roll}}/V^\star$ alone saturates near 1 for a short-duration asset and cannot discriminate; the greedy-to-rolling gap carries the R1 signal, and VSS (R2.3) carries the R2 signal.
-Because these ratios move with storage duration, they are reported across {1h, 2h, 4h} rather than for a single asset ([ADR-0022](decisions/0022-storage-duration-reported-axis.md)).
+$T=3$, $\pi=[10,100,200]$, a 1 MW / **2 MWh** battery, $e_0=e^{\mathrm{tgt}}=0$, $\eta=1$, ramp off, no wear. The MILP charges at $t_1$, **idles at $t_2$**, discharges at $t_3$; objective 190. The water value is $\mu=[100,100,100]$ (SoC stays interior, so it is flat), equal to $\partial V^\star/\partial e_0=100$: a marginal stored MWh clears at $t_2$'s price, not $t_3$'s (power is already capped at $t_3$). The two rejected tie-break rules report 200 and 10 at the *same* objective 190, which is why oracle 1 pins the rule. Breakeven slippage is $100-10=90$ at the charge and $200-100=100$ at the discharge.
 
-### Sanity band (gate D)
-
-The annualized ceiling per MWh-installed must sit inside a band **derived from the fixture's own price statistics** (not hard-coded):
-$V^\star_{\text{annual}}/E_{\text{usable}} \approx c\cdot\overline{\text{spread}}_{\text{daily}}$, where $\overline{\text{spread}}_{\text{daily}}$ is the mean over days of that day's max-minus-min price and $c=\eta^{rt} (\text{cycles/day})\cdot 365$ is recomputed from the spec.
-($E_{\text{usable}}$ already divides the left side, so it must not reappear in $c$; both sides are €/MWh-installed per year.)
-A result above the ceiling band is a leakage red flag, not alpha.
+**Considered but out of scope:** duals of the R2.3 two-stage program (a different object, pricing the recourse budget); parametric ranging (how far $\pi_t$ moves before $u^\star$ changes); a transaction cost as an *objective term* (re-optimizing under $\kappa$, its own future delta, distinct from the read-off above); Benders / L-shaped decomposition; bid-curve construction from the water value (R3).
 
 ---
 
-## Release 2 sections
+## Companion files
 
-The Release-2 math lives in [formulation-r2.md](formulation-r2.md), split out when this file reached its 600-line cap.
-Same status and same rules: it is canonical, and specs point at it rather than restating equations.
+The math is split by **subject**, not by release, and each file is canonical for its own:
 
-- [R2.1 Probabilistic price forecast](formulation-r2.md#r21-probabilistic-price-forecast-conformal-intervals-no-optimizer-change) (conformal intervals; no optimizer change)
-- [R2.2 Scenario generation + reduction](formulation-r2.md#r22-scenario-generation--reduction-uncertainty-representation-no-optimizer-change) (uncertainty representation; no optimizer change)
-- [R2.3 Risk-aware two-stage dispatch + intraday recourse](formulation-r2.md#r23-risk-aware-two-stage-dispatch--intraday-recourse-optimizer-delta) (optimizer delta)
-- [R2.4 Shadow-price explainability](formulation-r2.md#r24-shadow-price-explainability-derived-no-optimizer-change) (derived; no optimizer change)
-- [R2.5 Value evaluation hardening](formulation-r2.md#r25-value-evaluation-hardening-evaluation-semantics-no-optimizer-change) (evaluation semantics; no optimizer change)
-- [R2.6 Price-contingent day-ahead bid curves](formulation-r2.md#r26-price-contingent-day-ahead-bid-curves-optimizer-delta) (optimizer delta)
+| File | Subject |
+| --- | --- |
+| **This file** | The deterministic model: conventions, physics, wear, feasibility, and the duals read off a solved dispatch |
+| [formulation-uncertainty.md](formulation-uncertainty.md) | Not knowing the price: the conformal forecast, the scenario representation, the risk-aware two-stage program, and the bid curve |
+| [formulation-evaluation.md](formulation-evaluation.md) | What a reported number means: the backtest information set and revenue ordering, and the out-of-sample value protocols |
 
-The changelog below covers both files.
+The changelog below covers all three.
 
 ---
 
@@ -431,4 +390,5 @@ The changelog below covers both files.
 - **R1.2 model change (2026-07-11)**: degradation regrounded. The earlier convex-PWL-of-throughput cost (epigraph form) was self-derived and matched no published source; replaced by the **linear DoD-stress** case of the cited cycle-based model (Xu 2018; Shi 2017 §II-C-1), a linear €/MWh throughput cost that is $\Delta t$-invariant (fixes a resolution dependence exposed by 15-min data) and asset-scale-invariant. Governing reference updated in [references.md](references.md); implementation (config, code, golden oracles) follows.
 - **R2.6**: price-contingent day-ahead **bid curves**. **Optimizer delta**: the first stage is indexed by scenario and constrained to be monotone in, and single-valued in, each hour's clearing price, so the commitment is measurable with respect to that price alone (a submittable curve $q_t$) instead of one schedule shared across scenarios. Both legs settle at the realized clearing price. Forcing all branches equal reproduces §R2.3 exactly at $\lambda=0$, and the curve dominates it there; at $\lambda>0$ the two differ by design (§R2.3's fixed-price leg is a forward hedge, an auction leg is not). R1.1 physics, the recourse budget, and the CVaR term are unchanged. Carries its own **evaluation semantics**: a curve's realized commitment is assembled across branches, so it is not an R1.1 schedule, and it is scored as a cash-flow obligation entering only the recourse budget, with the unpriced **delivery gap** reported beside any value number.
 - **R2.4 clarification (2026-07-26)**: $\mu$ is a property of the *chosen* optimum, not of the price path. At a kink of $V^\star$ the subdifferential is an interval, and where the primal optimum is non-unique two equally optimal dispatches report different endpoints of it, so invariance claims about $\mu$ hold only where the dispatch is also invariant. No model change; the scale-invariance property gained the condition and a golden oracle now pins a measured instance.
-- **Split (2026-07-26)**: the Release-2 sections moved to [formulation-r2.md](formulation-r2.md) at the 600-line cap; no math changed. §R1.1's price-taker note was corrected at the same time to separate price *impact* (reflexivity, R3) from a *bid curve* (price contingency under uncertainty, §R2.6), which one sentence had conflated.
+- **Split (2026-07-26)**: the Release-2 sections moved to a companion file at the 600-line cap; no math changed. §R1.1's price-taker note was corrected at the same time to separate price *impact* (reflexivity, R3) from a *bid curve* (price contingency under uncertainty, §R2.6), which one sentence had conflated.
+- **Recut by subject (2026-07-28, spec S1)**: **no math changed and no section body was edited.** The earlier split was by *release*, which cut through the subject: §R2.4's water value is the dual of §R1.1's SoC balance and belongs beside it, while §R1.4's revenue ordering is measurement protocol and belongs beside §R2.5's. The three files are now [formulation.md](formulation.md) (the deterministic model and its duals: §R1.1, §R1.2, §R1.3, §R2.4), [formulation-uncertainty.md](formulation-uncertainty.md) (§R2.1, §R2.2, §R2.3, §R2.6), and [formulation-evaluation.md](formulation-evaluation.md) (§R1.4, §R2.5). Section numbers keep their historical phase labels, so every existing cross-reference resolves to the same mathematics in a new home. `scripts/lint_docs.py` gained a check that binds a `formulation*.md §R<n>.<m>` reference, anywhere in the repository, to a section that actually exists.

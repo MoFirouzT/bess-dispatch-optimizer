@@ -40,7 +40,7 @@ def _synthetic_fundamentals(prices: pd.Series, *, seed: int = 0) -> pd.DataFrame
 def test_interval_ordering(method, seed):
     """`lower <= point <= upper` at every target, swept over seeds.
 
-    This assertion was in the R2.1 spec and in `formulation-r2.md` §R2.1 from the
+    This assertion was in the R2.1 spec and in `formulation-uncertainty.md` §R2.1 from the
     start, but the test behind it ran a **single** seed and passed by luck. Measured
     2026-07-28: on 10 of 30 synthetic seeds the shipped CQR model put the median
     outside its own interval (12 `lower > point` and 9 `point > upper` points), because

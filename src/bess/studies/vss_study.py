@@ -1,6 +1,6 @@
 """Per-window out-of-sample VSS: is VSS > 0 a market property or an instance one? (R2.5)
 
-Formulation: ``docs/formulation-r2.md`` § R2.5; spec:
+Formulation: ``docs/formulation-evaluation.md`` § R2.5; spec:
 ``docs/specs/R2.5-value-evaluation.md``. Repeats the ADR-0021 measurement over
 arbitrary UTC-day windows of a real price series, so the reported object is a
 *distribution* rather than a single number. Not sign-asserted: a negative window

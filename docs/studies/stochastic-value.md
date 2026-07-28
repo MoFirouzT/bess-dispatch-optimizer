@@ -7,7 +7,7 @@ beat the mean-value plan by a **median of about +12 EUR per window**, positive o
 
 Governing spec: [R2.5](../specs/R2.5-value-evaluation.md); protocol:
 [ADR-0021](../decisions/0021-mpc-recourse-out-of-sample-vss.md); math:
-[formulation-r2.md § R2.5](../formulation-r2.md).
+[formulation-evaluation.md § R2.5](../formulation-evaluation.md).
 
 ## The question
 

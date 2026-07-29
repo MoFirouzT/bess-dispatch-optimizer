@@ -16,10 +16,10 @@ each page names the spec that governs its method.
 
 | Study | Question | Answer |
 | --- | --- | --- |
-| [Stochastic value](stochastic-value.md) | Does hedging across scenarios beat optimizing against the mean forecast? | **Yes.** Median +12.90 EUR per window, positive on 66% of 94 real days |
-| [Forecast value](forecast-value.md) | Does a better price forecast earn more euros? | **Null.** Median −19.81 EUR per window despite clear statistical skill |
-| [Tail value](tail-value.md) | Does pricing unprecedented spikes in the scenarios earn more euros? | **Null** at every recourse budget |
-| [Bid curves](bid-curves.md) | Does a price-contingent commitment beat a single blind schedule? | **Null**, but it surfaced an unpriced delivery gap |
+| [Stochastic value](stochastic-value.md) | Does hedging across scenarios beat optimizing against the mean forecast? | **Yes on BE** (+8.36 EUR per window, interval above zero); **directionally yes on NL** (+3.56, interval includes zero) |
+| [Forecast value](forecast-value.md) | Does a better price forecast earn more euros? | **Null** in both markets, despite clear statistical skill |
+| [Tail value](tail-value.md) | Does pricing unprecedented spikes in the scenarios earn more euros? | **Null** at every recourse budget and in every year |
+| [Bid curves](bid-curves.md) | Does a price-contingent commitment beat a single blind schedule? | **Null**, but it surfaced an unpriced delivery gap that the wider window confirmed |
 | [Target normalization](target-normalization.md) | Does de-levelling the forecast target improve the forecaster? | **Yes**, and it flips which training window is best |
 | [Storage duration](storage-duration.md) | How much does the economics depend on the energy-to-power ratio? | Strongly. The annualized ceiling falls by roughly a quarter from 1 h to 4 h |
 | [Solve scaling](solve-scaling.md) | Does the program stay tractable as the horizon and scenario count grow? | Yes on both axes, at very different rates |
@@ -50,10 +50,24 @@ computed correctly, never that it came out favourable.
 
 ## Provenance
 
-Every euro figure comes from real ENTSO-E Dutch day-ahead prices fetched at
-runtime; no market data is committed. Reproduction commands need a token
-(`.env.example`), and each page names the window it ran on.
+Every euro figure comes from real ENTSO-E Dutch and Belgian day-ahead prices fetched
+at runtime; no market data is committed. Reproduction commands need a token
+(`.env.example`), and each page names the window it ran on. The full re-measurement is
+its own deliberate run, `uv run pytest -m "integration and studies" -s`, kept out of
+the routine live tier because it takes about an hour.
 
-The standing limitation across the value studies: they rest on a single 2024
-window. That is the same single-window criticism the forecaster's own evaluation
-harness fixed for itself, one level up, and re-windowing them is open work.
+The four euro studies are measured on **260 delivery days in 52 blocks spread over
+2022-01-01 to 2025-09-29**, the same layout the price forecaster is evaluated on, with
+the two headline studies repeated on BE. Each quoted interval resamples whole blocks
+rather than individual windows, because consecutive days share almost all of their
+training history.
+
+They previously rested on a single 2024 quarter; [R2.7](../specs/study-windowing.md)
+re-measured them and each page records what moved. The short version: **the three nulls
+held and hardened, and the one positive result got smaller.**
+
+The limitation that remains is **scenario-draw noise**. Every euro figure here comes
+from a 30-path bootstrap that is itself random, and R2.7 measured that changing only
+which draws land on which day moved one headline by about 4 EUR. Window sampling is
+quantified by the intervals; draw noise is not quantified anywhere yet, and doing so
+means re-running the studies across many seeds.

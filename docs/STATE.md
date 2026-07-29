@@ -13,33 +13,42 @@ happened before 2026-07-28.
 
 ## Current phase
 
-**No active phase.** Releases 1 and 2 are complete; Release 3 has not started.
+**R2.7 (study windowing) is implemented**; the ledger row in
+[specs/README.md](specs/README.md) records what it found. **R2.8 (draw noise) is
+drafted and scaffolded**, with its measurement not yet run: see below. Releases 1 and 2
+are otherwise complete; Release 3 has not started.
 
-The capability restructure is implemented and committed, in four commits: the
-`bess.studies` extraction, the studies doc shelf, the vocabulary plus formulation
-recut, and the decision-record consolidation (26 numbered ADRs to 17 subject-named
-records). Its work order has been retired now that the restructure is done; the
-rules it established live in [architecture.md](architecture.md),
-[decisions/README.md](decisions/README.md) and [specs/README.md](specs/README.md), and
-the ledger row records what it did.
-Its governing invariant, that **no number moves**, was verified mechanically rather
-than by eye: numeric literals and definition bodies for the code move, and
-byte-identical section bodies for the formulation recut.
+R2.7 re-measured all four euro value studies on 260 delivery days in 52 blocks over
+2022-01-01 to 2025-09-29, reusing R2.1d's fold layout verbatim so the euros and the
+forecaster's pinball skill are scored on the identical days, with the two headline
+studies repeated on BE.
 
-**The spec consolidation is done, and uncommitted.** The same principle applied to
-`docs/specs/`: where a phase boundary recorded *when* work happened rather than a
-design decision, the work orders merged. Three merges landed (`dispatch-core`,
-`data-feed`, `price-forecaster`), every remaining spec dropped its phase ID from its
-filename, and the restructure's own work order was retired. **21 specs to 15.**
+**The three nulls hardened and the one positive result shrank.** VSS falls from the
+published +12.90 to **+3.56 on NL**, whose interval now includes zero, while **BE holds
+at +8.36** with an interval above it. Forecast value stays null in both markets and less
+negative than published. Tail value and bid-curve value are null in every year and at
+every recourse budget. The unpriced delivery gap (4.26 to 7.91 MWh per day on a 2 MWh
+asset) was the only quantity the wider window strengthened.
 
-Each merge was verified by diffing the set of distinct numeric values before and
-after, which caught seven real losses that were then restored. Phase IDs survive in a
-`**Phases:**` line on every spec, which is what keeps the `Depends on:` graph resolving
-after a rename or a merge.
+Two defects surfaced and were fixed rather than absorbed:
 
-Full suite 373 passed / 29 skipped; ruff/format/mypy(48)/lint-imports(**5** KEPT,
-the new one forbidding the serving chain from importing `bess.studies`)/docs-lint(54)
-all clean. The full **live** gate also passed, 29 tests, 16 minutes.
+- **Windows were seeded by their position in the series**, so the same delivery day
+  scored inside a 4-month and a 4.7-year series gave different answers. Seeds now derive
+  from `(seed, window date)`, which makes selection a filter: scoring a subset returns
+  exactly what scoring everything and discarding the rest returns, gated bitwise. About
+  4 EUR of the VSS drop is this, the rest is the window.
+- **The per-year block labeller compared `asi8` integers against a nanosecond
+  constant** while the index carried microsecond resolution, marking every day a block
+  boundary. Caught by a golden oracle.
+
+Prior structural work (the capability restructure and the spec consolidation) is
+implemented and committed; its rules live in [architecture.md](architecture.md),
+[decisions/README.md](decisions/README.md) and [specs/README.md](specs/README.md).
+
+Full suite 404 passed / 40 skipped; ruff, format, mypy(49), lint-imports (**5** KEPT),
+docs-lint(55) all clean. The R2.7 live gates passed on both zones; the studies tier is
+marked `studies` and deselected from the routine live run because it takes about an
+hour.
 
 ## Capability status
 
@@ -59,19 +68,27 @@ all clean. The full **live** gate also passed, 29 tests, 16 minutes.
 
 ## Next (recommended order)
 
-1. **Re-window the value studies properly.** Partially addressed: the live gate runs
-   Mar-Jun 2024 (94 windows) and those measurements are now what the studies pages
-   publish, replacing an older Q2-only 63-window set. But all three nulls still rest
-   on a single 2024 window. R2.1d built the instrument (`rolling_origin_folds` over
-   2021-01-01..2025-09-30, 1734 days), and applying it one level up is still the
-   change most likely to move a headline claim. Needs its own spec; none is drafted.
-2. **Release 3**, phase ids in `planning/` (Tier 0): R3.1 imbalance-settlement
-   recourse, R3.2 grid-connection cap, R3.3 ancillary co-optimization, R3.4 price
-   impact. R2.6's own result argues for **R3.1**: it measured a delivery gap of 4 to
-   8 MWh per day on a 2 MWh asset and left it unpriced.
+1. **R3.1, imbalance-settlement recourse.** R2.7 strengthened the argument for it: the
+   bid-curve delivery gap was the *only* value quantity the wider window made more
+   solid, holding 4.26 to 7.91 MWh per day across four years on a 2 MWh asset, and
+   nothing in the model prices it. Needs a spec; none is drafted. **Start with the data
+   probe, not the spec** (CLAUDE.md §7): `entsoe-py` exposes the imbalance endpoints,
+   but whether NL and BE are actually populated on them is unverified, and thin data
+   should change the gate wording up front rather than be discovered late.
+2. **Finish R2.8** ([specs/draw-noise.md](specs/draw-noise.md)), which is drafted and
+   scaffolded but **not measured**. The helper, golden and property gates, and the live
+   reported test are in; what remains is running it (10 VSS seeds and 6 FV seeds over
+   R2.7's window set, about 70 minutes under `uv run pytest -m "integration and studies"`),
+   recording the widths in the spec, and publishing them beside the window intervals on
+   the two studies pages. Its spec boxes are deliberately unticked until then.
 
 ## Known blockers and carried findings
 
+- **A submodule is shadowed by a same-named export.** `bess.studies.forecast_value`
+  resolves to the exported *function*, not the module, so `import bess.studies.forecast_value as m`
+  yields a function and attribute access on it fails. Nothing in the shipped code
+  imports it that way, and it cost a debugging cycle during R2.7. Renaming either the
+  function or the module would fix it; neither was in scope.
 - **R1.4c stuck-feed rule does not survive long windows.** `guarded_fetch` classifies
   the NL 2021-2025 span ANOMALY/`stuck_feed` on a 5-hour run of exactly 64.00 EUR/MWh
   (2021-05-15) plus 4-hour runs at 42.30 / 140.66 / 95.60, against
@@ -79,8 +96,8 @@ all clean. The full **live** gate also passed, 29 tests, 16 minutes.
   rule is a fixed run length applied regardless of window length, so its false-positive
   rate grows with the span; 2024 happens to contain no such run, which is why the
   year-long guard test passes. Same class of defect that forced the *focal* threshold
-  from 8 hours to 24. **R2.1d works around it** by fetching the span unguarded
-  (`_span_prices` in `tests/integration/test_forecaster_live.py`); revisit that
+  from 8 hours to 24. **R2.1d and R2.7 work around it** by fetching the span unguarded
+  (`span_prices` in `tests/integration/span.py`, shared by both); revisit that
   workaround once the rule is fixed. **Do not simply raise the constant.**
 - **Two governing references named from memory and NOT verified**, so both phases ship
   ungoverned and `references.md` is deliberately unwritten for them (CLAUDE.md §1):
@@ -93,13 +110,22 @@ all clean. The full **live** gate also passed, 29 tests, 16 minutes.
   before S1 moved the studies out, and the move made it worse rather than introducing
   it. Promoting it is a small follow-up, deliberately not folded into a phase whose
   invariant is that nothing changes.
-- **The value-study numbers are window-sensitive, and the window is not settled.**
-  On Mar-Jun 2024 (94 windows) the VSS median is +12.90 EUR with 66% of windows
-  positive; forecast value is −19.81 EUR with 41% positive. On the Q2-only slice the
-  project published before (63 windows) the same quantities read +12 / 62% and
-  −0.9 / 49%. VSS is robust across both; **forecast value is not**, so its "centred on
-  zero" framing was weakened to "null, and if anything mildly negative". Whether
-  Mar-Jun is the right authoritative window is an open question, not a settled one.
+- **Scenario-draw noise is unquantified, and it is not small.** R2.7 measured that
+  changing only *which* bootstrap draws land on which day, holding protocol, window,
+  asset and data fixed, moved the published VSS median by about 4 EUR on a claim of
+  +12.90. Neither draw is more correct: both are valid samples from the same 30-path
+  bootstrap. Window sampling is now covered by the reported intervals; **draw noise is
+  covered by nothing**, so every euro figure in [studies/](studies/) has a precision
+  nobody has measured. Quantifying it means re-running the studies across many seeds,
+  which R2.7 kept out of scope to hold one variable. Do this before any phase reports a
+  tighter value claim.
+- **The value-study window is settled; regime dependence is the live caveat.**
+  R2.7 fixed the window at 260 days over 2022-2025. What remains open is that the
+  results are strongly regime-dependent (VSS pays several times more in the 2022 crisis
+  year than after it) and, on NL, no longer separable from zero. Per-year rows rest on
+  about 70 windows each and sit inside their own sampling noise: the full 1705-day sweep
+  contradicted a monotone-decay reading that the 52-block per-year rows appeared to
+  support. Read the per-year tables with their intervals, never as a trend.
 - **The `## Decisions` lint check only requires at least one such section.** The
   heading normalization left one spec with two, which the merge caught by hand. Tighten
   to "exactly one" if it recurs.

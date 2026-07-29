@@ -1,16 +1,40 @@
 # Stochastic value: does hedging beat the mean forecast?
 
-**Answer: yes, and it is a distribution rather than a constant.**
-Over every UTC day of a real Dutch quarter, the two-stage stochastic commitment
-beat the mean-value plan by a **median of +12.90 EUR per window**, positive on
-**66% of 94 windows**, quartiles [−2.41, +31.37], for a 2 MWh / 1 MW asset.
+**Answer: yes in Belgium, and not decisively in the Netherlands.**
+Over 260 delivery days spread across four years, the two-stage stochastic commitment
+beat the mean-value plan by a median of **+8.36 EUR per window on BE** (95% interval
+[+4.57, +13.27], positive on 64% of windows) and **+3.56 EUR on NL**, whose interval
+[−1.03, +14.08] **includes zero**. A 2 MWh / 1 MW asset at a 0.5 recourse budget.
 
-*Measured live on 2026-07-28 over real NL day-ahead prices, 2024-03-01 to
-2024-06-30, a 2 MWh / 1 MW asset at a 0.5 recourse budget.*
+*Measured live on 2026-07-29 over real NL and BE day-ahead prices, 260 days in 52
+blocks spread over 2022-01-01 to 2025-09-29.*
 
-Governing spec: [R2.5](../specs/value-evaluation.md); protocol:
+Governing specs: [R2.5](../specs/value-evaluation.md) for the method,
+[R2.7](../specs/study-windowing.md) for the window set; protocol:
 [the recourse and out-of-sample protocol](../decisions/risk-aware-two-stage-design.md); math:
 [formulation-evaluation.md § R2.5](../formulation-evaluation.md).
+
+## What changed, and why the headline moved
+
+This page previously claimed **+12.90 EUR, positive on 66% of 94 windows**, measured
+over one contiguous Dutch spring. That number is reproducible and was not wrong; it was
+narrow. [R2.7](../specs/study-windowing.md) re-measured the same protocol on 260 days
+spread across 2022 to 2025 and split the move into two parts:
+
+| Measurement | Median | Share > 0 |
+| --- | --- | --- |
+| Published (Mar-Jun 2024) | +12.90 | 66% |
+| Same window, after a seeding fix | +9.12 | 60% |
+| 260 days over 2022-2025 | +3.56 | 56% |
+
+About 4 EUR of the drop is the **seeding fix**: windows used to draw their training
+scenarios from a generator walked in series order, so a day's result depended on how
+many days preceded it in whichever series it arrived in. The rest is the **window**.
+
+Two honest consequences. The stochastic edge is real but **smaller than one Dutch
+spring suggested**, and on NL alone it is no longer separable from zero. And a claim
+of this size carries Monte Carlo noise worth about 4 EUR from the scenario draw alone,
+which nothing here has yet measured; see [limitations](#what-this-does-not-say).
 
 ## The question
 
@@ -30,11 +54,40 @@ scored the same way, with optimal within-budget intraday recourse.
 Fitting and scoring being separate is the whole point: an in-sample VSS is
 guaranteed non-negative by construction and would prove nothing.
 
+The 260 days are **52 blocks of 5**, spread evenly across the span rather than taken
+consecutively, which is the same fold layout the price forecaster is evaluated on. Two
+reasons: consecutive days share 27 of their 28 training days, so a contiguous run of
+them carries far less independent evidence than its length suggests; and the interval
+quoted above resamples whole blocks, not individual windows, for that reason.
+
 ## Result
 
 The negative windows are real and reported. On a calm day the mean-value plan is
 already fine, so the stochastic edge is a distribution whose median is positive,
 not a constant.
+
+### Volatility is what pays
+
+| Year | NL median | BE median |
+| --- | --- | --- |
+| 2022 (gas crisis) | +24.80 | +19.86 |
+| 2023 | +10.87 | +8.49 |
+| 2024 | +2.36 | +6.21 |
+| 2025 | −2.27 | +8.06 |
+
+The crisis year pays several times what the calm years do, in both markets. That is
+the mechanism behaving as it should: hedging across scenarios is worth most when the
+scenarios disagree most. It also means the headline is a statement about a **price
+regime**, and a reader should ask which regime they expect before spending the number.
+
+**Do not read the rows below 2022 as a trend.** Each year rests on about 70 windows in
+14 blocks, so the year-to-year ordering is inside the sampling noise. Scoring every one
+of the 1705 available NL days instead gives 2022 +19.75, 2023 +2.40, 2024 +1.50, 2025
++1.10: a high crisis year and three low, similar ones, with no slide into negative
+territory. The −2.27 above is a small-sample artifact, and the full sweep is what
+settles it.
+
+![Per-window value by year for the stochastic and forecast studies, each year\'s median drawn with its block-bootstrap interval.](../figures/example-value-by-regime.svg)
 
 ![Per-window out-of-sample VSS on real NL 2024-Q2 days: a histogram of windows straddling zero with its median clearly positive.](../figures/example-vss-distribution.svg)
 
@@ -43,7 +96,8 @@ it: value **rises then falls** with ρ. At zero recourse the commitment cannot
 adapt and at unlimited recourse the day-ahead plan stops mattering, so both ends
 collapse to the mean-value plan and the value lives strictly in between. On real
 NL 2024-Q2 the curve runs 0 at ρ = 0, peaks at **8.54** near ρ = 0.5, and returns
-to 0.
+to 0. That curve is a mechanism illustration on the older quarter, kept because what
+it shows is structural; the euro levels above supersede its scale.
 
 Trading expected profit for downside protection traces a mean-CVaR frontier,
 graded rather than a single point.
@@ -55,7 +109,7 @@ graded rather than a single point.
   </tr>
 </table>
 
-## Why this one is positive when three others are null
+## Why this one pays when three others are null
 
 The stochastic *structure* earns money; the fancier *inputs* to it do not. This
 study varies the decision rule (hedge across scenarios versus commit to the mean)
@@ -64,10 +118,39 @@ while the [forecast](forecast-value.md), [tail](tail-value.md), and
 Recourse can absorb a mis-specified input after the fact; it cannot manufacture a
 hedge the commitment never made.
 
+That contrast survived the wider window, which is the strongest thing this page can
+say. The three null studies stayed null in every year and at every recourse budget;
+this one stayed positive in every year on BE, and in three of four on NL.
+
+## What this does not say
+
+It does not say the stochastic layer is worth **+8.36 EUR a day** on any given asset.
+Three sources of uncertainty sit under that number, and only two are quantified here.
+
+- **Regime.** The crisis year pays several times the calm years, so the figure depends
+  on which market conditions a reader expects.
+- **Window sampling**, which the quoted interval covers.
+- **Scenario-draw noise, which is not measured.** The 30-path bootstrap is itself
+  random, and the seeding comparison above shows that changing only *which* draws land
+  on which day moved the old headline by about 4 EUR. Both draws are equally valid, so
+  this is not a bug to fix; it is a precision nobody has yet put a number on.
+  Quantifying it means re-running across many seeds, which
+  [R2.7](../specs/study-windowing.md) deliberately left out of scope, and it is
+  recorded there as open work.
+
+On NL the pooled interval includes zero. The honest reading is that the Dutch result is
+directionally positive and not statistically separable from zero on this evidence,
+while the Belgian one is separable.
+
 ## Reproduce
 
 ```bash
-uv run --group examples python examples/vss_study.py
+uv run --group examples python examples/vss_study.py --mode full
 ```
 
-Needs an ENTSO-E token; falls back to a synthetic series without one.
+Needs an ENTSO-E token; falls back to a synthetic series without one. The gated
+re-measurement, both zones and all four studies, is a separate deliberate run:
+
+```bash
+uv run pytest -m "integration and studies" -s
+```

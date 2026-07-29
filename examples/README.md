@@ -21,12 +21,20 @@ uv sync --group examples
 ## `vss_study.py` (token)
 
 The per-window out-of-sample VSS and forecast-value distributions over real days,
-and the two histogram figures the README embeds. Needs the `forecast` group for
-the forecast-value half.
+plus the per-year regime view, and the three figures the README and studies pages
+embed. Needs the `forecast` group for the forecast-value half.
+
+Two modes, because scoring all 260 delivery days takes about fifteen minutes:
 
 ```bash
-uv run --group examples python examples/vss_study.py
+uv run --group examples python examples/vss_study.py              # fast (default)
+uv run --group examples python examples/vss_study.py --mode full  # the committed figures
 ```
+
+`fast` strides across the fold blocks, so it still spans 2022 to 2025 rather than
+truncating to one regime, and writes to `build/figure-previews/`. **Only `--mode full`
+writes to `docs/figures/`**: a figure built from a subsample must not be committable
+over a published one, so the output path enforces it rather than a console warning.
 
 Write-ups: [stochastic value](../docs/studies/stochastic-value.md),
 [forecast value](../docs/studies/forecast-value.md).

@@ -78,7 +78,7 @@ Storage duration (energy-to-power ratio) is a reported axis, not a fixed choice:
 
 The deterministic result above assumes the price curve is known. Release 2 drops that assumption: it forecasts prices as calibrated intervals, samples them into scenarios, and solves a two-stage risk-aware program that commits a day-ahead schedule now and re-dispatches intraday once prices realize.
 
-The forecaster predicts each price as a *calibrated interval*, not a point: LightGBM quantile models wrapped in conformal prediction. "Calibrated" is the load-bearing word, and it is measured rather than assumed. On real NL prices, the nominal 90% interval covers the realized price **89.2% of the time** out-of-sample under a leakage-safe walk-forward, so the scenarios drawn from it inherit an honest spread instead of false confidence. Calibration alone is cheap (a wide interval covers everything), so accuracy is measured separately: at the interval edges the forecaster's pinball loss is **0.36x / 0.16x a seasonal-naive baseline's** under the same walk-forward (below 1 is skill).
+The forecaster predicts each price as a *calibrated interval*, not a point: LightGBM quantile models wrapped in conformal prediction. "Calibrated" is the load-bearing word, and it is measured rather than assumed. On real NL prices, the nominal 90% interval covers the realized price **89.2% of the time** out-of-sample under a leakage-safe walk-forward, so the scenarios drawn from it inherit an honest spread instead of false confidence. Calibration alone is cheap (a wide interval covers everything), so accuracy is measured separately: at the interval edges the forecaster's pinball loss is **0.22x / 0.28x a seasonal-naive baseline's** under the same walk-forward (below 1 is skill).
 
 ![Conformal price forecast on a held-out block: the shaded 90% interval, the point forecast, and the realized price; the interval widens where the price is volatile (heteroscedastic) and the realized price lands inside it close to the nominal 90% of the time.](docs/figures/example-forecast-intervals.svg)
 
@@ -106,11 +106,13 @@ A spike is a scarcity event, so it does not fall uniformly across the day: it co
 
 Reproduce the two tail figures with `uv run --group examples python examples/spike_tail_demo.py` and `examples/conditional_tail_demo.py` (both synthetic by design: they demonstrate the tail mechanism, not a market result).
 
-That machinery only earns its place if it beats simply optimizing against the mean forecast. It does, and not only on a designed instance. Repeating the out-of-sample measurement over **every UTC day of a real NL quarter** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of +12.90 EUR** for the 2 MWh / 1 MW study asset, positive on **66% of 94 windows**. The negative windows are real and reported: on a calm day the mean-value plan is fine, so the stochastic edge is a distribution, not a constant.
+That machinery only earns its place if it beats simply optimizing against the mean forecast. Repeating the out-of-sample measurement over **260 real delivery days spread across 2022 to 2025** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of +8.36 EUR on BE**, whose 95% interval [+4.57, +13.27] sits above zero, and **+3.56 EUR on NL**, whose interval [−1.03, +14.08] does not. For the 2 MWh / 1 MW study asset.
 
-![Per-window out-of-sample VSS on real NL 2024-Q2 days: a histogram of windows straddling zero with its median clearly positive; the stochastic commitment usually, but not always, beats the mean-value plan out-of-sample.](docs/figures/example-vss-distribution.svg)
+The honest reading is that the stochastic layer pays, that the effect is **regime-dependent** (the 2022 gas crisis pays several times what calm years do), and that on Dutch prices alone it is not separable from zero. An earlier version of this section claimed +12.90 EUR on one 2024 quarter; [re-measuring on a four-year span](docs/specs/study-windowing.md) is what moved it, and the studies pages record the decomposition.
 
-Reproduce with `uv run --group examples python examples/vss_study.py` (token, synthetic fallback otherwise). The mechanism, the risk/return frontier, and the full per-window distribution are in [docs/studies/stochastic-value.md](docs/studies/stochastic-value.md).
+![Per-window out-of-sample VSS across the evaluation span: a histogram of windows straddling zero with its median above it; the stochastic commitment usually, but not always, beats the mean-value plan out-of-sample.](docs/figures/example-vss-distribution.svg)
+
+Reproduce with `uv run --group examples python examples/vss_study.py --mode full` (token, synthetic fallback otherwise; drop the flag for a fast strided preview). The mechanism, the risk/return frontier, and the full per-window distribution are in [docs/studies/stochastic-value.md](docs/studies/stochastic-value.md).
 
 ### What was measured, and what came back null
 
@@ -118,11 +120,13 @@ The stochastic *structure* earns money. Three attempts to earn more by feeding i
 
 | Question | Answer |
 | --- | --- |
-| Does a better price forecast earn more euros than a seasonal-naive one? | [**Null.**](docs/studies/forecast-value.md) Median −19.81 EUR over 94 real days, despite clear statistical skill |
-| Does pricing unprecedented spikes in the scenarios earn more? | [**Null**](docs/studies/tail-value.md) at every recourse budget |
+| Does a better price forecast earn more euros than a seasonal-naive one? | [**Null**](docs/studies/forecast-value.md) in both markets, despite clear statistical skill |
+| Does pricing unprecedented spikes in the scenarios earn more? | [**Null**](docs/studies/tail-value.md) at every recourse budget and in every year |
 | Does a price-contingent bid curve beat a single blind schedule? | [**Null**](docs/studies/bid-curves.md) on euros, but it surfaced an unpriced delivery gap of 4 to 8 MWh per day on a 2 MWh asset |
 
-All three share one mechanism: **intraday recourse adjusts after the price is known**, so a sharper day-ahead picture has little left to buy. Each was separated from a broken comparison by a designed instance where the effect *is* detected, and each carries golden and property gates on its scoring arithmetic. The full set, including how the nulls were validated, is in **[docs/studies/](docs/studies/)**.
+All three share one mechanism: **intraday recourse adjusts after the price is known**, so a sharper day-ahead picture has little left to buy. Each was separated from a broken comparison by a designed instance where the effect *is* detected, and each carries golden and property gates on its scoring arithmetic.
+
+Re-measuring all four on the wider span cut the same way each time: **the three nulls hardened and the one positive result shrank.** The delivery gap was the only quantity the wider window strengthened, which is why imbalance settlement is the next thing worth building. The full set, including how the nulls were validated, is in **[docs/studies/](docs/studies/)**.
 
 Solve time scales benignly on both axes ([details](docs/studies/solve-scaling.md)): the deterministic MILP grows with the horizon, from ~9 ms for a day to ~120 ms for a month, while the two-stage program grows with the scenario count, from ~0.5 s at 10 scenarios to ~2.0 s at 50. That second axis is exactly the cost the reduction step (~300 → ~50 paths) keeps bounded.
 

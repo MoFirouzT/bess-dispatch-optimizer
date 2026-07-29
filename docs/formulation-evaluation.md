@@ -120,7 +120,20 @@ Score each commitment fixed, with optimal within-budget recourse, on the single 
 
 $$\boxed{ \mathrm{VSS}_w = v_w\bigl(g^{RP}\bigr) - v_w\bigl(g^{EV}\bigr), }$$
 
-where $v_w(g)$ is that held-out score. $\mathrm{VSS}_w$ carries no sign guarantee (out-of-sample, per [the recourse and out-of-sample protocol](decisions/risk-aware-two-stage-design.md)); the reported object is the **empirical distribution** $\{\mathrm{VSS}_w\}$ over all windows with enough history (median, quartiles, share $>0$), never a single number.
+where $v_w(g)$ is that held-out score. $\mathrm{VSS}_w$ carries no sign guarantee (out-of-sample, per [the recourse and out-of-sample protocol](decisions/risk-aware-two-stage-design.md)); the reported object is the **empirical distribution** $\{\mathrm{VSS}_w\}$ over a declared window set $W$ (median, quartiles, share $>0$), never a single number.
+
+### The window set is part of the claim (R2.7)
+
+$W$ is a stated set of delivery days, not "whatever the passed-in series contained".
+A distribution is a statement about the period it was measured on, so the period is reported with it, exactly as §R2.1's coverage is a statement about its evaluation span.
+
+Two requirements make $W$ meaningful rather than decorative.
+
+**Selection is a filter.** Every draw a window needs is a function of $(\text{seed}, w)$ alone, so $\{\mathrm{VSS}_w : w \in W\}$ is the restriction of the full-sweep distribution to $W$, not a fresh experiment. Without this a window's value depends on how many windows preceded it in the series it arrived in, and two window sets covering the same day disagree about it.
+
+**Windows are not independent, so the resampling unit is the block.** $W$ is a union of $B$ blocks of consecutive days. Inside a block, windows share all but one of their $H$ training days and their realized prices are serially correlated; across blocks that dependence is small. An interval on the median of $\{\mathrm{VSS}_w\}$ therefore resamples whole blocks with replacement, the same correction §R2.1's coverage interval applies one level down where the day rather than the hour is the unit. A per-window sign test, which R2.5 used, treats $\lvert W\rvert$ correlated days as $\lvert W\rvert$ independent ones and overstates the evidence.
+
+The same two rules govern the FV, tail-value and bid-curve distributions below.
 
 ### Forecast value (euros, not statistics)
 
@@ -130,7 +143,7 @@ With $g^{\text{conf}}$ and $g^{\text{naive}}$ the risk-neutral two-stage commitm
 $$\boxed{ \mathrm{FV} = v\bigl(g^{\text{conf}}\bigr) - v\bigl(g^{\text{naive}}\bigr). }$$
 
 FV is distinct from EV/EEV (which use one set's mean rather than contrasting forecasters) and is **reported with provenance, not asserted positive**: whether forecast skill converts to dispatch euros on a given window is the finding the protocol exists to measure.
-Like the VSS above, FV is reported **per window as a distribution** (median, quartiles, share $>0$) over all scoreable UTC days, with the forecaster refit walk-forward (fit strictly before each block of windows); a single window's sign is noise, the distribution's center is the finding.
+Like the VSS above, FV is reported **per window as a distribution** (median, quartiles, share $>0$) over the declared window set $W$, with the forecaster refit walk-forward (fit strictly before each block of windows); a single window's sign is noise, the distribution's center is the finding.
 
 ### Pinball (quantile) loss and skill
 

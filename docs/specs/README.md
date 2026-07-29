@@ -16,17 +16,34 @@ things were built, including the letter suffixes that mark a defect found and fi
 later. Reader-facing documents name capabilities instead; the IDs survive here and in
 git history, where chronology is the point.
 
-| Capability | Phases | Packages |
-| --- | --- | --- |
-| Dispatch core | R1.1, R1.2, R1.3 | `bess.assets`, `bess.validation`, `bess.optimizer` |
-| Data feed | R1.4b, R1.4c | `bess.data` |
-| Backtest | R1.4a | `bess.backtest` |
-| Serving | R1.5 | `bess.api` |
-| Price forecaster | R2.1, R2.1b, R2.1c, R2.1d, R2.1e | `bess.forecaster` |
-| Scenario generation | R2.2, R2.2b, R2.2c | `bess.scenarios` |
-| Stochastic dispatch | R2.3 | `bess.stochastic`, `bess.recourse` |
-| Dispatch explainability | R2.4 | `bess.explain` |
-| (studies, not a capability) | R2.5, R2.5b, R2.6 | `bess.studies` |
+This is also the index of the documents in this directory. Filenames name their
+subject, so a capability delivered over several phases has one spec, and a capability
+whose later phases answered a different question has several.
+
+| Capability | Specs | Phases | Packages |
+| --- | --- | --- | --- |
+| Dispatch core | [dispatch-core](dispatch-core.md) | R1.1, R1.2, R1.3 | `bess.assets`, `bess.validation`, `bess.optimizer` |
+| Data feed | [data-feed](data-feed.md) | R1.4b, R1.4c | `bess.data` |
+| Backtest | [backtest](backtest.md) | R1.4a | `bess.backtest` |
+| Serving | [serving](serving.md) | R1.5 | `bess.api` |
+| Price forecaster | [price-forecaster](price-forecaster.md), [forecaster-evaluation](forecaster-evaluation.md), [target-normalization](target-normalization.md) | R2.1, R2.1b, R2.1c / R2.1d / R2.1e | `bess.forecaster` |
+| Scenario generation | [scenario-generation](scenario-generation.md), [scenario-tail](scenario-tail.md), [scenario-tail-conditioning](scenario-tail-conditioning.md) | R2.2 / R2.2b / R2.2c | `bess.scenarios` |
+| Stochastic dispatch | [stochastic-dispatch](stochastic-dispatch.md) | R2.3 | `bess.stochastic`, `bess.recourse` |
+| Dispatch explainability | [explainability](explainability.md) | R2.4 | `bess.explain` |
+| (studies, not a capability) | [value-evaluation](value-evaluation.md), [tail-dispatch-value](tail-dispatch-value.md), [bid-curves](bid-curves.md), [study-windowing](study-windowing.md) | R2.5 / R2.5b / R2.6 / R2.7 | `bess.studies` |
+
+A slash in the **Phases** column separates the phases owned by each spec, in the same
+order as the **Specs** column beside it; a comma lists phases sharing one spec.
+
+## In flight
+
+Approved-but-unbuilt and draft specs live here too, and are listed separately because
+they carry no ledger row: a row records what a phase found, and an unbuilt phase has
+found nothing.
+
+| Spec | Phase | Status | Question |
+| --- | --- | --- | --- |
+| [draw-noise](draw-noise.md) | R2.8 | Draft | How far does a published value median move when only the random seed changes? |
 
 ---
 
@@ -63,6 +80,7 @@ work orders were merged into one document and the rows still record the sequence
 | [R2.1d](forecaster-evaluation.md) | 2026-07-28 | Price forecaster | the walk-forward harness rebuilt | The instrument was wrong, not the forecaster: "3 folds" was one contiguous fortnight, so every prior number was a mid-May statement. The coverage claim survived the rebuild, now on 4.7 years and two zones |
 | [R2.1e](target-normalization.md) | 2026-07-28 | Price forecaster | optional de-levelled forecast target | Conditional coverage improves 24% with tighter intervals, and the training-window sweep flips: crisis history is harmful under a raw target and useful under a de-levelled one. An earlier reading called it a null, having measured all three changes as a bundle. Also surfaced a quantile-crossing defect that had passed on one lucky seed |
 | (restructure) | 2026-07-28 | (structural) | capability vocabulary, studies split, formulation recut | Changed no number: the diff was verified to preserve every numeric literal and definition body |
+| [R2.7](study-windowing.md) | 2026-07-29 | study | the value studies re-measured on 260 days over four years and two markets | **The three nulls hardened and the one positive result shrank.** VSS falls from +12.90 to +3.56 on NL, whose interval now includes zero, while BE holds at +8.36; about 4 EUR of that was a seeding defect where a window's result depended on its position in the series. The unpriced delivery gap was the only quantity the wider window strengthened |
 
 ---
 
@@ -78,10 +96,12 @@ For findings written up for a reader rather than a builder, see
 ## Adding a phase
 
 1. Copy [`_TEMPLATE.md`](_TEMPLATE.md); fill scope, interfaces, and the test contract.
+   Add it to **In flight** above, which is where a spec lives until it is green.
 2. Human review and approval, before any implementation.
 3. Write the golden and property tests first, failing.
 4. Implement to green.
-5. Add a ledger row here, and update [STATE.md](../STATE.md).
+5. Move the spec from **In flight** to a ledger row, and update
+   [STATE.md](../STATE.md).
 
 Resolve each open question in place, keeping the proposal, so the section becomes
 the decision trail rather than a list of questions that were answered elsewhere.

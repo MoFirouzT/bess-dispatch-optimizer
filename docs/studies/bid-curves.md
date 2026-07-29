@@ -1,12 +1,26 @@
 # Bid curves: does a price-contingent commitment pay?
 
 **Answer: null on euros, but it surfaced a real unpriced exposure.**
-On 33 real Dutch days the bid-curve value has a **median of −0.00 EUR at ρ = 0.25**
-(mean −0.40, 30% of windows positive) and **+0.00 at ρ = 1.0** (mean +0.42, 12%
-positive). The number that is **not** null is the delivery gap.
+On 260 real Dutch days spread over four years the bid-curve value has a **median of
+−0.00 EUR at ρ = 0.25** (35% of windows positive) and **+0.00 at ρ = 1.0** (24%
+positive), with 95% intervals straddling or sitting on zero at both budgets. The number
+that is **not** null is the delivery gap, and the wider window made it more solid
+rather than less.
 
-Governing spec: [R2.6](../specs/bid-curves.md); math:
+*Re-measured live on 2026-07-29 over 260 days in 52 blocks, 2022-01-01 to 2025-09-29.
+The original finding stands on 33 days of one 2024 window.*
+
+Governing specs: [R2.6](../specs/bid-curves.md) for the method,
+[R2.7](../specs/study-windowing.md) for the window set; math:
 [formulation-uncertainty.md § R2.6](../formulation-uncertainty.md).
+
+## What changed
+
+The euro null held in every year, and the study now scores **all 260 windows** where
+the published version scored 33. That matters for a second reason: this study skips
+windows whose evaluation program is infeasible, and on the wider window nothing was
+skipped, so the caveat the earlier page carried about partial coverage no longer
+binds.
 
 ## The question
 
@@ -49,12 +63,18 @@ study does not charge for it.
 
 | Recourse budget | Median gap, curve | Median gap, scalar |
 | --- | --- | --- |
-| ρ = 0.25 | 4.00 MWh | 4.21 MWh |
+| ρ = 0.25 | 4.26 MWh | 4.21 MWh |
 | ρ = 1.0 | 7.91 MWh | 9.91 MWh |
 
 On a **2 MWh** asset, a promise of 4 to 8 MWh over a day is several times the
 battery's capacity. Imbalance settlement is what would price that shortfall, and
 imbalance settlement is not modelled here.
+
+**This is the one quantity in the value studies that the wider window strengthened.**
+Every euro finding here got weaker or stayed null under re-measurement; the gap held
+its range across four years and 260 days, with a maximum of 14.02 MWh in a single day.
+An exposure that survives the crisis, the normalization and the current regime alike is
+a structural property of the commitment, not an artifact of one quarter.
 
 Two things follow. The contingency does buy something real: the curve's gap is
 **smaller** than the scalar's at both budgets, so a price-contingent commitment

@@ -1,6 +1,6 @@
 # Spec R2.8: Seed reproducibility of the value studies
 
-**Status:** Draft
+**Status:** Implemented
 **Release:** R2  **Depends on:** R2.7
 **Phases:** R2.8
 
@@ -36,9 +36,15 @@ a claim whose reproducibility is unmeasured cannot support another one.
 ## Formulation reference
 
 [`formulation-evaluation.md` § R2.5](../formulation-evaluation.md#r25-value-evaluation-hardening-evaluation-semantics-no-optimizer-change).
-**No new quantity and no canonical edit.** VSS and FV are computed by the formulas
-already there; this phase reports an existing quantity's reproducibility, which is a
-property of the estimator rather than a new estimand.
+**No new quantity.** VSS and FV are computed by the formulas already there.
+
+**One canonical edit is required, in the same change** (CLAUDE.md §1). Measuring
+reproducibility needs no formulation change, but *acting* on the measurement does: §R2.5
+currently defines the reported object as the empirical distribution over a window set,
+whose median is the headline. Once seed noise is known to be material, the headline
+becomes the **mean across seeds of that median**, with the spread reported beside it and
+the single-seed value named so the published command still reproduces something. That is
+a change to what a number means, so it goes in §R2.5 rather than only in this spec.
 
 **No optimizer delta.** `docs/formulation.md` is untouched.
 
@@ -111,11 +117,11 @@ study import. Raises below two seeds.
 
 ## Build tasks
 
-- [ ] 1. `SeedSpread` and `summarize_across_seeds`, with golden and property gates.
-- [ ] 2. Live reported test in the `studies` marker tier: VSS over 10 seeds and FV over
+- [x] 1. `SeedSpread` and `summarize_across_seeds`, with golden and property gates.
+- [x] 2. Live reported test in the `studies` marker tier: VSS over 10 seeds and FV over
       6, on R2.7's window set, printing each seed's median and the spread.
-- [ ] 3. Run it, and record the measured widths under Measured results.
-- [ ] 4. Publish the width beside the window interval on
+- [x] 3. Run it, and record the measured widths under Measured results.
+- [x] 4. Publish the width beside the window interval on
       [stochastic-value](../studies/stochastic-value.md) and
       [forecast-value](../studies/forecast-value.md), and retire the "unquantified"
       wording in the [studies README](../studies/README.md) and
@@ -149,11 +155,52 @@ the spread is finite.
 
 *Blocks:* nothing. Blocks the reproducibility sentences it adds to two studies pages.
 
-- [ ] Golden oracles pass
-- [ ] Property tests pass
-- [ ] The live run completes and its widths are recorded here
-- [ ] Both studies pages report the width beside the window interval
-- [ ] ruff / format / mypy / lint-imports / docs-lint clean
+- [x] Golden oracles pass
+- [x] Property tests pass
+- [x] The live run completes and its widths are recorded here
+- [x] Both studies pages report the width beside the window interval
+- [x] ruff / format / mypy / lint-imports / docs-lint clean
+
+## Measured results
+
+Live runs of 2026-07-29, real NL prices, R2.7's 260-day window set held fixed. VSS over
+10 seeds (24.7 min), forecast value over 6 (66.3 min).
+
+| Study | Per-seed medians | Mean | sd | Spread | Window-CI width |
+| --- | --- | --- | --- | --- | --- |
+| Stochastic value | +3.04 to +7.89 | **+5.76** | 1.52 | **4.85** | 15.11 |
+| Forecast value | -11.54 to -0.35 | **-6.20** | 4.10 | **11.19** | 26.71 |
+
+**Seed noise runs about a third of the window interval, in both studies.** VSS 4.85
+against 15.11, FV 11.19 against 26.71. It is not a rounding detail, and no interval the
+project reported before this phase covered any of it.
+
+**Forecast value carries roughly twice the width of VSS**, which is the expected
+direction rather than a surprise: its seed drives the forecaster fit as well as the
+scenario draws, so it has two noise sources where VSS has one. Separating them is out of
+scope (see Decisions).
+
+**Both published headlines were low draws.** Seed 0 gave +3.56 for VSS, second-lowest of
+ten against a mean of +5.76, and -10.87 for FV, second-lowest of six against a mean of
+-6.20. Publishing either as *the* figure would have been unlucky rather than wrong, which
+is exactly what a reproducibility measurement exists to catch. The pages now lead with
+the across-seed mean.
+
+### The sign is reproducible where the magnitude is not
+
+| Study | Share above zero, across seeds | Spread |
+| --- | --- | --- |
+| Stochastic value | 54% to 60% | 6 points |
+| Forecast value | 45% to 50% | 5 points |
+
+The medians move by factors of 2.5 (VSS) and 33 (FV); the share above zero barely moves,
+and every FV seed stays negative with no share reaching 50%. **The direction of each
+finding survives the draw even where the euro figure does not**, which is the honest way
+to state both results and is now what the studies pages say.
+
+This also retires a worry R2.7 raised. Draw noise is large enough to matter for a
+magnitude and too small to overturn a sign, so none of R2.7's conclusions change: the
+three nulls stay null and the one positive result stays positive.
 
 ## Out of scope
 
@@ -176,3 +223,13 @@ the spread is finite.
   one a reader needs. Recorded as out of scope rather than forgotten.
 - **Gate the width against a bound?** *Proposed:* no. Any bound would be picked after
   seeing the number, and a gate chosen to pass is not a gate.
+- **Once the width is known, does the published headline stay at `seed=0`?**
+  **Resolved: no, publish the across-seed mean** (2026-07-29). *Proposed initially:* keep
+  `seed=0` and report the spread beside it, since that is what the published command
+  reproduces. Overturned once measured: seed 0 gives the second-lowest of ten VSS
+  medians (+3.56 against a mean of +5.76), so leading with it would publish a figure
+  known to be unrepresentative and waste the measurement that established it. The pages
+  now lead with the across-seed mean, name the `seed=0` value so the default command
+  still reproduces something, and report the spread. **Tail value and bid curves keep
+  their single-seed figures**, which costs nothing: both medians are exactly +0.00 in
+  every year, and a mean across seeds of zeros is zero.

@@ -2,9 +2,14 @@
 
 **Answer: yes in Belgium, and not decisively in the Netherlands.**
 Over 260 delivery days spread across four years, the two-stage stochastic commitment
-beat the mean-value plan by a median of **+8.36 EUR per window on BE** (95% interval
-[+4.57, +13.27], positive on 64% of windows) and **+3.56 EUR on NL**, whose interval
-[−1.03, +14.08] **includes zero**. A 2 MWh / 1 MW asset at a 0.5 recourse budget.
+beat the mean-value plan by a median of **+8.36 EUR per window on BE** (95% window
+interval [+4.57, +13.27], positive on 64% of windows) and **+5.76 EUR on NL**, whose
+window interval **includes zero**. A 2 MWh / 1 MW asset at a 0.5 recourse budget.
+
+The NL figure is the mean over ten random seeds, which span [+3.04, +7.89]; the default
+`seed=0` gives +3.56, near the bottom of that range. Reporting the mean rather than one
+seed is [R2.8](../specs/draw-noise.md): the scenario draw is itself random, and a single
+run is a lucky or unlucky sample of it.
 
 *Measured live on 2026-07-29 over real NL and BE day-ahead prices, 260 days in 52
 blocks spread over 2022-01-01 to 2025-09-29.*
@@ -130,13 +135,15 @@ Three sources of uncertainty sit under that number, and only two are quantified 
 - **Regime.** The crisis year pays several times the calm years, so the figure depends
   on which market conditions a reader expects.
 - **Window sampling**, which the quoted interval covers.
-- **Scenario-draw noise, which is not measured.** The 30-path bootstrap is itself
-  random, and the seeding comparison above shows that changing only *which* draws land
-  on which day moved the old headline by about 4 EUR. Both draws are equally valid, so
-  this is not a bug to fix; it is a precision nobody has yet put a number on.
-  Quantifying it means re-running across many seeds, which
-  [R2.7](../specs/study-windowing.md) deliberately left out of scope, and it is
-  recorded there as open work.
+- **Scenario-draw noise**, now measured ([R2.8](../specs/draw-noise.md)): over ten seeds
+  on the same days the median spans 4.85 EUR, about a third of the 15.11 EUR window
+  interval. Both are real and they are independent, so they are reported separately and
+  never combined. The draw spread is **not** a confidence interval: every seed is an
+  equally valid run, so it says how far a rerun moves, not how uncertain the market is.
+
+What the draw does **not** move is the direction. Across those ten seeds the share of
+windows above zero stays between 54% and 60% while the median swings by a factor of
+2.5. The magnitude of this result is soft; the sign is not.
 
 On NL the pooled interval includes zero. The honest reading is that the Dutch result is
 directionally positive and not statistically separable from zero on this evidence,

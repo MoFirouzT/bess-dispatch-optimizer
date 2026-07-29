@@ -13,10 +13,9 @@ happened before 2026-07-28.
 
 ## Current phase
 
-**R2.7 (study windowing) is implemented**; the ledger row in
-[specs/README.md](specs/README.md) records what it found. **R2.8 (draw noise) is
-drafted and scaffolded**, with its measurement not yet run: see below. Releases 1 and 2
-are otherwise complete; Release 3 has not started.
+**No active phase.** R2.7 (study windowing) and R2.8 (draw noise) are both
+implemented; the ledger rows in [specs/README.md](specs/README.md) record what they
+found. Releases 1 and 2 are complete; Release 3 has not started.
 
 R2.7 re-measured all four euro value studies on 260 delivery days in 52 blocks over
 2022-01-01 to 2025-09-29, reusing R2.1d's fold layout verbatim so the euros and the
@@ -46,7 +45,8 @@ implemented and committed; its rules live in [architecture.md](architecture.md),
 [decisions/README.md](decisions/README.md) and [specs/README.md](specs/README.md).
 
 Full suite 404 passed / 40 skipped; ruff, format, mypy(49), lint-imports (**5** KEPT),
-docs-lint(55) all clean. The R2.7 live gates passed on both zones; the studies tier is
+docs-lint(55) all clean. R2.8's live sweep took 24.7 min (VSS, 10 seeds) and 66.3 min
+(FV, 6 seeds). The R2.7 live gates passed on both zones; the studies tier is
 marked `studies` and deselected from the routine live run because it takes about an
 hour.
 
@@ -75,12 +75,8 @@ hour.
    probe, not the spec** (CLAUDE.md §7): `entsoe-py` exposes the imbalance endpoints,
    but whether NL and BE are actually populated on them is unverified, and thin data
    should change the gate wording up front rather than be discovered late.
-2. **Finish R2.8** ([specs/draw-noise.md](specs/draw-noise.md)), which is drafted and
-   scaffolded but **not measured**. The helper, golden and property gates, and the live
-   reported test are in; what remains is running it (10 VSS seeds and 6 FV seeds over
-   R2.7's window set, about 70 minutes under `uv run pytest -m "integration and studies"`),
-   recording the widths in the spec, and publishing them beside the window intervals on
-   the two studies pages. Its spec boxes are deliberately unticked until then.
+2. **Nothing else queued.** R2.8 is done, so every euro figure now carries both of its
+   widths and no value claim is blocked on an unmeasured precision.
 
 ## Known blockers and carried findings
 
@@ -110,15 +106,13 @@ hour.
   before S1 moved the studies out, and the move made it worse rather than introducing
   it. Promoting it is a small follow-up, deliberately not folded into a phase whose
   invariant is that nothing changes.
-- **Scenario-draw noise is unquantified, and it is not small.** R2.7 measured that
-  changing only *which* bootstrap draws land on which day, holding protocol, window,
-  asset and data fixed, moved the published VSS median by about 4 EUR on a claim of
-  +12.90. Neither draw is more correct: both are valid samples from the same 30-path
-  bootstrap. Window sampling is now covered by the reported intervals; **draw noise is
-  covered by nothing**, so every euro figure in [studies/](studies/) has a precision
-  nobody has measured. Quantifying it means re-running the studies across many seeds,
-  which R2.7 kept out of scope to hold one variable. Do this before any phase reports a
-  tighter value claim.
+- **Scenario-draw noise is measured, and it is not small** (R2.8, resolved). Over ten
+  seeds the VSS median spans 4.85 EUR and over six the FV median spans 11.19, roughly a
+  third of each study's window interval. Both published headlines were low draws, so the
+  two pages now lead with the mean across seeds. **The live constraint is that the two
+  widths are independent and must never be combined**, and that the draw spread is not a
+  confidence interval. Any new value claim must report both widths; budget about 11 min
+  per FV seed and 2.5 per VSS seed for a sweep.
 - **The value-study window is settled; regime dependence is the live caveat.**
   R2.7 fixed the window at 260 days over 2022-2025. What remains open is that the
   results are strongly regime-dependent (VSS pays several times more in the 2022 crisis

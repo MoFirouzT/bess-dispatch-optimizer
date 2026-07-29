@@ -135,6 +135,24 @@ Two requirements make $W$ meaningful rather than decorative.
 
 The same two rules govern the FV, tail-value and bid-curve distributions below.
 
+### The headline is a mean across seeds (R2.8)
+
+The window set fixes *which days* are scored; it does not fix the scenario draw. Each
+window's training paths are sampled, so running the identical protocol on the identical
+days under a different seed yields a different distribution and a different median. That
+width is a property of the estimator, not of the market, and it is not covered by the
+block interval above, which resamples values that all came from one seed.
+
+Where the width is material, the reported figure is the **mean over seeds of the
+per-seed median**, $\bar m = \frac{1}{K}\sum_k m_k$, with the observed range reported
+beside it and the value at the default seed named, so the published command still
+reproduces a stated number.
+
+Two cautions. The across-seed range is **not** a confidence interval: every seed is an
+equally valid run, so it describes reproducibility rather than uncertainty about a
+parameter. And it is independent of the window interval, so the two are reported
+separately and never combined into one width.
+
 ### Forecast value (euros, not statistics)
 
 The same fixed-commitment scoring, applied to two scenario sets that differ **only in the forecast** feeding the §R2.2 residual-path bootstrap: the R2.1 conformal forecast (its point path and residual history) versus a seasonal-naive forecast (same hour one week prior, with its own residual history).

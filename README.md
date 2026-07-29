@@ -106,7 +106,9 @@ A spike is a scarcity event, so it does not fall uniformly across the day: it co
 
 Reproduce the two tail figures with `uv run --group examples python examples/spike_tail_demo.py` and `examples/conditional_tail_demo.py` (both synthetic by design: they demonstrate the tail mechanism, not a market result).
 
-That machinery only earns its place if it beats simply optimizing against the mean forecast. Repeating the out-of-sample measurement over **260 real delivery days spread across 2022 to 2025** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of +8.36 EUR on BE**, whose 95% interval [+4.57, +13.27] sits above zero, and **+3.56 EUR on NL**, whose interval [−1.03, +14.08] does not. For the 2 MWh / 1 MW study asset.
+That machinery only earns its place if it beats simply optimizing against the mean forecast. Repeating the out-of-sample measurement over **260 real delivery days spread across 2022 to 2025** (commitments fit on the trailing 28 days, then scored, fixed, on that day's realized prices) gives a **median per-window VSS of +8.36 EUR on BE**, whose 95% window interval [+4.57, +13.27] sits above zero, and **+5.76 EUR on NL**, whose interval does not. For the 2 MWh / 1 MW study asset.
+
+Each figure carries two independent widths, both measured: the window interval above, and the spread from the random scenario draw itself (4.85 EUR here, so the NL headline is a mean over ten seeds rather than one lucky run). Reseeding moves the magnitude and not the sign.
 
 The honest reading is that the stochastic layer pays, that the effect is **regime-dependent** (the 2022 gas crisis pays several times what calm years do), and that on Dutch prices alone it is not separable from zero. An earlier version of this section claimed +12.90 EUR on one 2024 quarter; [re-measuring on a four-year span](docs/specs/study-windowing.md) is what moved it, and the studies pages record the decomposition.
 

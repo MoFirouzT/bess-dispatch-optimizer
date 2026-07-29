@@ -1,11 +1,17 @@
 # Forecast value: does a better forecast earn more euros?
 
 **Answer: null, in two markets and across four years.** Over 260 delivery days the
-forecast-value distribution has a **median of −10.87 EUR per window on NL** (95%
-interval [−21.54, +5.17], 45% of windows positive) and **−11.67 EUR on BE**
+forecast-value distribution has a **median of −6.20 EUR per window on NL** (95% window
+interval [−21.54, +5.17], 47% of windows positive) and **−11.67 EUR on BE**
 ([−27.26, +2.29], 44% positive). Both intervals contain zero, despite the conformal
 forecaster having clear and measured statistical skill over the seasonal-naive
 baseline it is compared against.
+
+The NL figure is the mean over six random seeds, spanning [−11.54, −0.35]; the default
+`seed=0` gives −10.87, second-lowest of the six. This study's seed drives the forecaster
+fit as well as the scenario draws, so it carries about twice the draw noise of the
+[stochastic-value](stochastic-value.md) study: an 11.19 EUR spread against that study's
+4.85 ([R2.8](../specs/draw-noise.md)).
 
 *Measured live on 2026-07-29 over real NL and BE day-ahead prices, 260 days in 52
 blocks spread over 2022-01-01 to 2025-09-29, the same days and asset as the
@@ -25,7 +31,8 @@ four years it is −10.87, and the interval straddles zero.
 | --- | --- | --- |
 | Published (Mar-Jun 2024) | −19.81 | 41% |
 | Same window, after a seeding fix | −16.08 | 35% |
-| 260 days over 2022-2025 | −10.87 | 45% |
+| 260 days over 2022-2025, `seed=0` | −10.87 | 45% |
+| 260 days, mean over six seeds | **−6.20** | 47% |
 
 Both corrections push the same way, toward zero. The old figure was the pessimistic end
 of a range rather than its centre, and calling forecast value "mildly negative" claimed
@@ -82,6 +89,10 @@ Two markets agreeing on the pooled null, while disagreeing year by year, is the
 strongest available evidence that the null is about the **mechanism** rather than about
 Dutch prices. As with the sister study, these per-year rows rest on about 70 windows
 each and should be read with that in mind.
+
+The seed sweep says the same thing from another angle: the median moves by a factor of
+33 across six seeds, from −11.54 to −0.35, yet **every seed is negative and none reaches
+50% of windows positive**. The euro figure is soft; the absence of an edge is not.
 
 ## Why
 

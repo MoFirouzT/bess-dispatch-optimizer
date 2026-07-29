@@ -16,7 +16,7 @@ each page names the spec that governs its method.
 
 | Study | Question | Answer |
 | --- | --- | --- |
-| [Stochastic value](stochastic-value.md) | Does hedging across scenarios beat optimizing against the mean forecast? | **Yes on BE** (+8.36 EUR per window, interval above zero); **directionally yes on NL** (+3.56, interval includes zero) |
+| [Stochastic value](stochastic-value.md) | Does hedging across scenarios beat optimizing against the mean forecast? | **Yes on BE** (+8.36 EUR per window, interval above zero); **directionally yes on NL** (+5.76, interval includes zero) |
 | [Forecast value](forecast-value.md) | Does a better price forecast earn more euros? | **Null** in both markets, despite clear statistical skill |
 | [Tail value](tail-value.md) | Does pricing unprecedented spikes in the scenarios earn more euros? | **Null** at every recourse budget and in every year |
 | [Bid curves](bid-curves.md) | Does a price-contingent commitment beat a single blind schedule? | **Null**, but it surfaced an unpriced delivery gap that the wider window confirmed |
@@ -66,8 +66,19 @@ They previously rested on a single 2024 quarter; [R2.7](../specs/study-windowing
 re-measured them and each page records what moved. The short version: **the three nulls
 held and hardened, and the one positive result got smaller.**
 
-The limitation that remains is **scenario-draw noise**. Every euro figure here comes
-from a 30-path bootstrap that is itself random, and R2.7 measured that changing only
-which draws land on which day moved one headline by about 4 EUR. Window sampling is
-quantified by the intervals; draw noise is not quantified anywhere yet, and doing so
-means re-running the studies across many seeds.
+Every euro figure here carries **two independent widths**, both now measured. Window
+sampling is the quoted interval. **Scenario-draw noise** is the second: the 30-path
+bootstrap is itself random, so the same protocol on the same days under a different seed
+gives a different answer. [R2.8](../specs/draw-noise.md) measured it at 4.85 EUR for
+stochastic value and 11.19 for forecast value, roughly a third of each study's window
+interval. The two are never combined, and the draw spread is not a confidence interval:
+it says how far a rerun moves, not how uncertain the market is.
+
+The headline for those two studies is therefore the **mean across seeds**, with the
+default-seed value named on each page so the published command still reproduces a stated
+number. Tail value and bid curves keep single-seed figures, since a mean across seeds of
+medians that are all exactly zero is zero.
+
+**The draw moves magnitudes, not signs.** Across seeds the share of windows above zero
+varies by 5 or 6 points while the medians move by factors of 2.5 and 33. Every finding on
+this page keeps its direction under reseeding.

@@ -10,6 +10,7 @@ is a finding, not a failure.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import pandas as pd
@@ -39,6 +40,7 @@ def vss_across_windows(
     n_scenarios: int = 30,
     rho: float = 0.5,
     seed: int = 0,
+    only_days: Sequence[pd.Timestamp] | pd.DatetimeIndex | None = None,
 ) -> list[WindowVSS]:
     """The per-window out-of-sample VSS distribution (formulation §R2.5).
 
@@ -48,10 +50,18 @@ def vss_across_windows(
     recourse, the day-ahead leg settling at the training mean) on the realized
     path. The caller reports the distribution; no single-number summary is
     computed here by design.
+
+    ``only_days`` restricts scoring to the given delivery days (the R2.7 fold layout);
+    it is a filter, so a selected window carries exactly the result it would carry in
+    an unfiltered run.
     """
     results: list[WindowVSS] = []
     for start, train, evaluation in window_sets(
-        prices, history_days=history_days, n_scenarios=n_scenarios, seed=seed
+        prices,
+        history_days=history_days,
+        n_scenarios=n_scenarios,
+        seed=seed,
+        only_days=only_days,
     ):
         r = out_of_sample_vss(train, evaluation, battery, rho=rho)
         results.append(WindowVSS(start, r.rp_oos, r.eev_oos, r.vss_oos))

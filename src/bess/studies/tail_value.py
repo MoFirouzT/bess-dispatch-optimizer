@@ -8,6 +8,7 @@ measured answer was a null at every recourse budget.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,7 +19,13 @@ from bess.assets.battery import BatterySpec
 from bess.scenarios import ScenarioSet
 from bess.stochastic.twostage import solve_stochastic
 from bess.stochastic.vss import _net_to_pair
-from bess.studies.windows import _HOURS, _complete_day_matrix, _MeanForecast
+from bess.studies.windows import (
+    _HOURS,
+    _as_utc_days,
+    _complete_day_matrix,
+    _MeanForecast,
+    window_seed,
+)
 
 
 @dataclass(frozen=True)
@@ -87,6 +94,7 @@ def tail_value_across_windows(
     rho: float = 0.5,
     seed: int = 0,
     threshold_quantile: float = 0.95,
+    only_days: Sequence[pd.Timestamp] | pd.DatetimeIndex | None = None,
 ) -> list[WindowTV]:
     """Per-window tail value over every scoreable UTC-day window (token-free).
 
@@ -100,6 +108,10 @@ def tail_value_across_windows(
     spike that does not come loses). ``residual_load`` (per-hour, aligned to ``prices``)
     is typically the R2.1c fundamentals series; without it the study runs the
     unconditional tail. No forecast group needed.
+
+    ``only_days`` restricts scoring to the given delivery days (the R2.7 fold layout);
+    it is a filter, so a selected window carries exactly the result it would carry in
+    an unfiltered run.
     """
     from bess.scenarios import generate_scenarios
     from bess.scenarios.tail import ConditionalTailModel, TailModel
@@ -115,8 +127,11 @@ def tail_value_across_windows(
         if rl_starts != starts:
             raise ValueError("residual_load must cover the same complete days as prices")
 
+    wanted = None if only_days is None else set(_as_utc_days(only_days))
     out: list[WindowTV] = []
     for i in range(history_days, len(starts)):
+        if wanted is not None and starts[i] not in wanted:
+            continue
         index = pd.date_range(starts[i], periods=_HOURS, freq="h")
         trailing = mat[i - history_days : i]
         point = trailing.mean(axis=0)
@@ -134,7 +149,7 @@ def tail_value_across_windows(
             tail = TailModel.fit(residuals, threshold_quantile=threshold_quantile)
             covariate = None
 
-        s = seed + i
+        s = window_seed(seed, starts[i])
         plain_set = generate_scenarios(fc, residuals, n=n_scenarios, seed=s)
         tail_set = generate_scenarios(
             fc, residuals, n=n_scenarios, seed=s, tail=tail, tail_covariate=covariate

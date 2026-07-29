@@ -6,7 +6,10 @@
   recourse budget ρ, showing VSS = 0 at both limits and a positive interior;
 - :func:`plot_vss_distribution` — the R2.5 per-window out-of-sample VSS
   distribution: one bar-coded window per day plus the summary that carries the
-  claim (median, share of windows above zero).
+  claim (median, share of windows above zero);
+- :func:`plot_value_by_regime` — the R2.7 per-year view of that same
+  distribution, with the block-bootstrap interval on each year's median, so a
+  pooled figure cannot hide a finding that holds in one regime and not another.
 
 ``matplotlib`` is an optional dependency (the ``examples`` group); importing this
 module without it raises a clear ``ImportError``. ``viz`` sits outside the serving
@@ -16,8 +19,12 @@ chain and is not part of any import-linter contract.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:  # a type-only import: viz must not pull `studies` in at runtime
+    from bess.studies.summary import WindowSummary
 
 try:
     import matplotlib
@@ -104,5 +111,62 @@ def plot_vss_distribution(
     ax.set_title(f"{title}\n{len(values)} windows, {share_pos:.0%} above zero")
     ax.legend()
     ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    return fig
+
+
+def plot_value_by_regime(
+    by_year: dict[int, WindowSummary],
+    *,
+    title: str = "Per-window value by year",
+    ylabel: str = "median value per window (EUR)",
+    labels: Sequence[str] | None = None,
+    series: Sequence[dict[int, WindowSummary]] | None = None,
+) -> Figure:
+    """Per-year medians with their block-bootstrap intervals (R2.7).
+
+    Takes the mapping ``summarize_by_year`` returns (year -> ``WindowSummary``); pass
+    ``series`` plus ``labels`` to overlay several zones or studies on one axis.
+
+    **The interval is the point of the figure.** A per-year median rests on far fewer
+    windows than the pooled one, so a bare year-to-year line invites reading a trend
+    into sampling noise, which is exactly the misreading R2.7's own cross-check caught.
+    Drawing each year's interval puts the uncertainty in front of the reader instead.
+    """
+    groups = list(series) if series is not None else [by_year]
+    names = list(labels) if labels is not None else [""] * len(groups)
+    palette = ["#264653", "#e76f51", "#2a9d8f", "#e9c46a"]
+
+    years = sorted({y for g in groups for y in g})
+    x = np.arange(len(years), dtype=float)
+    width = 0.8 / max(len(groups), 1)
+
+    fig, ax = plt.subplots(figsize=(7.5, 4.6))
+    for k, (group, name) in enumerate(zip(groups, names, strict=False)):
+        offset = (k - (len(groups) - 1) / 2.0) * width
+        xs, meds, lo, hi = [], [], [], []
+        for i, year in enumerate(years):
+            s = group.get(year)
+            if s is None:
+                continue
+            xs.append(x[i] + offset)
+            meds.append(s.median)
+            # Clamp a NaN interval (a year with one block) to the point estimate, so
+            # the marker still plots and simply carries no error bar.
+            lo.append(s.median - (s.median_ci[0] if s.median_ci[0] == s.median_ci[0] else s.median))
+            hi.append((s.median_ci[1] if s.median_ci[1] == s.median_ci[1] else s.median) - s.median)
+        ax.errorbar(
+            xs, meds, yerr=[lo, hi], fmt="o", capsize=4, lw=1.4,
+            color=palette[k % len(palette)], label=name or None,
+        )  # fmt: skip
+
+    ax.axhline(0.0, color="#8d99ae", lw=1.1, ls="--", alpha=0.9)
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(y) for y in years])
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    if any(names):
+        ax.legend()
+    ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
     return fig

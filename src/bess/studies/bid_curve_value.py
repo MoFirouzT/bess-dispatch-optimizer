@@ -12,6 +12,7 @@ delivered, which imbalance settlement would price and this study does not.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,7 +22,13 @@ import pandas as pd
 from bess.assets.battery import BatterySpec
 from bess.scenarios import ScenarioSet
 from bess.stochastic.twostage import curve_response, solve_stochastic
-from bess.studies.windows import _HOURS, _complete_day_matrix, _MeanForecast
+from bess.studies.windows import (
+    _HOURS,
+    _as_utc_days,
+    _complete_day_matrix,
+    _MeanForecast,
+    window_seed,
+)
 
 
 @dataclass(frozen=True)
@@ -95,6 +102,7 @@ def bid_curve_value_across_windows(
     n_scenarios: int = 10,
     rho: float = 0.5,
     seed: int = 0,
+    only_days: Sequence[pd.Timestamp] | pd.DatetimeIndex | None = None,
 ) -> list[WindowBCV]:
     """Per-window bid-curve value over every scoreable UTC-day window (token-free).
 
@@ -109,6 +117,10 @@ def bid_curve_value_across_windows(
     curve program's monotonicity chain couples all commitment branches, so its solve
     cost grows steeply in the scenario count (spec R2.6, decision 4). The reduction is
     a stated approximation of this study, and it costs scenario-set fidelity.
+
+    ``only_days`` restricts scoring to the given delivery days (the R2.7 fold layout);
+    it is a filter, so a selected window carries exactly the result it would carry in
+    an unfiltered run.
     """
     from bess.scenarios import generate_scenarios
 
@@ -116,14 +128,17 @@ def bid_curve_value_across_windows(
     if len(starts) <= history_days:
         raise ValueError(f"need more than {history_days} complete days; got {len(starts)}")
 
+    wanted = None if only_days is None else set(_as_utc_days(only_days))
     out: list[WindowBCV] = []
     for i in range(history_days, len(starts)):
+        if wanted is not None and starts[i] not in wanted:
+            continue
         index = pd.date_range(starts[i], periods=_HOURS, freq="h")
         trailing = mat[i - history_days : i]
         point = trailing.mean(axis=0)
         residuals = trailing - point
         fc = _MeanForecast(point=pd.Series(point, index=index, name="point"))
-        train = generate_scenarios(fc, residuals, n=n_scenarios, seed=seed + i)
+        train = generate_scenarios(fc, residuals, n=n_scenarios, seed=window_seed(seed, starts[i]))
         try:
             r = bid_curve_value_from_sets(train, mat[i], battery, rho=rho)
         except RuntimeError:  # obligation unreachable within the budget on this day

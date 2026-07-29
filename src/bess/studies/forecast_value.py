@@ -14,6 +14,7 @@ not a failure. The measured distribution came out centred on zero.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -24,7 +25,7 @@ from bess.assets.battery import BatterySpec
 from bess.scenarios import ScenarioSet
 from bess.stochastic.twostage import solve_stochastic
 from bess.stochastic.vss import _net_to_pair
-from bess.studies.windows import _HOURS, _complete_day_matrix
+from bess.studies.windows import _HOURS, _as_utc_days, _complete_day_matrix, window_seed
 
 # The forecaster's week-scale lags plus its train/calibration split need this much
 # history before the first scoreable window.
@@ -114,6 +115,7 @@ def fv_across_windows(
     rho: float = 0.5,
     seed: int = 0,
     refit_days: int = 7,
+    only_days: Sequence[pd.Timestamp] | pd.DatetimeIndex | None = None,
 ) -> list[WindowFV]:
     """The forecast-value distribution over every scoreable UTC-day window.
 
@@ -160,9 +162,12 @@ def fv_across_windows(
                 break
         return np.asarray(rows) if len(rows) >= 2 else None
 
+    wanted = None if only_days is None else set(_as_utc_days(only_days))
     items: list[tuple[pd.Timestamp, ScenarioSet, ScenarioSet, Any]] = []
     for block_start in range(first, len(starts), refit_days):
         block = range(block_start, min(block_start + refit_days, len(starts)))
+        if wanted is not None and not any(starts[i] in wanted for i in block):
+            continue  # no selected window here, so its refit would be discarded
         # Walk-forward: fit strictly before the block, predict through its end.
         forecaster = PriceForecaster(random_state=seed)
         forecaster.fit(prices[idx_norm < starts[block_start]])
@@ -170,6 +175,8 @@ def fv_across_windows(
         fc_days = pd.DatetimeIndex(fc.point.index).normalize()
         for i in block:
             day = starts[i]
+            if wanted is not None and day not in wanted:
+                continue
             point = complete_path(fc.point, fc_days, day)
             lower = complete_path(fc.lower, fc_days, day)
             upper = complete_path(fc.upper, fc_days, day)
@@ -192,8 +199,9 @@ def fv_across_windows(
                 point=naive_path, lower=naive_path, upper=naive_path,
                 confidence_level=fc.confidence_level,
             )  # fmt: skip
-            conf_set = generate_scenarios(conf_fc, c_res, n=n_scenarios, seed=seed + i)
-            naive_set = generate_scenarios(naive_fc, n_res, n=n_scenarios, seed=seed + i)
+            s = window_seed(seed, day)
+            conf_set = generate_scenarios(conf_fc, c_res, n=n_scenarios, seed=s)
+            naive_set = generate_scenarios(naive_fc, n_res, n=n_scenarios, seed=s)
             items.append((day, conf_set, naive_set, mat[i]))
     return fv_windows_from_sets(items, battery, rho=rho)
 

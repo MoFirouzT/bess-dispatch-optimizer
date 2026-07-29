@@ -44,10 +44,15 @@ TOL = 1e-6
 _BATT = BatterySpec(capacity=2.0, soc_initial=0.5, soc_terminal=0.5)
 
 # 28 history days + ~13 weeks of scored windows (Mar–Jun 2024, hourly, pre-15-min
-# switch). Sized so the per-window out-of-sample VSS median sits robustly positive on
-# real data (measured median ≈ +13 EUR over ~94 windows, 66% positive, sign-test
-# p ≈ 0.999); the shorter 5-week window this replaced medians near zero on sampling
-# noise alone (cf. STATE.md), too small a sample for a sign claim.
+# switch). Sized so the per-window out-of-sample VSS median sits positive on real data:
+# measured +9.12 EUR over 94 windows, 60% positive, under the R2.7 date-keyed seeding.
+# (The +12.90 / 66% this comment used to quote was the same window under the pre-R2.7
+# ordinal seeding, where a window's draws depended on its position in the series.)
+#
+# **This module is now a narrower regression, not the publication gate.** The numbers
+# the studies pages quote come from `test_study_windowing_live.py`, which scores 260
+# days across 2022-2025 on NL and BE. Kept because it still covers the single-window
+# `forecast_value` wrapper and the original R2.5 contract on its own window.
 _START = pd.Timestamp("2024-03-01", tz="UTC")
 _END = pd.Timestamp("2024-06-30 23:00", tz="UTC")
 _KW = dict(history_days=28, n_scenarios=30, seed=0)
@@ -89,7 +94,7 @@ def test_vss_median_not_significantly_negative_on_real_weeks():
     # form via a one-sided sign test: fail only if the median is *significantly*
     # negative, i.e. the stochastic layer has collapsed to systematically-negative
     # value. Alpha 0.05, not tuned to pass — on this window the real median is
-    # ≈ +13 EUR (p ≈ 0.999); the gate still fires on a genuine collapse.
+    # ≈ +9 EUR; the gate still fires on a genuine collapse.
     p_neg = _sign_test_median_negative(vss)
     assert p_neg >= 0.05, (
         f"per-window VSS median significantly < 0 (sign-test p={p_neg:.4f}; "

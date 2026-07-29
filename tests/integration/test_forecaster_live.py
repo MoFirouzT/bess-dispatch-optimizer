@@ -47,6 +47,7 @@ pytest.importorskip("mapie")
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from span import WALK_FORWARD, span_prices  # noqa: E402
 
 from bess.data.entsoe import fetch_day_ahead  # noqa: E402
 from bess.data.ingestion_guard import FeedStatus, guarded_fetch  # noqa: E402
@@ -63,16 +64,7 @@ requires_token = pytest.mark.skipif(
     reason="ENTSOE_API_TOKEN not set — live ENTSO-E integration test skipped (never runs in CI)",
 )
 
-#: The R2.1d evaluation span. Upper bound is forced, not chosen: the SDAC market time
-#: unit moved to 15 minutes at 2025-10-01 00:00 local (2025-09-30 22:00 UTC, verified
-#: live), and `validate_utc_index` rejects a series with two step sizes. Verified size:
-#: 41,593 hourly points over 1734 days.
-_SPAN = (pd.Timestamp("2021-01-01", tz="UTC"), pd.Timestamp("2025-09-30", tz="UTC"))
-
-#: Fold placement (R2.1d). 52 folds of 5 days spread across the span is roughly one
-#: fold per four weeks and 260 evaluated days, which brings the standard error of
-#: pooled coverage to about 0.019 and makes a 5-point tolerance band defensible.
-_WF = dict(n_folds=52, test_days=5, train_days=365, spacing="even")
+_WF = dict(WALK_FORWARD)
 
 #: No capacity override: the gated model is the shipped model (R2.1d build task).
 _SEED = dict(random_state=0)
@@ -95,32 +87,6 @@ def _guarded_prices(window, zone="NL"):
     return result.prices
 
 
-def _span_prices(zone="NL"):
-    """Fetch the multi-year evaluation span, deliberately **not** through the guard.
-
-    Measured 2026-07-28: the R1.4c guard classifies this span ANOMALY / `stuck_feed`.
-    The trigger is a 5-hour run of exactly 64.00 EUR/MWh on 2021-05-15, plus 4-hour
-    runs at 42.30, 140.66 and 95.60, against a nonfocal threshold of 4 hours. Those
-    are ordinary merit-order flats, where one marginal unit sets the price for
-    several consecutive hours; they are not a stuck feed. The focal branch is
-    comfortable (longest 0.00 run is 8 hours against a 24-hour threshold).
-
-    The guard's nonfocal rule is a **fixed run length applied regardless of window
-    length**, so its false-positive rate grows with the span. It survived until now
-    because nothing fetched a window containing such a run: the year-long guard test
-    covers 2024, which has no nonfocal run of 4 or more. This is the same class of
-    defect that already forced the *focal* threshold up from 8 hours to 24, now
-    surfacing on the nonfocal branch.
-
-    Fixing that belongs to R1.4c, and lowering or raising a guard threshold to make
-    this module pass would be exactly the suppression the operating contract forbids.
-    So the span is fetched directly and the finding is recorded (R2.1d spec, STATE).
-    The guard keeps its live-feed job everywhere it can actually assert it, including
-    the shorter seasonal windows below and `test_ingestion_guard_live.py` itself.
-    """
-    return fetch_day_ahead(zone, *_SPAN)
-
-
 def _overlaps(ci, band):
     """Do the interval and the tolerance band share any point?"""
     return ci[0] <= band[1] and band[0] <= ci[1]
@@ -133,10 +99,10 @@ def test_coverage_interval_does_not_rule_out_the_tolerance_band(method):
 
     Coverage is pooled over every fold and reported with a day-block bootstrap
     interval, because the effective sample is the evaluated **day** count, not the
-    hour count. See `_span_prices` for why this particular fetch does not run through
+    hour count. See `conftest.span_prices` for why this particular fetch does not run through
     the R1.4c guard, and what was measured to establish that.
     """
-    prices = _span_prices()
+    prices = span_prices("NL")
 
     res = walk_forward_coverage(
         prices, confidence_level=0.9, method=method, return_detail=True, **_WF, **_SEED
@@ -167,7 +133,7 @@ def test_intervals_are_sharper_than_the_seasonal_naive_baseline():
     efficiency axis: pinball loss at both interval edges, against the seasonal-naive
     baseline, on the same folds as the coverage gate.
     """
-    prices = _span_prices()
+    prices = span_prices("NL")
 
     skill = walk_forward_pinball_skill(prices, confidence_level=0.9, method="cqr", **_WF, **_SEED)
 
@@ -194,7 +160,7 @@ def test_coverage_generalizes_to_a_second_zone():
     so the live tier stays inside a few minutes. NL alone cannot distinguish "the
     conformal wrapper is correct" from "NL happens to be benign".
     """
-    prices = _span_prices(zone="BE")
+    prices = span_prices(zone="BE")
 
     res = walk_forward_coverage(
         prices, confidence_level=0.9, method="cqr", return_detail=True, **_WF, **_SEED
@@ -340,7 +306,7 @@ def test_normalization_does_not_worsen_conditional_coverage():
     A measured null is a pass and is recorded as a finding; only a material worsening
     fails. Both arms run on identical folds so the comparison is like for like.
     """
-    prices = _span_prices()
+    prices = span_prices("NL")
 
     raw = walk_forward_coverage(
         prices, confidence_level=0.9, method="cqr", return_detail=True, **_WF, **_SEED

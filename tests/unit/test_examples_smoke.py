@@ -63,6 +63,9 @@ SCRIPTS: dict[str, tuple[str | None, dict]] = {
             "N_SCENARIOS": 4,
             "N_SYNTH_DAYS": 7,
             "RUN_FORECAST_BASELINE": False,
+            # `full` so the figure lands in the patched FIG_DIR: `fast` writes to
+            # `build/figure-previews/` by design, which is the point of the split.
+            "MODE": "full",
         },
     ),
 }

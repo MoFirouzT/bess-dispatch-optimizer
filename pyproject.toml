@@ -96,6 +96,7 @@ testpaths = ["tests"]
 addopts = "-ra"
 markers = [
     "integration: live ENTSO-E API test (R1.4b) — skipped unless ENTSOE_API_TOKEN + network (+ CA bundle) are present; never runs in CI",
+    "studies: R2.7 value-study re-measurement over the full 2021-2025 span — ~1 hour, so deselected from the routine live tier with `-m 'integration and not studies'`",
 ]
 filterwarnings = [
     # entsoe-py parses ENTSO-E XML with bs4's html.parser — its internal warning,

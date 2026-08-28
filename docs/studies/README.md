@@ -28,11 +28,11 @@ each page names the spec that governs its method.
 
 Three of the seven came back null, and all three share one mechanism:
 **intraday recourse adjusts after the price is known**, so a better *representation*
-of the day-ahead future has little left to buy. That is a result about this market
+of the day-ahead future has little left to improve. That is a result about this market
 and this asset, not a failure of the implementation, and each page says how it was
 distinguished from one.
 
-The distinction is load-bearing, so each null is held to the same standard as a
+Each null is therefore held to the same standard as a
 positive result. The three euro-comparison studies (forecast, tail, bid curve) each
 carry a golden oracle pinning the scoring arithmetic and a property test pinning
 degeneracy: comparing a thing against itself must return exactly zero. The forecast

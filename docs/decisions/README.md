@@ -93,7 +93,7 @@ conventional choice with an obvious default does not, and neither does a refacto
 If the reasoning fits in a sentence, put that sentence where the code is instead.
 
 **Status** is `Accepted`, `Superseded`, or `Rejected`. A rejected decision is kept
-only when the rejection itself is load-bearing, that is, when someone would
+only when the rejection itself matters, that is, when someone would
 otherwise re-propose it.
 
 **When a decision changes:** revise the file in place and date the change in the

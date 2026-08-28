@@ -34,7 +34,7 @@ signed deviation, because they are inefficient rather than unsafe.
 
 ## Rationale
 
-**Staleness wins over everything**, and this is the load-bearing insight: *even under
+**Staleness wins over everything**, and the reason is this: *even under
 a genuine regime shift, a healthy model should degrade no worse than a naive
 baseline.* A seasonal-naive forecast sees the same shifted world. If the model is
 materially worse than naive, that is model-specific decay, not the world's fault, and

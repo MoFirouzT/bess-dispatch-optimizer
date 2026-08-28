@@ -21,7 +21,7 @@ year reverses the sign, and no recourse budget does either.
 
 One number did sharpen the explanation. The share of positive windows falls from 31%
 at ρ = 0.25 to **9% at ρ = 1.0**: the more freely recourse can re-dispatch once prices
-are known, the less a sharper day-ahead tail has left to buy. That gradient was the
+are known, the less a sharper day-ahead tail has left to improve. That gradient was the
 assumed mechanism before; now it is measured.
 
 ## The question

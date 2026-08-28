@@ -68,7 +68,7 @@ GET /health -> 200 { "status": "ok", "solver": "appsi_highs", "solver_available"
 The breaker is a thin service function `dispatch(request, *, budget, solve_fn=solve, greedy_fn=greedy_window)`:
 `solve_fn`/`greedy_fn` injectable so tests force each path deterministically without monkeypatching globals.
 
-`solver_termination` has only the two values above because a timed-out solve never *returns*: `solve()` raises on any non-optimal termination condition, and the breaker catches it, so a budget overrun surfaces as `mode="fallback_greedy"` with `solver_termination="fallback"` rather than as a distinct solver status.
+`solver_termination` has only the two values above because a timed-out solve never *returns*: `solve()` raises on any non-optimal termination condition, and the breaker catches it, so a budget overrun is reported as `mode="fallback_greedy"` with `solver_termination="fallback"` rather than as a distinct solver status.
 
 ## Build tasks
 

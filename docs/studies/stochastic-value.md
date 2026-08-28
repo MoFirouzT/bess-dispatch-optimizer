@@ -4,7 +4,7 @@
 Over 260 delivery days spread across four years, the two-stage stochastic commitment
 beat the mean-value plan by a median of **+8.36 EUR per window on BE** (95% window
 interval [+4.57, +13.27], positive on 64% of windows) and **+5.76 EUR on NL**, whose
-window interval **includes zero**. A 2 MWh / 1 MW asset at a 0.5 recourse budget.
+window interval **includes zero**. Both are for a 2 MWh / 1 MW asset at a 0.5 recourse budget.
 
 The NL figure is the mean over ten random seeds, which span [+3.04, +7.89]; the default
 `seed=0` gives +3.56, near the bottom of that range. Reporting the mean rather than one
@@ -145,9 +145,9 @@ What the draw does **not** move is the direction. Across those ten seeds the sha
 windows above zero stays between 54% and 60% while the median swings by a factor of
 2.5. The magnitude of this result is soft; the sign is not.
 
-On NL the pooled interval includes zero. The honest reading is that the Dutch result is
-directionally positive and not statistically separable from zero on this evidence,
-while the Belgian one is separable.
+On NL the pooled interval includes zero. The Dutch result is directionally positive and
+not statistically separable from zero on this evidence, while the Belgian one is
+separable.
 
 ## Reproduce
 

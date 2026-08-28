@@ -102,7 +102,7 @@ against the realized price and captured the same value without it.
 
 This is the first appearance of the mechanism that also produced the
 [tail](tail-value.md) and [bid-curve](bid-curves.md) nulls: **recourse adjusts
-after the price is known**, so a better day-ahead picture has little left to buy.
+after the price is known**, so a sharper day-ahead forecast has little left to improve.
 
 ## What this does not say
 
@@ -112,7 +112,7 @@ distinguishable from zero. The forecaster still supplies the calibrated spread t
 scenarios are drawn from, and the [stochastic structure](stochastic-value.md)
 built on those scenarios does earn real money.
 
-The honest claim is exactly that split: the structure pays, the sharper forecast
+The claim is exactly that split: the structure pays, the sharper forecast
 does not yet.
 
 Nor does it say the forecaster is unnecessary. Its calibrated intervals are what the

@@ -41,6 +41,8 @@ That single-shot commitment is *why* a naive day-ahead stochastic model has no r
 
 **Negative prices**: day-ahead prices below zero during renewable oversupply. *Why here:* increasingly common; the formulation must handle them. *Gotcha:* under negative prices, simultaneous charge+discharge could look "profitable" (burning energy); the mutual-exclusion binary exists to prevent that.
 
+**Residual load**: demand minus wind and solar generation, the load that dispatchable plant must actually serve. *Why here:* it is what sets where the day-ahead auction clears on the supply stack, so the R2.1c forecaster conditions on it and the R2.2 conditional tail scales spike size by it. *Gotcha:* use the **published day-ahead forecasts** of load and wind/solar, never the realized values: the realized figure is not known before gate closure, so training on it leaks the future ([forecast feature alignment](decisions/forecast-feature-alignment.md)).
+
 ---
 
 ## Battery / physical

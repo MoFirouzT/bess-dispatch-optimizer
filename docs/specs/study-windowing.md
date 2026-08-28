@@ -291,7 +291,7 @@ imports `bess.forecaster`, and nothing on the serving chain imports `bess.studie
 - [x] 7. Live gates re-pointed at the 52-block layout, with the block-bootstrap median
       CI replacing the sign test, under a new `studies` pytest marker so the routine
       live tier keeps its 16-minute budget.
-- [x] 7b. BE second-market run: stochastic value (gated on the same rule as NL) and
+- [x] 7b. BE second-market run: stochastic value (gated by the same rule as NL) and
       forecast value (reported), same layout, same asset, same knobs.
 - [x] 8. One-off cross-check: VSS full sweep over the span (about 1706 windows, roughly
       15 minutes) against the 52-block estimate, to show the sampling design does not
@@ -477,7 +477,7 @@ they replaced.
 No year reverses either sign. The tail study's positive share falls with the recourse
 budget (31% to 9% at ρ = 0.25 and 1.0), which is the mechanism the nulls were always
 attributed to: the more freely recourse can re-dispatch after the price is known, the
-less a sharper day-ahead tail has left to buy.
+less a sharper day-ahead tail has left to improve.
 
 **The bid-curve delivery gap survives, and it is the one number that grew.** Median
 4.26 MWh per day at ρ = 0.25 and 7.91 at ρ = 1.0, maximum 14.02, on a 2 MWh asset.
@@ -522,7 +522,7 @@ place at review, so this reads as the decision trail rather than a list of quest
 - **Reuse R2.1d's exact fold layout, or place folds independently?** **Resolved: reuse
   it verbatim** (2026-07-28). *Proposed:* reuse
   it verbatim (52 blocks, 5 days, `train_days=365`, even). The euro studies then score
-  the same 260 days the forecaster's skill is gated on, which is what makes "skill did
+  the same 260 days the forecaster's skill is measured on, which is what makes "skill did
   not convert to euros" a statement about one set of days rather than two.
 - **`train_days=365` excludes 2021 from evaluation. Accept?** **Resolved: yes**
   (2026-07-28). *Proposed:* yes. It is the cost of the alignment above, and 2022 to

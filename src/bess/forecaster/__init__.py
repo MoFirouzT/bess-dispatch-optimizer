@@ -2,14 +2,27 @@
 
 Feeds ``scenarios`` / ``stochastic``. (R2.1)
 
-``make_features`` is pure pandas (no LightGBM/MAPIE); ``PriceForecaster``,
-``walk_forward_coverage`` and ``search_sharpest`` require the optional ``forecast``
+``make_features`` and the ``conformal`` primitives are pure numpy/pandas (no
+LightGBM/MAPIE); ``PriceForecaster``, ``walk_forward_coverage``,
+``sequential_coverage`` and ``search_sharpest`` require the optional ``forecast``
 dependency group and are imported lazily so importing this package never hard-fails
 without the group.
 """
 
 from __future__ import annotations
 
+from bess.forecaster.conformal import (
+    AciState,
+    aci_bound,
+    aci_realized_gap,
+    aci_update,
+    changepoint_gap_bound,
+    cqr_score,
+    decay_weights,
+    drift_gap_bound,
+    split_score,
+    weighted_quantile,
+)
 from bess.forecaster.drift import (
     DriftMonitor,
     DriftReport,
@@ -37,7 +50,9 @@ from bess.forecaster.features import (
 
 __all__ = [
     "DEFAULT_LAGS",
+    "AciState",
     "CoverageResult",
+    "SequentialCoverage",
     "DriftMonitor",
     "DriftReport",
     "DriftStatus",
@@ -46,10 +61,17 @@ __all__ = [
     "PriceForecaster",
     "SharpnessCandidate",
     "SharpnessSearch",
+    "aci_bound",
+    "aci_realized_gap",
+    "aci_update",
     "align_target",
+    "changepoint_gap_bound",
     "classify_drift",
+    "cqr_score",
     "coverage_by_hour",
     "coverage_ci",
+    "decay_weights",
+    "drift_gap_bound",
     "invert_standardized",
     "make_features",
     "pinball_loss",
@@ -59,7 +81,10 @@ __all__ = [
     "search_sharpest",
     "seasonal_naive",
     "seasonal_naive_forecast",
+    "sequential_coverage",
+    "split_score",
     "walk_forward_coverage",
+    "weighted_quantile",
 ]
 
 
@@ -69,10 +94,10 @@ def __getattr__(name: str) -> object:
         from bess.forecaster.forecast import IntervalForecast, PriceForecaster
 
         return {"PriceForecaster": PriceForecaster, "IntervalForecast": IntervalForecast}[name]
-    if name == "walk_forward_coverage":
-        from bess.forecaster.evaluate import walk_forward_coverage
+    if name in ("walk_forward_coverage", "sequential_coverage", "SequentialCoverage"):
+        from bess.forecaster import evaluate
 
-        return walk_forward_coverage
+        return getattr(evaluate, name)
     if name in ("search_sharpest", "SharpnessSearch", "SharpnessCandidate"):
         from bess.forecaster import tune
 

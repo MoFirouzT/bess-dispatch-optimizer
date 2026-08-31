@@ -284,3 +284,112 @@ def test_normalization_changes_the_forecast():
     shared = plain.point.index.intersection(normed.point.index)
     assert len(shared) > 0
     assert not np.allclose(plain.point.loc[shared], normed.point.loc[shared])
+
+
+# --- R2.1g: the weighted conformal path ---------------------------------------
+
+
+def test_oracle1_weighting_off_is_bit_identical_to_the_shipped_model():
+    """The opt-in identity: `weight_half_life_days=None` cannot move R2.1e's model.
+
+    Spec: `docs/specs/drift-robust-conformal.md` golden oracle 1. `fit` now always
+    computes calibration scores (the ACI arm needs them), so this is the gate that the
+    extra work is inert: with weighting off, MAPIE still owns the margin and every
+    series is bitwise what it was.
+    """
+    prices = synthetic_day_ahead(days=120, seed=3)
+
+    before = PriceForecaster(**_FAST).fit(prices).predict_interval(prices)
+    after = (
+        PriceForecaster(weight_half_life_days=None, **_FAST).fit(prices).predict_interval(prices)
+    )
+
+    pd.testing.assert_series_equal(before.point, after.point)
+    pd.testing.assert_series_equal(before.lower, after.lower)
+    pd.testing.assert_series_equal(before.upper, after.upper)
+
+
+@pytest.mark.parametrize("method", ["cqr", "split"])
+def test_oracle1b_our_unweighted_margin_reproduces_mapies_symmetric_interval(method):
+    """At rho = 1 our own conformal step *is* MAPIE's symmetric correction, bitwise.
+
+    This is the load-bearing half of oracle 1 and the reason MAPIE keeps the shipped
+    path (spec Decisions). The weighted construction must contain the unweighted one
+    exactly rather than approximate it, otherwise every comparison in R2.1g is
+    confounded by an implementation difference instead of measuring the method.
+
+    **`symmetric_correction=True` is not a convenience here, it is the construction.**
+    `formulation-uncertainty.md` §R2.1 defines one signed score with one margin
+    `s_hat`, applied to both bounds, and that is also the form Barber et al.'s Theorem
+    2a is stated for. MAPIE's *default* is `symmetric_correction=False`, a different
+    (also valid) variant with a separate constant per side, which is what the shipped
+    model runs and what the docstring below records as a defect found by this test.
+    """
+    prices = synthetic_day_ahead(days=120, seed=5)
+    fc = PriceForecaster(method=method, confidence_level=0.9, **_FAST).fit(prices)
+
+    feats = fc._features(prices, None, None)
+    x = feats.to_numpy()
+    # `symmetric_correction` is a CQR-only knob: split conformal has one construction,
+    # `mu_hat +/- s_hat`, which is already the symmetric form.
+    kwargs = {"symmetric_correction": True} if method == "cqr" else {}
+    _, symmetric = fc._mapie.predict_interval(x, **kwargs)
+    ours = fc.predict_interval(prices, alpha=0.1)
+
+    np.testing.assert_allclose(ours.lower.to_numpy(), symmetric[:, 0, 0], atol=1e-12)
+    np.testing.assert_allclose(ours.upper.to_numpy(), symmetric[:, 1, 0], atol=1e-12)
+
+
+def test_the_shipped_default_is_the_asymmetric_variant_not_the_documented_one():
+    """A defect this phase found: the code and `formulation-uncertainty.md` §R2.1 disagree.
+
+    §R2.1 defines CQR with a single margin `s_hat` added to both bounds. MAPIE's
+    `predict_interval` defaults to `symmetric_correction=False`, which fits a separate
+    constant per side, so the shipped forecaster has never run the construction the
+    canonical math file describes.
+
+    **No coverage number is wrong.** Both are valid conformal constructions with the
+    same marginal guarantee, which is why nothing caught this for four phases: every
+    coverage gate passed either way. What is wrong is that the single source of truth
+    does not describe what executes, and CLAUDE.md §1 says that gets surfaced rather
+    than quietly reconciled.
+
+    This test pins the divergence so it cannot be lost while the human decides which
+    side moves. It fails, correctly, on the day the code and the doc are brought into
+    line, and the fix then is to delete it rather than to loosen it.
+    """
+    prices = synthetic_day_ahead(days=120, seed=5)
+    fc = PriceForecaster(method="cqr", confidence_level=0.9, **_FAST).fit(prices)
+
+    shipped = fc.predict_interval(prices)  # MAPIE default: asymmetric
+    documented = fc.predict_interval(prices, alpha=0.1)  # §R2.1 as written: symmetric
+
+    assert not np.allclose(shipped.lower.to_numpy(), documented.lower.to_numpy())
+    # The asymmetric variant is the narrower of the two here, so the divergence is not
+    # conservative: it is not the case that the shipped model merely over-covers.
+    assert float(shipped.width.mean()) < float(documented.width.mean())
+
+
+def test_a_short_half_life_moves_the_margin_and_keeps_the_interval_ordered():
+    """Weighting is not inert, and it is not monotone in width either.
+
+    The non-vacuity check: coverage alone cannot tell a working decay from a knob that
+    does nothing, so something must show the margin actually moved.
+
+    It deliberately does **not** assert the interval widens. A shorter half-life
+    concentrates mass on recent scores, and whether that is wider depends on whether
+    recent scores are larger, which is a property of the data rather than of the
+    construction. The monotone claim that does hold is gated in
+    `tests/property/test_drift_robust_conformal.py`, on a rising score path where the
+    direction is determined.
+    """
+    prices = synthetic_day_ahead(days=200, seed=7)
+
+    fast = PriceForecaster(weight_half_life_days=3.0, **_FAST).fit(prices)
+    slow = PriceForecaster(weight_half_life_days=None, **_FAST).fit(prices)
+
+    f = fast.predict_interval(prices)
+    s = slow.predict_interval(prices)
+
+    assert abs(float(f.width.mean()) - float(s.width.mean())) > 0.5
+    assert (f.lower <= f.upper).all()

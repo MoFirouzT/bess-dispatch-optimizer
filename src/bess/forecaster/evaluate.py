@@ -201,7 +201,7 @@ class CoverageResult:
     mean_width: float
     #: Median interval width over the evaluated targets. Reported beside the mean
     #: because the mean is dominated by scarcity hours: a handful of spike days can
-    #: move it while the typical interval is unchanged. R2.9 selects on the mean and
+    #: move it while the typical interval is unchanged. R2.1f selects on the mean and
     #: breaks ties on this one, so a tie-break is decided by the typical interval
     #: rather than by the tail.
     median_width: float
@@ -251,7 +251,7 @@ def walk_forward_coverage(
     behavior, byte-identical.
 
     ``folds`` supplies a placement directly and makes the layout arguments unused.
-    R2.9 needs this: its tuning blocks are placed in the *gaps* between the reporting
+    R2.1f needs this: its tuning blocks are placed in the *gaps* between the reporting
     blocks, which is not a shape ``rolling_origin_folds`` can express.
     """
     from bess.forecaster.forecast import PriceForecaster  # lazy: needs the forecast group
@@ -449,4 +449,203 @@ def walk_forward_pinball_skill(
         naive_upper=n_hi,
         skill_lower=c_lo / n_lo,
         skill_upper=c_hi / n_hi,
+    )
+
+
+# --- R2.1g: the sequential (online) harness -----------------------------------
+
+#: History a single day's prediction needs behind it: the longest lag is 168 h and the
+#: R2.1e baseline window is another 168 h ending at t-24 h. 30 days clears both with
+#: room, and keeps a day's predict cheap enough to run a multi-year span day by day.
+_PREDICT_HISTORY_DAYS = 30
+
+
+@dataclass(frozen=True)
+class SequentialCoverage:
+    """One online walk over delivery days, carrying the ACI level as state (R2.1g).
+
+    The block harness above scores independent folds, which is the right shape for a
+    fixed calibration and the wrong one for an adaptive level: Gibbs and Candès's
+    guarantee attaches to a long run, not to any one block. So this walks day by day,
+    refits on a schedule rather than per fold, and carries the level forward.
+
+    ``prop41_bound`` is the published a-priori bound and is meaningful **only when
+    ``n_clamped == 0``**: clamping removes the saturation feedback the bound rests on.
+    ``realized_gap`` is the exact telescoping identity, which survives clamping, and is
+    what the gate reads.
+    """
+
+    coverage: float
+    ci_low: float
+    ci_high: float
+    by_year: tuple[tuple[int, float], ...]
+    mean_width: float
+    median_width: float
+    max_hour_deviation: float
+    n_days: int
+    n_infinite: int
+    alpha_first: float
+    alpha_last: float
+    n_updates: int
+    n_clamped: int
+    prop41_bound: float
+    realized_gap: float
+    gap_bound_7d: float
+    per_year_width: tuple[tuple[int, float], ...] = ()
+
+
+def sequential_coverage(
+    prices: pd.Series,
+    *,
+    start: pd.Timestamp | str,
+    train_days: int = 365,
+    refit_every_days: int = 365,
+    weight_half_life_days: float | None = None,
+    aci_gamma: float = 0.0,
+    aci_clamp: tuple[float, float] = (0.01, 0.5),
+    confidence_level: float = 0.9,
+    method: str = "cqr",
+    fundamentals: pd.DataFrame | None = None,
+    ci_level: float = 0.95,
+    n_boot: int = 2000,
+    seed: int = 0,
+    **forecaster_params: Any,
+) -> SequentialCoverage:
+    """Walk delivery days forward, adapting the level, and score the whole run.
+
+    Each day is predicted from a model fit strictly before it, at the level the ACI
+    recursion currently holds; after the day is scored, its realized miss *rate* feeds
+    the update. Refits happen every ``refit_every_days`` on the trailing ``train_days``,
+    so the base learners never see the feedback and the leakage discipline is R2.1d's
+    unchanged.
+
+    ``aci_gamma=0`` and ``weight_half_life_days=None`` together are the incumbent
+    construction walked sequentially, which is the baseline the other arms are read
+    against.
+    """
+    from bess.forecaster.conformal import (  # lazy: keeps this import cheap
+        AciState,
+        aci_bound,
+        aci_realized_gap,
+        aci_update,
+        changepoint_gap_bound,
+    )
+    from bess.forecaster.forecast import PriceForecaster  # lazy: needs the forecast group
+
+    alpha = 1.0 - confidence_level
+    norm = pd.DatetimeIndex(prices.index).normalize()
+    start = pd.Timestamp(start)
+    if start.tz is None and norm.tz is not None:
+        start = start.tz_localize(norm.tz)
+    days = [d for d in _price_days(prices) if d >= start]
+    if not days:
+        raise ValueError(f"no delivery days at or after {start}")
+
+    state = AciState(
+        alpha=alpha, alpha_emitted=alpha, alpha_target=alpha, gamma=aci_gamma, clamp=aci_clamp
+    )
+    forecaster: PriceForecaster | None = None
+    fitted_on: pd.Timestamp | None = None
+
+    covered_by_day: list[np.ndarray] = []
+    day_labels: list[pd.Timestamp] = []
+    widths: list[np.ndarray] = []
+    hits_all: list[np.ndarray] = []
+    hours_all: list[np.ndarray] = []
+    n_infinite = 0
+    alpha_first = state.alpha
+
+    for day in days:
+        stale = fitted_on is None or (day - fitted_on).days >= refit_every_days
+        if stale:
+            train = prices[(norm >= day - pd.Timedelta(days=train_days)) & (norm < day)]
+            if len(train) < 24 * 30:  # not enough history to fit yet; skip forward
+                continue
+            forecaster = PriceForecaster(
+                confidence_level=confidence_level,
+                method=method,
+                weight_half_life_days=weight_half_life_days,
+                use_fundamentals=fundamentals is not None,
+                **forecaster_params,
+            ).fit(train, fundamentals=fundamentals)
+            fitted_on = day
+        if forecaster is None:
+            continue
+
+        window = prices[(norm >= day - pd.Timedelta(days=_PREDICT_HISTORY_DAYS)) & (norm <= day)]
+        fc = forecaster.predict_interval(
+            window, fundamentals=fundamentals, alpha=state.alpha_emitted
+        )
+        mask = pd.DatetimeIndex(fc.point.index).normalize() == day
+        if not mask.any():
+            continue
+        targets = fc.point.index[mask]
+        y = prices.loc[targets].to_numpy()
+        lo = fc.lower[mask].to_numpy()
+        hi = fc.upper[mask].to_numpy()
+        hit = (y >= lo) & (y <= hi)
+        width = hi - lo
+        n_infinite += int(np.isinf(width).sum())
+
+        covered_by_day.append(hit)
+        day_labels.append(day)
+        widths.append(width)
+        hits_all.append(hit)
+        hours_all.append(pd.DatetimeIndex(targets).hour.to_numpy())
+
+        # The day's miss *rate*, not an indicator: 24 outcomes settle at once, so one
+        # update per delivery day is the honest information arrival (spec §"Design").
+        state = aci_update(state, err=float(1.0 - hit.mean()))
+
+    if not covered_by_day:
+        raise ValueError("no day could be both fit and scored on this span")
+
+    pooled = np.concatenate(covered_by_day)
+    all_widths = np.concatenate(widths)
+    finite = all_widths[np.isfinite(all_widths)]
+    ci_low, ci_high = coverage_ci(covered_by_day, level=ci_level, n_boot=n_boot, seed=seed)
+    hourly = coverage_by_hour(np.concatenate(hits_all), np.concatenate(hours_all))
+
+    years = pd.DatetimeIndex(day_labels).year
+    by_year: list[tuple[int, float]] = []
+    width_year: list[tuple[int, float]] = []
+    for y_ in sorted(set(years)):
+        sel = [h for h, yy in zip(covered_by_day, years, strict=True) if yy == y_]
+        wsel = [w for w, yy in zip(widths, years, strict=True) if yy == y_]
+        by_year.append((int(y_), float(np.concatenate(sel).mean())))
+        wflat = np.concatenate(wsel)
+        wflat = wflat[np.isfinite(wflat)]
+        width_year.append((int(y_), float(np.median(wflat)) if wflat.size else float("nan")))
+
+    return SequentialCoverage(
+        coverage=float(pooled.mean()),
+        ci_low=ci_low,
+        ci_high=ci_high,
+        by_year=tuple(by_year),
+        mean_width=float(finite.mean()) if finite.size else float("inf"),
+        median_width=float(np.median(finite)) if finite.size else float("inf"),
+        max_hour_deviation=float(np.nanmax(np.abs(hourly - confidence_level))),
+        n_days=len(covered_by_day),
+        n_infinite=n_infinite,
+        alpha_first=alpha_first,
+        alpha_last=state.alpha,
+        n_updates=state.n_updates,
+        n_clamped=state.n_clamped,
+        prop41_bound=(
+            aci_bound(alpha_1=alpha_first, gamma=aci_gamma, n_updates=state.n_updates)
+            if state.n_updates
+            else float("inf")
+        ),
+        realized_gap=(
+            aci_realized_gap(
+                alpha_1=alpha_first,
+                alpha_final=state.alpha,
+                gamma=aci_gamma,
+                n_updates=state.n_updates,
+            )
+            if aci_gamma > 0.0 and state.n_updates
+            else 0.0
+        ),
+        gap_bound_7d=changepoint_gap_bound(half_life_days=weight_half_life_days, lag_days=7.0),
+        per_year_width=tuple(width_year),
     )

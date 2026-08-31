@@ -27,6 +27,12 @@ import pandas as pd
 from lightgbm import LGBMRegressor
 from mapie.regression import ConformalizedQuantileRegressor, SplitConformalRegressor
 
+from bess.forecaster.conformal import (
+    cqr_score,
+    decay_weights,
+    split_score,
+    weighted_quantile,
+)
 from bess.forecaster.features import (
     DEFAULT_LAGS,
     align_target,
@@ -85,6 +91,7 @@ class PriceForecaster:
         normalize_target: bool = False,
         season_encoding: str = "month",
         rolling_stats: bool = False,
+        weight_half_life_days: float | None = None,
         **lgb_params: object,
     ) -> None:
         if method not in ("cqr", "split"):
@@ -105,6 +112,11 @@ class PriceForecaster:
         self.season_encoding = season_encoding
         self.rolling_stats = rolling_stats
         self.calib_fraction = calib_fraction
+        # R2.1g: geometric decay on the calibration scores, so a stale regime carries
+        # less weight than a recent one. `None` is rho = 1, which is R2.1's unweighted
+        # construction *exactly* (not an approximation of it), so the shipped model is
+        # bit-identical while this is off; see docs/specs/drift-robust-conformal.md.
+        self.weight_half_life_days = weight_half_life_days
         # Deterministic, single-threaded LightGBM so intervals are reproducible.
         self._lgb = dict(
             n_estimators=n_estimators,
@@ -117,6 +129,13 @@ class PriceForecaster:
         self._mapie: ConformalizedQuantileRegressor | SplitConformalRegressor | None = None
         # The fitted base learner(s), kept so ``recalibrate`` can rewrap them.
         self._base: list[LGBMRegressor] | LGBMRegressor | None = None
+        # R2.1g weighted path only: the conformal margin computed here rather than by
+        # MAPIE, which exposes no weighted quantile. Stays None on the unweighted path
+        # so the shipped numbers are never at the mercy of this implementation.
+        self._margin: float | None = None
+        # Calibration scores kept so the margin can be recomputed at a different level
+        # without refitting, which is what the R2.1g ACI arm needs each delivery day.
+        self._calib_scores: np.ndarray | None = None
 
     def _lgbm(self, **extra: object) -> LGBMRegressor:
         return LGBMRegressor(**{**self._lgb, **extra})
@@ -186,6 +205,37 @@ class PriceForecaster:
             return y
         return (y - baseline["level"].reindex(y.index)) / baseline["scale"].reindex(y.index)
 
+    def _base_bounds(self, x: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Raw base-learner output as ``(lower, upper, point)``, before conformalizing."""
+        if self._base is None:
+            raise RuntimeError("call fit() before predicting")
+        if isinstance(self._base, list):
+            lo_m, hi_m, mid_m = self._base
+            return lo_m.predict(x), hi_m.predict(x), mid_m.predict(x)
+        point = self._base.predict(x)
+        return point, point, point
+
+    def _conformalize_weighted(self, x_ca: np.ndarray, y_ca: np.ndarray) -> None:
+        """Compute the conformal margin ourselves, with geometrically decayed weights.
+
+        MAPIE exposes no weighted quantile, so the R2.1g path computes the margin here.
+        The scores are kept so :meth:`predict_interval` can re-take the quantile at a
+        different level (the ACI arm) without refitting anything.
+        """
+        lo, hi, point = self._base_bounds(x_ca)
+        self._calib_scores = (
+            cqr_score(y_ca, lo, hi) if self.method == "cqr" else split_score(y_ca, point)
+        )
+        self._margin = self._margin_at(1.0 - self.confidence_level)
+
+    def _margin_at(self, alpha: float) -> float:
+        """The weighted-quantile margin at miscoverage ``alpha``."""
+        if self._calib_scores is None:
+            raise RuntimeError("no calibration scores; call fit() first")
+        n = len(self._calib_scores)
+        weights = decay_weights(n, half_life_days=self.weight_half_life_days)
+        return weighted_quantile(self._calib_scores, weights, level=1.0 - alpha)
+
     def fit(
         self, prices: pd.Series, *, fundamentals: pd.DataFrame | None = None
     ) -> PriceForecaster:
@@ -210,25 +260,53 @@ class PriceForecaster:
         else:  # split
             base = self._lgbm().fit(x_tr, y_tr)
 
-        mapie = self._conformalizer(base)
-        mapie.conformalize(x_ca, y_ca)
         self._base = base
-        self._mapie = mapie
+        # Always keep the scores: they cost one prediction over the calibration block
+        # and they are what lets the ACI arm move the level without a refit. MAPIE still
+        # owns the *shipped* margin, so the unweighted numbers do not depend on them.
+        self._conformalize_weighted(x_ca, y_ca)
+        if self.weight_half_life_days is None:
+            mapie = self._conformalizer(base)
+            mapie.conformalize(x_ca, y_ca)
+            self._mapie = mapie
         return self
 
     def predict_interval(
-        self, prices: pd.Series, *, fundamentals: pd.DataFrame | None = None
+        self,
+        prices: pd.Series,
+        *,
+        fundamentals: pd.DataFrame | None = None,
+        alpha: float | None = None,
     ) -> IntervalForecast:
-        if self._mapie is None:
+        """Predict a calibrated interval, optionally at a miscoverage level of your own.
+
+        ``alpha`` overrides the fitted ``1 - confidence_level`` for this call only. The
+        R2.1g ACI arm needs that: it moves the level every delivery day, and refitting
+        to move it would be both wasteful and wrong (the base learners must not see the
+        feedback). Passing it routes the margin through the weighted quantile, which at
+        ``weight_half_life_days=None`` is R2.1's construction exactly, so an overridden
+        level does not silently change the method as well.
+        """
+        weighted = self.weight_half_life_days is not None or alpha is not None
+        if self._mapie is None and not weighted:
+            raise RuntimeError("call fit() before predict_interval()")
+        if weighted and self._calib_scores is None:
             raise RuntimeError("call fit() before predict_interval()")
         baseline = self._baseline(prices)
         feats = self._features(prices, fundamentals, baseline)
         x, idx = feats.to_numpy(), pd.DatetimeIndex(feats.index)
-        pred, interval = self._mapie.predict_interval(x)
 
-        point = pd.Series(np.asarray(pred).ravel(), index=idx, name="point")
-        lower = pd.Series(interval[:, 0, 0], index=idx, name="lower")
-        upper = pd.Series(interval[:, 1, 0], index=idx, name="upper")
+        if weighted:
+            margin = self._margin if alpha is None else self._margin_at(alpha)
+            lo_raw, hi_raw, point_raw = self._base_bounds(x)
+            point = pd.Series(point_raw, index=idx, name="point")
+            lower = pd.Series(lo_raw - margin, index=idx, name="lower")
+            upper = pd.Series(hi_raw + margin, index=idx, name="upper")
+        else:
+            pred, interval = self._mapie.predict_interval(x)  # type: ignore[union-attr]
+            point = pd.Series(np.asarray(pred).ravel(), index=idx, name="point")
+            lower = pd.Series(interval[:, 0, 0], index=idx, name="lower")
+            upper = pd.Series(interval[:, 1, 0], index=idx, name="upper")
 
         # Keep the point forecast inside its own interval (quantile crossing).
         #
@@ -282,7 +360,9 @@ class PriceForecaster:
         baseline = self._baseline(recent_prices)
         feats = self._features(recent_prices, fundamentals, baseline)
         y = self._standardize(align_target(recent_prices, feats), baseline)
-        mapie = self._conformalizer(self._base)
-        mapie.conformalize(feats.to_numpy(), y.to_numpy())
-        self._mapie = mapie
+        self._conformalize_weighted(feats.to_numpy(), y.to_numpy())
+        if self.weight_half_life_days is None:
+            mapie = self._conformalizer(self._base)
+            mapie.conformalize(feats.to_numpy(), y.to_numpy())
+            self._mapie = mapie
         return self

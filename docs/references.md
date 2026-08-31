@@ -93,6 +93,21 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.1g. Drift-robust conformal (weighted quantiles + ACI)
+
+*Both selected and **verified from source** at R2.1g draft ([spec](specs/drift-robust-conformal.md)), 2026-08-31: PDF text pulled and the cited results read, not recalled.*
+
+- **R. F. Barber, E. J. Candès, A. Ramdas, R. J. Tibshirani, *Conformal prediction beyond exchangeability*, The Annals of Statistics 51(2):816-845, April 2023** (DOI 10.1214/23-AOS2276; preprint arXiv:2202.13415): *governing reference* (the new theory: conformal without exchangeability).
+  - Normalized weights (eq. 12) and the nonexchangeable split-conformal interval (eq. 13), including the atom at $+\infty$ carrying mass $1/(\sum_j w_j + 1)$ → the weighted margin in [formulation-uncertainty.md: R2.1](formulation-uncertainty.md#r21-probabilistic-price-forecast-conformal-intervals-no-optimizer-change). **Verified**: the theorem is stated for $w_i \in [0,1]$, so the weights are deliberately not renormalized to sum to one, and the code raises rather than rescaling.
+  - **Theorem 2a** (split conformal), whose coverage gap is $\sum_i \tilde w_i d_{\mathrm{TV}}(R(Z), R(Z^i))$, and the §5.4 corollaries: gap $\le \rho^k$ under a changepoint $k$ steps back, gap $\le 2\epsilon/(1-\rho)$ under Lipschitz drift. **Verified**: Theorem 2a requires a *pre-fitted* model independent of the calibration data, which the project's temporal split satisfies and a property test now pins.
+  - Notation reconciled to house style: the margin stays the house $\hat s$, the decay parameter is $\rho$, and the score is R2.1's CQR score unchanged. Theorems 2b and 2c (full conformal, jackknife+) and the swap/randomization step are **not** used; the spec records why.
+- **I. Gibbs & E. J. Candès, *Adaptive Conformal Inference Under Distribution Shift*, Advances in Neural Information Processing Systems 34, 2021**: *governing reference* (the new theory: online level adaptation).
+  - The miscoverage indicator and update $\alpha_{t+1} = \alpha_t + \gamma(\alpha - \mathrm{err}_t)$ (eq. 2), **Lemma 4.1** ($\alpha_t \in [-\gamma, 1+\gamma]$) and **Proposition 4.1** ($|\frac1T\sum_t \mathrm{err}_t - \alpha| \le (\max\{\alpha_1, 1-\alpha_1\} + \gamma)/(\gamma T)$) → the ACI arm.
+  - **Verified**: Proposition 4.1 is deterministic and almost-sure with no distributional assumption, which is why it is gated as a property test rather than measured as a statistic. **Two departures from the paper are the project's own and are marked as such**: the update is batched per delivery day with $\mathrm{err}_t \in [0,1]$ rather than $\{0,1\}$ (re-derived, both results carry), and the emitted level is clamped, which removes the saturation feedback Lemma 4.1 rests on and so voids the published bound while leaving the telescoping identity intact.
+- *Alternatives considered:* **DtACI / AgACI** (step-size-free adaptive variants) noted, not built; **rolling recalibration** (the shipped R2.1b/R2.1d response) kept as the heuristic these replace, and measured against.
+
+---
+
 ## R2.2. Scenario generation + reduction
 
 *Selected at R2.2 draft ([spec](specs/scenario-generation.md)); reconciled/verified before implementation.*

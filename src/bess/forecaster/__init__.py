@@ -2,9 +2,10 @@
 
 Feeds ``scenarios`` / ``stochastic``. (R2.1)
 
-``make_features`` is pure pandas (no LightGBM/MAPIE); ``PriceForecaster`` and
-``walk_forward_coverage`` require the optional ``forecast`` dependency group and are
-imported lazily so importing this package never hard-fails without the group.
+``make_features`` is pure pandas (no LightGBM/MAPIE); ``PriceForecaster``,
+``walk_forward_coverage`` and ``search_sharpest`` require the optional ``forecast``
+dependency group and are imported lazily so importing this package never hard-fails
+without the group.
 """
 
 from __future__ import annotations
@@ -43,6 +44,8 @@ __all__ = [
     "Fold",
     "IntervalForecast",
     "PriceForecaster",
+    "SharpnessCandidate",
+    "SharpnessSearch",
     "align_target",
     "classify_drift",
     "coverage_by_hour",
@@ -53,6 +56,7 @@ __all__ = [
     "psi",
     "rolling_baseline",
     "rolling_origin_folds",
+    "search_sharpest",
     "seasonal_naive",
     "seasonal_naive_forecast",
     "walk_forward_coverage",
@@ -69,4 +73,8 @@ def __getattr__(name: str) -> object:
         from bess.forecaster.evaluate import walk_forward_coverage
 
         return walk_forward_coverage
+    if name in ("search_sharpest", "SharpnessSearch", "SharpnessCandidate"):
+        from bess.forecaster import tune
+
+        return getattr(tune, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

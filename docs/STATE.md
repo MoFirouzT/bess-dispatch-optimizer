@@ -13,42 +13,36 @@ happened before 2026-07-28.
 
 ## Current phase
 
-**No active phase.** R2.7 (study windowing) and R2.8 (draw noise) are both
-implemented; the ledger rows in [specs/README.md](specs/README.md) record what they
-found. Releases 1 and 2 are complete; Release 3 has not started.
+**No active phase.** R2.9 (interval sharpness) is implemented and closed with a
+no-adoption verdict; the ledger row in [specs/README.md](specs/README.md) records what
+it found. Releases 1 and 2 are complete; Release 3 has not started.
 
-R2.7 re-measured all four euro value studies on 260 delivery days in 52 blocks over
-2022-01-01 to 2025-09-29, reusing R2.1d's fold layout verbatim so the euros and the
-forecaster's pinball skill are scored on the identical days, with the two headline
-studies repeated on BE.
+R2.9 asked whether the forecaster's quantile learners, left at LightGBM defaults since
+R2.1, could be chosen for a narrower interval. It searched an exhaustive 324-config grid
+per zone, selecting on tuning blocks placed in the gaps between the reporting blocks so
+no day the gate scores was ever used to choose.
 
-**The three nulls hardened and the one positive result shrank.** VSS falls from the
-published +12.90 to **+3.56 on NL**, whose interval now includes zero, while **BE holds
-at +8.36** with an interval above it. Forecast value stays null in both markets and less
-negative than published. Tail value and bid-curve value are null in every year and at
-every recourse budget. The unpriced delivery gap (4.26 to 7.91 MWh per day on a 2 MWh
-asset) was the only quantity the wider window strengthened.
+**Sharpness is available and the gate refused to buy it.** NL's winner is 4.5% narrower
+(+6.22 EUR/MWh, 95% day-block CI [+3.17, +9.35], 57.3% of days), and its
+`max_hour_deviation` rises 0.065 to 0.070: the interval is narrower at every hour, which
+fixes wasteful over-coverage at 21:00 and pushes 11:00 down to 0.830. BE's winner passed
+that constraint but lost pinball skill at the lower edge (0.192 to 0.196) with a width
+interval reaching [+0.02, +5.68]. The two zones also chose different configurations, so
+there was no single default to adopt. **Nothing in `src/bess/forecaster/forecast.py`
+changed.**
 
-Two defects surfaced and were fixed rather than absorbed:
+Two defects in the approved design surfaced during implementation and were fixed rather
+than absorbed:
 
-- **Windows were seeded by their position in the series**, so the same delivery day
-  scored inside a 4-month and a 4.7-year series gave different answers. Seeds now derive
-  from `(seed, window date)`, which makes selection a filter: scoring a subset returns
-  exactly what scoring everything and discarding the rest returns, gated bitwise. About
-  4 EUR of the VSS drop is this, the rest is the window.
-- **The per-year block labeller compared `asi8` integers against a nanosecond
-  constant** while the index carried microsecond resolution, marking every day a block
-  boundary. Caught by a golden oracle.
-
-Prior structural work (the capability restructure and the spec consolidation) is
-implemented and committed; its rules live in [architecture.md](architecture.md),
-[decisions/README.md](decisions/README.md) and [specs/README.md](specs/README.md).
-
-Full suite 404 passed / 40 skipped; ruff, format, mypy(49), lint-imports (**5** KEPT),
-docs-lint(55) all clean. R2.8's live sweep took 24.7 min (VSS, 10 seeds) and 66.3 min
-(FV, 6 seeds). The R2.7 live gates passed on both zones; the studies tier is
-marked `studies` and deselected from the routine live run because it takes about an
-hour.
+- **The tuning folds were specified inside 2021**, which the reporting layout uses only
+  for training. That year is the worst-calibrated in the span: at one fixed placement
+  coverage runs 0.791 (2021), 0.847 (2022), 0.887 (2023), 0.897 (2024) against monthly NL
+  means climbing 77 to 238 EUR/MWh. The incumbent misses the band there, so no candidate
+  was feasible and the search raised. Blocks moved into the gaps between reporting
+  blocks: same disjointness, plus the reporting regime and its 365-day window.
+- **Ties broke on grid position**, which a property test showed is not order-invariant.
+  Two configurations can score identically, and the winner then depended on how the grid
+  was written. Ties now break on the cheaper model, then a canonical parameter ordering.
 
 ## Capability status
 
@@ -58,7 +52,7 @@ hour.
 | Data feed | complete, gated | `data` |
 | Backtest | complete, gated | `backtest` |
 | Serving | complete, gated | `api` |
-| Price forecaster | complete, gated | `forecaster` |
+| Price forecaster | complete, gated; hyperparameters searched and left unchanged (R2.9) | `forecaster` |
 | Scenario generation | complete, gated | `scenarios` |
 | Stochastic dispatch | complete, gated | `stochastic`, `recourse` |
 | Dispatch explainability | complete, gated | `explain` |
@@ -106,6 +100,20 @@ hour.
   before S1 moved the studies out, and the move made it worse rather than introducing
   it. Promoting it is a small follow-up, deliberately not folded into a phase whose
   invariant is that nothing changes.
+- **The seed-width rule does not transfer to the forecaster.** R2.8 requires every new
+  value claim to report its draw spread. R2.9's width claim has none, and the zero it
+  measures is **structural**: LightGBM runs with `deterministic=True`, `n_jobs=1` and no
+  bagging or feature subsampling, so `random_state` has no entry point into the fit. Do
+  not report that 0.00 as a stability result; the day-block bootstrap is the only width a
+  forecaster claim carries.
+- **`max_hour_deviation` is symmetric and arguably should not be.** It scored the
+  incumbent's over-coverage at 21:00 and R2.9's candidate's undercoverage at 11:00 on one
+  scale, and for a battery those differ: too wide wastes opportunity, too narrow misprices
+  risk. A signed rule would have reached a different verdict on NL. **Deliberately not
+  changed**, because rewriting a metric after watching it reject a candidate is not a
+  change the phase that watched it can make. Recorded in
+  [specs/interval-sharpness.md](specs/interval-sharpness.md) for a phase that can argue
+  it on its own terms.
 - **Scenario-draw noise is measured, and it is not small** (R2.8, resolved). Over ten
   seeds the VSS median spans 4.85 EUR and over six the FV median spans 11.19, roughly a
   third of each study's window interval. Both published headlines were low draws, so the

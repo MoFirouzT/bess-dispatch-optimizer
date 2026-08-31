@@ -199,6 +199,12 @@ class CoverageResult:
     ci_low: float
     ci_high: float
     mean_width: float
+    #: Median interval width over the evaluated targets. Reported beside the mean
+    #: because the mean is dominated by scarcity hours: a handful of spike days can
+    #: move it while the typical interval is unchanged. R2.9 selects on the mean and
+    #: breaks ties on this one, so a tie-break is decided by the typical interval
+    #: rather than by the tail.
+    median_width: float
     n_test_days: int
     per_fold: tuple[float, ...]
     by_hour: tuple[float, ...] = ()
@@ -219,6 +225,7 @@ def walk_forward_coverage(
     test_days: int = DEFAULT_TEST_DAYS,
     train_days: int | None = None,
     spacing: str = "contiguous",
+    folds: Sequence[Fold] | None = None,
     fundamentals: pd.DataFrame | None = None,
     return_detail: bool = False,
     ci_level: float = 0.95,
@@ -242,21 +249,27 @@ def walk_forward_coverage(
     frame), each fold's forecaster is fit and predicted with it (``make_features``
     reindexes it per fold, so passing the whole frame is safe). ``None`` is the R2.1
     behavior, byte-identical.
+
+    ``folds`` supplies a placement directly and makes the layout arguments unused.
+    R2.9 needs this: its tuning blocks are placed in the *gaps* between the reporting
+    blocks, which is not a shape ``rolling_origin_folds`` can express.
     """
     from bess.forecaster.forecast import PriceForecaster  # lazy: needs the forecast group
 
-    folds = rolling_origin_folds(
-        _price_days(prices),
-        n_folds=n_folds,
-        test_days=test_days,
-        train_days=train_days,
-        spacing=spacing,
-    )
+    if folds is None:
+        folds = rolling_origin_folds(
+            _price_days(prices),
+            n_folds=n_folds,
+            test_days=test_days,
+            train_days=train_days,
+            spacing=spacing,
+        )
     norm = pd.DatetimeIndex(prices.index).normalize()
 
     covered_by_day: list[np.ndarray] = []
     per_fold: list[float] = []
     widths: list[float] = []
+    all_widths: list[np.ndarray] = []
     hits_all: list[np.ndarray] = []
     hours_all: list[np.ndarray] = []
     for fold in folds:
@@ -286,12 +299,14 @@ def walk_forward_coverage(
         hours_all.append(pd.DatetimeIndex(targets).hour.to_numpy())
         per_fold.append(float(hit.mean()))
         widths.append(float((hi - lo).mean()))
+        all_widths.append(hi - lo)
 
     pooled_hits = np.concatenate(covered_by_day)
     coverage = float(pooled_hits.mean())
     mean_width = float(np.mean(widths))
     if not return_detail:
         return coverage, mean_width
+    median_width = float(np.median(np.concatenate(all_widths)))
 
     ci_low, ci_high = coverage_ci(covered_by_day, level=ci_level, n_boot=n_boot, seed=seed)
     hourly = coverage_by_hour(np.concatenate(hits_all), np.concatenate(hours_all))
@@ -300,6 +315,7 @@ def walk_forward_coverage(
         ci_low=ci_low,
         ci_high=ci_high,
         mean_width=mean_width,
+        median_width=median_width,
         n_test_days=len(covered_by_day),
         per_fold=tuple(per_fold),
         by_hour=tuple(hourly),

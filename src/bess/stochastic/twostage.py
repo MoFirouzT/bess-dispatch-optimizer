@@ -141,10 +141,10 @@ def _build(
     exp_profit = sum(probs[s] * profit[s] for s in range(s_n))
 
     # CVaR mean-risk objective (Rockafellar-Uryasev): loss L_s = −profit_s.
-    m.eta = pyo.Var(domain=pyo.Reals)  # VaR auxiliary
+    m.zeta = pyo.Var(domain=pyo.Reals)  # VaR auxiliary (house eta is efficiency)
     m.z = pyo.Var(m.S, domain=pyo.NonNegativeReals)  # tail slacks
-    m.cvar_cut = pyo.Constraint(m.S, rule=lambda mm, s: mm.z[s] >= -profit[s] - mm.eta)
-    cvar = m.eta + (1.0 / (1.0 - alpha)) * sum(probs[s] * m.z[s] for s in range(s_n))
+    m.cvar_cut = pyo.Constraint(m.S, rule=lambda mm, s: mm.z[s] >= -profit[s] - mm.zeta)
+    cvar = m.zeta + (1.0 / (1.0 - alpha)) * sum(probs[s] * m.z[s] for s in range(s_n))
     m.obj = pyo.Objective(expr=(1.0 - lambda_) * exp_profit - lambda_ * cvar, sense=pyo.maximize)
 
     ctx = {

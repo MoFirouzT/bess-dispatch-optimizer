@@ -23,8 +23,9 @@ underneath it. These make the checkable subset fail loudly instead:
   - a ``formulation*.md §R<n>.<m>`` reference, anywhere in the repo, names a
     section that file actually has (docstrings included, since the anchor check
     above only sees Markdown links under ``docs/``)
-  - a spec marked ``Implemented`` has no unticked box, and every spec carries the
-    ``Decisions`` section that the indexes send readers to
+  - a spec marked ``Implemented`` records an outcome for every box (``- [x]`` passed,
+    ``- [!]`` ran and did not), and every spec carries the ``Decisions`` section that
+    the indexes send readers to
 
 Scope: committed Markdown under ``docs/`` plus ``README.md``. The em-dash ban
 applies to every file, ``STATE.md`` (a session work log) and the spec template
@@ -226,11 +227,25 @@ def check_anchors(errors: list[str]) -> None:
 
 
 def check_spec_status(errors: list[str]) -> None:
-    """A spec claiming `Implemented` has no unticked box, and carries a `Decisions` section.
+    """A spec claiming `Implemented` has no *unrecorded* box, and carries a `Decisions` section.
 
     Ticking is the only record that a gate was actually run, and "we meant to tick it"
     is indistinguishable from "it passed" a few weeks later. R2.1e shipped as
     Implemented with seven unticked acceptance boxes and nothing caught it.
+
+    A box therefore has **three** states, not two:
+
+    - ``- [x]`` ran and passed
+    - ``- [!]`` ran and did not pass, or was conditional on something that did not
+      happen; the outcome is written on the line beside it
+    - ``- [ ]`` no record either way, which is what this check exists to catch
+
+    The third is the only one that blocks. Before ``- [!]`` existed a phase whose honest
+    result was "the gate says no" could not be marked Implemented at all, which left two
+    bad options: tick boxes that failed, or leave a finished phase in limbo. R2.9 is the
+    first: its search found a 4.5% narrower NL interval and its own per-hour constraint
+    rejected it. A ``- [!]`` line carries the measured number, so it is not confusable
+    with a box nobody filled in.
 
     The `Decisions` heading is checked because two index files send readers there for
     a phase's reasoning; four different names for that section had drifted in before
@@ -254,7 +269,20 @@ def check_spec_status(errors: list[str]) -> None:
                 more = f" (+{len(open_boxes) - 5} more)" if len(open_boxes) > 5 else ""
                 errors.append(
                     f"{rel(path)}: status is Implemented but {len(open_boxes)} box(es) "
-                    f"are unticked, at line {lines}{more}"
+                    f"have no recorded outcome, at line {lines}{more}; tick `- [x]` if "
+                    "it passed, or mark `- [!]` and write what happened beside it"
+                )
+            bare_failures = [
+                n
+                for n, line in enumerate(text.splitlines(), 1)
+                if line.strip().startswith("- [!]") and len(line.strip()) < 20
+            ]
+            if bare_failures:
+                lines = ", ".join(str(n) for n in bare_failures)
+                errors.append(
+                    f"{rel(path)}: `- [!]` box with no outcome written beside it, at "
+                    f"line {lines}; the marker only means something with the measured "
+                    "result on the line"
                 )
         if not re.search(r"^## Decisions\b", text, re.M):
             errors.append(f"{rel(path)}: no `## Decisions` section (the phase's reasoning trail)")

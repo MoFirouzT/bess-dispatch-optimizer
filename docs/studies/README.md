@@ -22,11 +22,13 @@ each page names the spec that governs its method.
 | [Bid curves](bid-curves.md) | Does a price-contingent commitment beat a single blind schedule? | **Null**, but it surfaced an unpriced delivery gap that the wider window confirmed |
 | [Target normalization](target-normalization.md) | Does de-levelling the forecast target improve the forecaster? | **Yes**, and it flips which training window is best |
 | [Storage duration](storage-duration.md) | How much does the economics depend on the energy-to-power ratio? | Strongly. The annualized ceiling falls by roughly a quarter from 1 h to 4 h |
+| [Interval sharpness](interval-sharpness.md) | Can the forecaster's intervals be made narrower without losing calibration? | **Yes but not adoptably**: 4.5% narrower on NL, rejected because the narrowing pushes 11:00 into undercoverage |
+| [Drift-robust conformal](drift-robust-conformal.md) | Which repair keeps the intervals calibrated through a regime shift? | **Interim, synthetic only** (the real-price run is pending). Adapting the level works and costs 0.1% width where there is no drift; weighting the calibration set is high-variance across refits |
 | [Solve scaling](solve-scaling.md) | Does the program stay tractable as the horizon and scenario count grow? | Yes on both axes, at very different rates |
 
 ## Why the nulls are here rather than hidden
 
-Three of the seven came back null, and all three share one mechanism:
+Three of the eight came back null, and all three share one mechanism:
 **intraday recourse adjusts after the price is known**, so a better *representation*
 of the day-ahead future has little left to improve. That is a result about this market
 and this asset, not a failure of the implementation, and each page says how it was

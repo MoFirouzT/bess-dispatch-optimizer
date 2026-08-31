@@ -13,36 +13,62 @@ happened before 2026-07-28.
 
 ## Current phase
 
-**No active phase.** R2.9 (interval sharpness) is implemented and closed with a
-no-adoption verdict; the ledger row in [specs/README.md](specs/README.md) records what
-it found. Releases 1 and 2 are complete; Release 3 has not started.
+**R2.1g, drift-robust conformal intervals.** Spec approved, machinery built and gated,
+**not yet measured on real prices**. It replaces the conformal calibration step with two
+published constructions that survive a regime shift: a weighted quantile over the
+calibration scores (Barber et al. 2023) and an online update of the target level (Gibbs
+and Candès 2021). This is the phase that answers what R2.1b only detects and R2.1f only
+measured, the coverage decay from 0.897 in 2024 to 0.791 across the 2021 ramp.
 
-R2.9 asked whether the forecaster's quantile learners, left at LightGBM defaults since
-R2.1, could be chosen for a narrower interval. It searched an exhaustive 324-config grid
-per zone, selecting on tuning blocks placed in the gaps between the reporting blocks so
-no day the gate scores was ever used to choose.
+**Done.** `conformal.py` (weights, the weighted quantile with its `+inf` atom, both
+scores, the two Theorem 2a gap bounds, the ACI recursion and its two bounds);
+`weight_half_life_days` and an `alpha` override threaded through `PriceForecaster`;
+`sequential_coverage`, the online harness the block harness cannot stand in for. Golden,
+property and unit gates all green, written failing first.
 
-**Sharpness is available and the gate refused to buy it.** NL's winner is 4.5% narrower
-(+6.22 EUR/MWh, 95% day-block CI [+3.17, +9.35], 57.3% of days), and its
-`max_hour_deviation` rises 0.065 to 0.070: the interval is narrower at every hour, which
-fixes wasteful over-coverage at 21:00 and pushes 11:00 down to 0.830. BE's winner passed
-that constraint but lost pinball skill at the lower edge (0.192 to 0.196) with a width
-interval reaching [+0.02, +5.68]. The two zones also chose different configurations, so
-there was no single default to adopt. **Nothing in `src/bess/forecaster/forecast.py`
-changed.**
+Also done since: the seeded drift regimes (`synthetic_drift`, four of them, the fourth
+being volatility drift, which is the only case that separates what the two arms repair);
+knob selection on those regimes; `EXTENDED_SPAN` starting 2019-01-01 beside an untouched
+`SPAN`; and the live gate module, written and collecting but never run.
 
-Two defects in the approved design surfaced during implementation and were fixed rather
-than absorbed:
+**Knob selection is settled, and it did not pick the arm the phase was pitched on.** Selected:
+**half-life `None`, gamma 0.005**, that is ACI alone, the only arm feasible on all four
+regimes (coverage in band and clamp under 5% everywhere). It lifts the worst regime from
+0.785 to 0.852 at **+0.1%** width on calm data, because it widens only when it is
+missing. Full write-up in [studies/drift-robust-conformal](studies/drift-robust-conformal.md).
 
-- **The tuning folds were specified inside 2021**, which the reporting layout uses only
-  for training. That year is the worst-calibrated in the span: at one fixed placement
-  coverage runs 0.791 (2021), 0.847 (2022), 0.887 (2023), 0.897 (2024) against monthly NL
-  means climbing 77 to 238 EUR/MWh. The incumbent misses the band there, so no candidate
-  was feasible and the search raised. Blocks moved into the gaps between reporting
-  blocks: same disjointness, plus the reporting regime and its 365-day window.
-- **Ties broke on grid position**, which a property test showed is not order-invariant.
-  Two configurations can score identically, and the winner then depended on how the grid
-  was written. Ties now break on the cheaper model, then a canonical parameter ordering.
+**Not done.** The real-data run on NL and BE, and the ledger row. No adoption decision
+exists yet and no shipped default has changed.
+
+Three things surfaced during the build. The first two are the human's call:
+
+- **The shipped CQR interval is not the one the formulation describes.**
+  `formulation-uncertainty.md` §R2.1 defines one signed score and one margin applied to
+  both bounds; MAPIE's `predict_interval` defaults to `symmetric_correction=False`, a
+  separate constant per side, which is what has run since R2.1. Our implementation
+  matches MAPIE's *symmetric* correction to 0.0 on both bounds, so the divergence is
+  entirely between the default and the documentation, and it is CQR-only. No coverage
+  number is wrong: both are valid constructions with the same marginal guarantee, which
+  is why four phases of gates passed either way. Pinned by
+  `test_the_shipped_default_is_the_asymmetric_variant_not_the_documented_one`. The spec
+  proposes changing the code, in a separate change, since it moves shipped numbers.
+- **Clamping the ACI level is worse than the approved spec said.** It does not pause the
+  long-run guarantee, it removes the saturation feedback the guarantee rests on, so the
+  iterate can diverge and the published bound does not return when the clamp stops
+  binding. Found by a property test on adversarial sequences before any data was touched.
+  The gate now reads the exact telescoping identity, which survives clamping, and the
+  clamp binding rate stays capped at 5%.
+- **The weighted arm's bound and its variance pull against each other.** A shorter
+  half-life tightens the Theorem 2a coverage-gap bound and shrinks the effective sample
+  that estimates the margin: at a 3-day half-life about 104 points survive out of 814, so
+  the 90% quantile rests on roughly ten effective tail observations. Measured, the margin
+  swung -40% to +18% across three refits of one run, and the swings cancel over a run, so
+  the arm moves coverage far less reliably than it looks like it should. **Theorem 2a
+  bounds the first effect and says nothing about the second**, so a half-life chosen to
+  make the bound look good buys a noisier interval without warning. The arm stays in the
+  real run anyway, because it is the only one that yields a stated number.
+
+Releases 1 and 2 are otherwise complete; Release 3 has not started.
 
 ## Capability status
 
@@ -52,11 +78,11 @@ than absorbed:
 | Data feed | complete, gated | `data` |
 | Backtest | complete, gated | `backtest` |
 | Serving | complete, gated | `api` |
-| Price forecaster | complete, gated; hyperparameters searched and left unchanged (R2.9) | `forecaster` |
+| Price forecaster | complete, gated; hyperparameters searched and left unchanged (R2.1f) | `forecaster` |
 | Scenario generation | complete, gated | `scenarios` |
 | Stochastic dispatch | complete, gated | `stochastic`, `recourse` |
 | Dispatch explainability | complete, gated | `explain` |
-| Studies | three nulls reported, see [studies/](studies/) | `studies` |
+| Studies | three nulls reported, plus one interim page awaiting data, see [studies/](studies/) | `studies` |
 
 ---
 
@@ -74,6 +100,14 @@ than absorbed:
 
 ## Known blockers and carried findings
 
+- **The ENTSO-E API was down and the study path has no fallback.** Every request
+  returned 503 across 13 minutes of probing, endpoint-wide: an unauthenticated request
+  got the same, and the transparency portal stayed up, so it was a partial outage on
+  their side rather than a token or quota problem. This blocks R2.1g's data extension and
+  its real-data run, and nothing else. Worth noting that `span_prices` and
+  `extended_span_prices` deliberately bypass `guarded_fetch` for the R1.4c reason below,
+  so a study fetch during an outage simply raises: the project's circuit breaker does not
+  cover the path that most needs a long fetch to succeed.
 - **A submodule is shadowed by a same-named export.** `bess.studies.forecast_value`
   resolves to the exported *function*, not the module, so `import bess.studies.forecast_value as m`
   yields a function and attribute access on it fails. Nothing in the shipped code
@@ -101,13 +135,13 @@ than absorbed:
   it. Promoting it is a small follow-up, deliberately not folded into a phase whose
   invariant is that nothing changes.
 - **The seed-width rule does not transfer to the forecaster.** R2.8 requires every new
-  value claim to report its draw spread. R2.9's width claim has none, and the zero it
+  value claim to report its draw spread. R2.1f's width claim has none, and the zero it
   measures is **structural**: LightGBM runs with `deterministic=True`, `n_jobs=1` and no
   bagging or feature subsampling, so `random_state` has no entry point into the fit. Do
   not report that 0.00 as a stability result; the day-block bootstrap is the only width a
   forecaster claim carries.
 - **`max_hour_deviation` is symmetric and arguably should not be.** It scored the
-  incumbent's over-coverage at 21:00 and R2.9's candidate's undercoverage at 11:00 on one
+  incumbent's over-coverage at 21:00 and R2.1f's candidate's undercoverage at 11:00 on one
   scale, and for a battery those differ: too wide wastes opportunity, too narrow misprices
   risk. A signed rule would have reached a different verdict on NL. **Deliberately not
   changed**, because rewriting a metric after watching it reject a candidate is not a

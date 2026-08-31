@@ -21,6 +21,31 @@ from bess.studies import fold_days
 #: sizes. Verified size: 41,593 hourly points over 1734 days, NL and BE alike.
 SPAN = (pd.Timestamp("2021-01-01", tz="UTC"), pd.Timestamp("2025-09-30", tz="UTC"))
 
+#: The R2.1g span, deliberately **wider** than SPAN and deliberately a separate
+#: constant. R2.1g needs 2021 to be a *scored* year: it is the worst-calibrated stretch
+#: in the data (0.791 against 0.897 in 2024) and therefore the one the phase exists to
+#: repair, but under the R2.1d layout all of 2021 is training-only, so no gate can see
+#: it. Two extra years of history put a full 365-day training window behind
+#: 2021-01-01.
+#:
+#: Moving `SPAN` itself would have been the smaller diff and the wrong change: it is
+#: shared by the R2.1d forecaster gates and the R2.7 value studies, so widening it would
+#: silently rewrite every published number in both. The phase's own spec requires the
+#: original-span figures to be shown unchanged, which is only checkable if the original
+#: span still exists as a constant.
+EXTENDED_SPAN = (pd.Timestamp("2019-01-01", tz="UTC"), pd.Timestamp("2025-09-30", tz="UTC"))
+
+
+def extended_span_prices(zone: str = "NL") -> pd.Series:
+    """Fetch the R2.1g span, bypassing the guard for the reasons in `span_prices`.
+
+    The R1.4c nonfocal false positive documented there applies a fixed run length
+    regardless of window length, so a *wider* window can only make it more likely. The
+    workaround is inherited rather than re-derived.
+    """
+    return fetch_day_ahead(zone, *EXTENDED_SPAN)
+
+
 #: R2.1d fold placement, reused verbatim by R2.7 so the euro studies score the exact
 #: days the forecaster's pinball skill is gated on (spec study-windowing.md § Design
 #: sketch). 52 blocks of 5 days is one block per ~4 weeks and 260 evaluated days.

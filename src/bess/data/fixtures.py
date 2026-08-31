@@ -55,6 +55,76 @@ def synthetic_day_ahead(days: int = 90, seed: int = 42, spread_scale: float = 1.
     return pd.Series(np.concatenate(out), index=idx, name=PRICE_COL)
 
 
+#: The drift regimes R2.1g selects its knobs on. Named rather than free-form because
+#: the selection is only reproducible if the instrument is fixed: a half-life chosen
+#: against an ad-hoc series is a number nobody can re-derive.
+DRIFT_REGIMES = ("calm", "ramp", "changepoint", "volatility")
+
+
+def synthetic_drift(
+    *,
+    regime: str = "calm",
+    days: int = 560,
+    seed: int = 11,
+    strength: float = 1.0,
+    at: float = 0.5,
+) -> pd.Series:
+    """A synthetic day-ahead series carrying a named, reproducible drift regime.
+
+    R2.1g selects its two knobs (the weight half-life and the ACI step size) on
+    simulated drift rather than on real prices, because both are functions of a drift
+    rate that can be simulated with a known answer, and because an online method
+    traverses the whole span so there is no clean held-out block to select on
+    (spec ``drift-robust-conformal.md``, Decisions). That only works if the instrument
+    is fixed and seeded, which is what this is.
+
+    The regimes, each a transformation of :func:`synthetic_day_ahead` so the daily
+    shape and noise are held constant and only the drift differs:
+
+    - ``"calm"``: unchanged. The control. Exchangeability roughly holds, so a knob that
+      costs width here is a knob that costs width for nothing.
+    - ``"ramp"``: a multiplicative level climb to ``1 + strength`` times the start, the
+      2021 crisis shape. Coverage decays gradually and never recovers.
+    - ``"changepoint"``: a single multiplicative step at fraction ``at`` of the span.
+      The case Barber et al.'s ``rho ** k`` corollary is stated for, so the measured
+      coverage can be read against a bound rather than only against the incumbent.
+    - ``"volatility"``: the level holds and the daily spread scales to
+      ``1 + strength``, drift in the second moment only. The case that separates the
+      two arms: it moves the scores without moving the level, so weighting should help
+      and a level correction should not.
+
+    ``strength`` is the size of the move (``1.0`` doubles the level or the spread) and
+    ``at`` is where a changepoint falls. Both are explicit because the *shape* of the
+    drift is what the knobs are being fitted to, so it belongs in the call, not in a
+    magic constant.
+    """
+    if regime not in DRIFT_REGIMES:
+        raise ValueError(f"regime must be one of {DRIFT_REGIMES}; got {regime!r}")
+    if strength < 0.0:
+        raise ValueError(f"strength must be >= 0; got {strength}")
+    if not 0.0 < at < 1.0:
+        raise ValueError(f"at must be in (0, 1); got {at}")
+
+    base = synthetic_day_ahead(days=days, seed=seed)
+    n = len(base)
+    values = base.to_numpy(dtype=float)
+
+    if regime == "calm":
+        out = values
+    elif regime == "ramp":
+        out = values * (1.0 + strength * np.linspace(0.0, 1.0, n))
+    elif regime == "changepoint":
+        step = np.where(np.arange(n) >= int(n * at), 1.0 + strength, 1.0)
+        out = values * step
+    else:  # volatility: scale the deviation from each day's own mean, level held
+        daily = values.reshape(days, 24)
+        level = daily.mean(axis=1, keepdims=True)
+        ramp = 1.0 + strength * np.linspace(0.0, 1.0, days).reshape(days, 1)
+        out = (level + (daily - level) * ramp).reshape(-1)
+
+    return pd.Series(out, index=base.index, name=PRICE_COL)
+
+
 def validate_utc_index(idx: pd.Index, *, source: str = "series") -> None:
     """Validate the internal time-index schema; raise ``ValueError`` on violation.
 

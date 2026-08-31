@@ -1,4 +1,4 @@
-"""Property tests for the sharpness search (R2.9).
+"""Property tests for the sharpness search (R2.1f).
 
 Spec: ``docs/specs/interval-sharpness.md`` § "Property tests". These hold for any
 grid, so they are driven by recorded ``CoverageResult`` values rather than by fits;

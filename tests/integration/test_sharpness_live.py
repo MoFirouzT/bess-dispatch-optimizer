@@ -1,4 +1,4 @@
-"""Integration — R2.9: is the tuned interval sharper than the shipped one?
+"""Integration — R2.1f: is the tuned interval sharper than the shipped one?
 
 Contract: docs/specs/interval-sharpness.md § "Acceptance gate".
 Token-gated and `studies`-marked: the search fits 324 configurations, so it is
@@ -14,7 +14,7 @@ transfers to its own tuning blocks shows up as a null rather than as an improvem
 **What this module asserts changed when the phase concluded, and the reason is recorded
 here rather than only in the spec.** It was written to decide adoption, so it asserted
 that the search's winner was no worse than the shipped model on coverage, per-hour
-calibration and pinball skill. The R2.9 run answered that question with **no**: on NL the
+calibration and pinball skill. The R2.1f run answered that question with **no**: on NL the
 winner's `max_hour_deviation` rises 0.065 to 0.070 (a narrower interval everywhere,
 which fixes over-coverage at 21:00 and pushes 11:00 down to 0.830), and on BE pinball
 skill at the lower edge worsens 0.192 to 0.196. The defaults were not changed.
@@ -87,7 +87,7 @@ def test_sharpness_search_and_its_reporting_fold_margin(zone):
     search = search_sharpest(prices, progress=True)
 
     print(
-        f"\nR2.9 sharpness search ({zone}, {len(search.all_candidates)} configs, "
+        f"\nR2.1f sharpness search ({zone}, {len(search.all_candidates)} configs, "
         f"gap-placed tuning folds):"
         f"\n  incumbent: width={search.incumbent.mean_width:.2f} "
         f"coverage={search.incumbent.coverage:.3f} "
@@ -128,7 +128,7 @@ def test_sharpness_search_and_its_reporting_fold_margin(zone):
     )
     print(f"    verdict for the tuned candidate: {verdict}")
 
-    # The shipped model is what this gate protects. R2.9 did not change it, so the
+    # The shipped model is what this gate protects. R2.1f did not change it, so the
     # R2.1 claim it carries is the thing that must still hold on these folds.
     assert _overlaps((inc0.ci_low, inc0.ci_high), _BAND), (
         f"{zone}: the shipped model's coverage interval "

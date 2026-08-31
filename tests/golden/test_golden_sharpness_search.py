@@ -1,4 +1,4 @@
-"""Golden oracles for the sharpness search (R2.9).
+"""Golden oracles for the sharpness search (R2.1f).
 
 Spec: ``docs/specs/interval-sharpness.md`` § "Golden oracles". The search picks the
 narrowest conformal interval whose coverage stays in band and whose per-hour coverage

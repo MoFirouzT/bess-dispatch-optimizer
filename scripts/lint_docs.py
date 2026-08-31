@@ -242,7 +242,7 @@ def check_spec_status(errors: list[str]) -> None:
 
     The third is the only one that blocks. Before ``- [!]`` existed a phase whose honest
     result was "the gate says no" could not be marked Implemented at all, which left two
-    bad options: tick boxes that failed, or leave a finished phase in limbo. R2.9 is the
+    bad options: tick boxes that failed, or leave a finished phase in limbo. R2.1f is the
     first: its search found a 4.5% narrower NL interval and its own per-hour constraint
     rejected it. A ``- [!]`` line carries the measured number, so it is not confusable
     with a box nobody filled in.

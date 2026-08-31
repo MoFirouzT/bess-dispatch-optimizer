@@ -1,4 +1,4 @@
-"""Sharpness search: the narrowest conformal interval that stays calibrated (R2.9).
+"""Sharpness search: the narrowest conformal interval that stays calibrated (R2.1f).
 
 Spec: ``docs/specs/interval-sharpness.md``; math: ``formulation-uncertainty.md`` §R2.1.
 

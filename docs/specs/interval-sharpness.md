@@ -1,11 +1,11 @@
-# Spec R2.9: Interval sharpness at fixed coverage
+# Spec R2.1f: Interval sharpness at fixed coverage
 
 **Status:** Implemented (2026-08-31). The gate returned **no adoption**: two boxes
 ran and did not pass, `max_hour_deviation` on NL (0.070 against 0.065) and pinball skill
 at BE's lower edge (0.196 against 0.192). Nothing in `src/bess/forecaster/forecast.py`
 changed.
 **Release:** R2  **Depends on:** R2.1 (the forecaster and its conformal wrappers), R2.1d (the fold layout and the gate statistics), R2.1e (the feature and target settings this phase holds fixed), R2.8 (the seed-width discipline)
-**Phases:** R2.9
+**Phases:** R2.1f
 
 ## Objective
 

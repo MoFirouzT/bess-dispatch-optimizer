@@ -1,7 +1,7 @@
 # bess-dispatch-optimizer
 
 [![CI](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFirouzT/bess-dispatch-optimizer/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-402_(373_CI_%2B_29_live)-brightgreen.svg)](tests/)
+[![tests](https://img.shields.io/badge/tests-543_(494_CI_%2B_49_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -54,8 +54,14 @@ Eight capabilities:
 | **Stochastic dispatch** | A CVaR mean-risk two-stage MILP with intraday MPC recourse |
 | **Dispatch explainability** | The state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades |
 
-Alongside these, seven [studies](docs/studies/) measure what the stack is worth.
-Three came back null, and are reported as nulls.
+A ninth, **dispatch narration**, is built and gated but **not adopted**: it turns an
+explanation into prose in which a language model chooses what to say and never writes a
+number, every quantity being substituted from the solved model and checked against it
+first. It stays off the shipped capability list because its live acceptance run has not
+been made at the size its [spec](docs/specs/dual-narration.md) requires.
+
+Alongside these, nine [studies](docs/studies/) measure what the stack is worth.
+Four came back null, and are reported as nulls.
 
 The phase-by-phase build record, including what each phase concluded, is the [phase ledger](docs/specs/README.md).
 
@@ -122,6 +128,11 @@ an actionable alarm rather than a bare "accuracy dropped."
 ![Drift attribution map: the monitor's decision regions over the error ratio (forecaster vs. seasonal-naive MAE) and the input shift (PSI), each region coloured by what the real classifier returns there. Staleness (retrain) owns the whole high-ratio half regardless of input shift; regime shift (wait) is the high-PSI, low-ratio corner; miscalibration sits inside the healthy region because coverage is a third axis this map cannot show.](docs/figures/example-drift-regions.svg)
 
 Reproduce with `uv run --group examples python examples/drift_demo.py` (synthetic by design: it renders the classifier's decision regions, not a market result).
+
+Two later studies pushed on the intervals themselves and neither changed a shipped default.
+A 324-configuration [search for a narrower interval](docs/studies/interval-sharpness.md) found one on NL, 4.5% tighter, and the per-hour calibration check rejected it: the narrowing fixes over-coverage at 21:00 and pushes 11:00 below the band.
+Conformal coverage does decay across a regime shift (0.897 in 2024 against 0.791 across the 2021 crisis ramp), so the two published repairs for it, weighted conformal and adaptive conformal inference, were built and measured; [both came back null](docs/studies/drift-robust-conformal.md) at a monthly refit, adding at most +0.019 worst-year coverage.
+What that run did find is that the decay is mostly the *model* going stale rather than the calibration: refitting monthly rather than annually is worth +0.18 coverage on the crisis year and a 35% narrower interval.
 
 A residual-path bootstrap then generates a few hundred price paths, and forward-selection reduction keeps the ~50 that best preserve the distribution (measured by Kantorovich distance), so the stochastic program stays small without discarding the tails that risk-aware dispatch cares about.
 
@@ -233,6 +244,8 @@ docker build -t bess-dispatch . && docker run -p 8000:8000 bess-dispatch
 ```
 
 `POST /dispatch` takes a price curve, a step, and a battery spec, and returns the optimal schedule. If the solver misses the latency budget (`BESS_LATENCY_BUDGET_S`, default 2.0 s), the circuit breaker serves the greedy schedule instead (`mode: "fallback_greedy"`) rather than failing the request; invalid input returns a structured 422.
+
+`POST /explain` adds the shadow-price explanation, deliberately *not* behind the breaker: the greedy fallback has no duals, so a non-optimal solve returns 503 rather than an explanation of something else. `POST /explain/narrative` adds a prose account of that explanation. It needs the optional `narrate` extra and an `ANTHROPIC_API_KEY`; without either, and on any timeout or failed verification, it returns a deterministic summary built from the same numbers and says so in `verified`.
 
 ## Data
 

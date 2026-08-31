@@ -23,16 +23,18 @@ each page names the spec that governs its method.
 | [Target normalization](target-normalization.md) | Does de-levelling the forecast target improve the forecaster? | **Yes**, and it flips which training window is best |
 | [Storage duration](storage-duration.md) | How much does the economics depend on the energy-to-power ratio? | Strongly. The annualized ceiling falls by roughly a quarter from 1 h to 4 h |
 | [Interval sharpness](interval-sharpness.md) | Can the forecaster's intervals be made narrower without losing calibration? | **Yes but not adoptably**: 4.5% narrower on NL, rejected because the narrowing pushes 11:00 into undercoverage |
-| [Drift-robust conformal](drift-robust-conformal.md) | Which repair keeps the intervals calibrated through a regime shift? | **Interim, synthetic only** (the real-price run is pending). Adapting the level works and costs 0.1% width where there is no drift; weighting the calibration set is high-variance across refits |
+| [Drift-robust conformal](drift-robust-conformal.md) | Which repair keeps the intervals calibrated through a regime shift? | **Null** at a monthly refit: at most +0.019 worst-year coverage against a +0.03 bar. Refitting monthly rather than annually is worth +0.18 and a 35% narrower interval, so the decay was mostly model staleness, not calibration staleness |
 | [Solve scaling](solve-scaling.md) | Does the program stay tractable as the horizon and scenario count grow? | Yes on both axes, at very different rates |
 
 ## Why the nulls are here rather than hidden
 
-Three of the eight came back null, and all three share one mechanism:
+Four of the nine came back null. Three of them share one mechanism:
 **intraday recourse adjusts after the price is known**, so a better *representation*
 of the day-ahead future has little left to improve. That is a result about this market
 and this asset, not a failure of the implementation, and each page says how it was
-distinguished from one.
+distinguished from one. The fourth, drift-robust conformal, is null for an unrelated
+reason: the coverage decay it set out to repair turned out to be mostly model staleness,
+which a refit schedule fixes and a calibration construction cannot.
 
 Each null is therefore held to the same standard as a
 positive result. The three euro-comparison studies (forecast, tail, bid curve) each

@@ -49,10 +49,13 @@ obvious from the objective&gt;
 
 - [ ] &lt;condition&gt;
 
-Tick a box only against evidence, and record the measured value beside it. A spec
-whose **Status** is `Implemented` must have no unticked box; `scripts/lint_docs.py`
-enforces that, because "we meant to tick it" and "it passed" are indistinguishable
-six weeks later.
+Record a box only against evidence, with the measured value beside it. A box has
+three states: `- [x]` ran and passed, `- [!]` ran and did not pass (or was conditional
+on something that did not happen), and `- [ ]` no record either way. A spec whose
+**Status** is `Implemented` may carry no `- [ ]`; `scripts/lint_docs.py` enforces that,
+because "we meant to tick it" and "it passed" are indistinguishable six weeks later. A
+`- [!]` must say what happened on the line, so a gate that says no is recorded as a
+result rather than leaving a finished phase unmarkable.
 
 ## Measured results
 &lt;optional; what the phase actually found, when the finding is the deliverable.

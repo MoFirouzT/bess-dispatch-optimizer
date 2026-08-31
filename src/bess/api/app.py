@@ -1,8 +1,10 @@
-"""FastAPI app for the dispatch service (R1.5, R2.4).
+"""FastAPI app for the dispatch service (R1.5, R2.4, R2.4b).
 
 ``POST /dispatch`` wraps ``solve()`` behind the circuit breaker
 (``bess.api.service.dispatch``); ``POST /explain`` (R2.4) returns the same solve plus
-its shadow-price explanation, **without** the breaker (decision 5); ``GET /health``
+its shadow-price explanation, **without** the breaker (decision 5);
+``POST /explain/narrative`` (R2.4b) adds a prose account of that explanation, which
+falls back to a deterministic rendering rather than failing; ``GET /health``
 reports solver availability. Invalid input becomes a structured **422** (the pre-flight
 issue list), never a raw solver trace (conventions §6). Operational knobs (latency
 budget, greedy percentiles) are env-overridable settings with R1.5 defaults; model
@@ -27,12 +29,14 @@ from bess.api.models import (
     HealthResponse,
     IssueOut,
     IssuesResponse,
+    NarrativeResponse,
     PeriodOut,
     RunOut,
     ScheduleOut,
 )
 from bess.api.service import dispatch
-from bess.explain.duals import DualityError, explain_schedule
+from bess.explain.duals import DualityError, Explanation, explain_schedule
+from bess.narrate.narrate import narrate
 from bess.validation.preflight import PreflightError
 
 SOLVER = "appsi_highs"
@@ -100,29 +104,16 @@ def post_dispatch(request: DispatchRequest) -> DispatchResponse:
     )
 
 
-@app.post("/explain", response_model=ExplainResponse)
-def post_explain(request: DispatchRequest) -> ExplainResponse | JSONResponse:
-    """Dispatch schedule plus its shadow-price explanation (R2.4, decision 5).
-
-    Deliberately **not** behind the circuit breaker: the breaker's greedy fallback is
-    a heuristic with no duals, so there is nothing to explain about it. Invalid input
-    is a 422 (the shared pre-flight handler); a solve that does not reach optimality is
-    a **503** (no faithful explanation), never a hollow 200 or a greedy schedule.
-    """
-    try:
-        exp = explain_schedule(request.prices_eur_mwh, request.battery, dt=request.dt_hours)
-    except DualityError as exc:  # a re-solve broke the invariant: an internal defect
-        return JSONResponse(status_code=500, content={"detail": str(exc)})
-    except RuntimeError as exc:  # solver missed optimality (e.g. ramp-coupled infeasible)
-        return JSONResponse(status_code=503, content={"detail": str(exc)})
-    return ExplainResponse(
-        objective_eur=exp.schedule.objective,
-        schedule=ScheduleOut(
+def _explanation_body(exp: Explanation) -> dict:
+    """The shared `/explain` payload. Both explain endpoints serve exactly these fields."""
+    return {
+        "objective_eur": exp.schedule.objective,
+        "schedule": ScheduleOut(
             p_charge_mw=exp.schedule.p_charge,
             p_discharge_mw=exp.schedule.p_discharge,
             soc_mwh=exp.schedule.soc,
         ),
-        runs=[
+        "runs": [
             RunOut(
                 periods=list(r.periods),
                 water_value_eur_mwh=r.water_value_eur_mwh,
@@ -130,7 +121,7 @@ def post_explain(request: DispatchRequest) -> ExplainResponse | JSONResponse:
             )
             for r in exp.runs
         ],
-        periods=[
+        "periods": [
             PeriodOut(
                 action=p.action,
                 price_eur_mwh=p.price_eur_mwh,
@@ -144,6 +135,54 @@ def post_explain(request: DispatchRequest) -> ExplainResponse | JSONResponse:
             )
             for p in exp.periods
         ],
+    }
+
+
+def _solve_explanation(request: DispatchRequest) -> Explanation | JSONResponse:
+    """Solve and explain, mapping the two failure modes onto their status codes."""
+    try:
+        return explain_schedule(request.prices_eur_mwh, request.battery, dt=request.dt_hours)
+    except DualityError as exc:  # a re-solve broke the invariant: an internal defect
+        return JSONResponse(status_code=500, content={"detail": str(exc)})
+    except RuntimeError as exc:  # solver missed optimality (e.g. ramp-coupled infeasible)
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
+@app.post("/explain", response_model=ExplainResponse)
+def post_explain(request: DispatchRequest) -> ExplainResponse | JSONResponse:
+    """Dispatch schedule plus its shadow-price explanation (R2.4, decision 5).
+
+    Deliberately **not** behind the circuit breaker: the breaker's greedy fallback is
+    a heuristic with no duals, so there is nothing to explain about it. Invalid input
+    is a 422 (the shared pre-flight handler); a solve that does not reach optimality is
+    a **503** (no faithful explanation), never a hollow 200 or a greedy schedule.
+    """
+    exp = _solve_explanation(request)
+    if isinstance(exp, JSONResponse):
+        return exp
+    return ExplainResponse(**_explanation_body(exp))
+
+
+@app.post("/explain/narrative", response_model=NarrativeResponse)
+def post_explain_narrative(request: DispatchRequest) -> NarrativeResponse | JSONResponse:
+    """The explanation plus a prose account of it (R2.4b).
+
+    The solve failures are `/explain`'s and keep its status codes. A *narration*
+    failure is not one of them: the deterministic fallback carries the same facts in
+    duller words, so it is served with `verified=False` rather than as an error. That
+    is the opposite of the R1.5 breaker, whose fallback is a worse schedule, and the
+    asymmetry is deliberate (spec decision 2). With no `ANTHROPIC_API_KEY` set, this
+    is the only path taken and no client is constructed.
+    """
+    exp = _solve_explanation(request)
+    if isinstance(exp, JSONResponse):
+        return exp
+    result = narrate(exp)
+    return NarrativeResponse(
+        **_explanation_body(exp),
+        narrative=result.text,
+        verified=result.verified,
+        rejection=result.rejection,
     )
 
 

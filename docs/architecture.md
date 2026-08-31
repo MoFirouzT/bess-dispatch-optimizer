@@ -43,9 +43,9 @@ The `bess` package is split into layers with a strict import direction, enforced
 Imports point **downward only**: a lower layer never imports a higher one.
 
 ```text
-api → explain → stochastic → recourse → optimizer → validation → assets
-                       ▲
-forecaster → scenarios ┘
+api → narrate → explain → stochastic → recourse → optimizer → validation → assets
+                                 ▲
+          forecaster → scenarios ┘
 ```
 
 | Layer | Responsibility |
@@ -55,9 +55,10 @@ forecaster → scenarios ┘
 | `optimizer` | Builds the objective, owns the solve, returns a `Schedule`. The deterministic core. It also owns the greedy heuristic, which lives here rather than in `backtest` so the serving breaker can reuse it without the serving chain depending on the offline harness. |
 | `recourse` | Rolling-horizon / MPC re-optimization. |
 | `stochastic` | The risk-aware two-stage program: scenario-based optimization and its decision-value metrics. |
-| `explain` | Shadow prices and dispatch explanations. |
+| `explain` | Shadow prices and dispatch explanations. Offline and deterministic. |
+| `narrate` | Prose accounts of an `explain` result. The only layer that reaches a language model, and it sits above `explain` so that layer stays offline. Every quantity is substituted here from the solved model, never written by the model, and an unverifiable narration is replaced by a deterministic one. |
 | `api` | The serving entry point. |
-| `forecaster` | Probabilistic price forecasting (conformal intervals), day-ahead fundamentals features, and a forecast-drift monitor. |
+| `forecaster` | Probabilistic price forecasting (conformal intervals), day-ahead fundamentals features, a forecast-drift monitor, and the calibration machinery measured against it: a sharpness search over the learners and the drift-robust conformal constructions (weighted quantiles, adaptive levels). Neither of those two changed a shipped default. |
 | `scenarios` | Scenario generation from forecasts, with an extreme-value / residual-load-conditional tail, feeding `stochastic`. |
 
 Four packages sit deliberately **outside** the serving chain:

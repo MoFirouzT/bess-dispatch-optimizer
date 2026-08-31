@@ -13,60 +13,53 @@ happened before 2026-07-28.
 
 ## Current phase
 
-**R2.1g, drift-robust conformal intervals.** Spec approved, machinery built and gated,
-**not yet measured on real prices**. It replaces the conformal calibration step with two
-published constructions that survive a regime shift: a weighted quantile over the
-calibration scores (Barber et al. 2023) and an online update of the target level (Gibbs
-and Candès 2021). This is the phase that answers what R2.1b only detects and R2.1f only
-measured, the coverage decay from 0.897 in 2024 to 0.791 across the 2021 ramp.
+**No active phase.** R2.4b (dual-grounded narration) is built, gated offline, and
+**not adopted**: the endpoint exists and the adoption question is open. It turns the
+R2.4 `Explanation` into prose in which the model emits placeholders and never a digit,
+verified against the solved object before anything is served.
 
-**Done.** `conformal.py` (weights, the weighted quantile with its `+inf` atom, both
-scores, the two Theorem 2a gap bounds, the ACI recursion and its two bounds);
-`weight_half_life_days` and an `alpha` override threaded through `PriceForecaster`;
-`sequential_coverage`, the online harness the block harness cannot stand in for. Golden,
-property and unit gates all green, written failing first.
+**Done.** `bess.narrate` (the six-type claim vocabulary and its predicates, the seven
+rejection rules, placeholder substitution, the deterministic fallback, the provider
+protocol with recorded and adversarial test doubles), `POST /explain/narrative`, the
+`narrate` optional extra, and the live tier. Golden, property and unit gates written
+failing first, all green. The full suite passes with `ANTHROPIC_API_KEY` unset, which
+is how CI runs it.
 
-Also done since: the seeded drift regimes (`synthetic_drift`, four of them, the fourth
-being volatility drift, which is the only case that separates what the two arms repair);
-knob selection on those regimes; `EXTENDED_SPAN` starting 2019-01-01 beside an untouched
-`SPAN`; and the live gate module, written and collecting but never run.
+**The first live run rejected 50 of 50, and the cause was the prompt, not the model.**
+The prompt named each claim type and stated none of the conditions the verifier checks,
+so the model was inferring rules like "a water-value step needs adjacent runs" and
+getting them wrong. Writing the six conditions into the prompt in the verifier's own
+words moved the rate to **1 rejection in 19 instances**. That 100% is an instrument
+reading and it is recorded in the spec beside the corrected number, because the two are
+easy to confuse later.
 
-**Knob selection is settled, and it did not pick the arm the phase was pitched on.** Selected:
-**half-life `None`, gamma 0.005**, that is ACI alone, the only arm feasible on all four
-regimes (coverage in band and clamp under 5% everywhere). It lifts the worst regime from
-0.785 to 0.852 at **+0.1%** width on calm data, because it widens only when it is
-missing. Full write-up in [studies/drift-robust-conformal](studies/drift-robust-conformal.md).
+**The rate is 5.3% against a 5% bar at n=19, which decides nothing.** The 95% interval
+runs from roughly 0.1% to 26%. The spec calls for 50 instances; that run was not
+repeated after the prompt fix, by the human's decision, to avoid the spend. **The
+adoption box is `- [!]`, not `- [x]`, and the endpoint does not ship until a run at the
+specified size says it should.**
 
-**Not done.** The real-data run on NL and BE, and the ledger row. No adoption decision
-exists yet and no shipped default has changed.
+**A cheaper model was measured and rejected.** On the same 8 days: Opus 5 at effort low
+rejected 0 and took 11.1 s median; Sonnet 5 at low rejected 2 of 8 at 6.8 s; Haiku 4.5
+rejected 7 of 8 at 4.7 s, once by writing a literal digit, which is the one thing the
+design forbids and the verifier caught. Opus 5 stays the default.
 
-Three things surfaced during the build. The first two are the human's call:
+**The 10 s timeout was discarding correct work.** Measured latency is 9.5 to 14.8 s, so
+roughly half of all good narrations were timing out. Raised to 20 s, keeping the
+endpoint, on the grounds that `/explain/narrative` already solves a MILP and re-solves
+an LP before it narrates and was never a fast path.
 
-- **The shipped CQR interval is not the one the formulation describes.**
-  `formulation-uncertainty.md` §R2.1 defines one signed score and one margin applied to
-  both bounds; MAPIE's `predict_interval` defaults to `symmetric_correction=False`, a
-  separate constant per side, which is what has run since R2.1. Our implementation
-  matches MAPIE's *symmetric* correction to 0.0 on both bounds, so the divergence is
-  entirely between the default and the documentation, and it is CQR-only. No coverage
-  number is wrong: both are valid constructions with the same marginal guarantee, which
-  is why four phases of gates passed either way. Pinned by
-  `test_the_shipped_default_is_the_asymmetric_variant_not_the_documented_one`. The spec
-  proposes changing the code, in a separate change, since it moves shipped numbers.
-- **Clamping the ACI level is worse than the approved spec said.** It does not pause the
-  long-run guarantee, it removes the saturation feedback the guarantee rests on, so the
-  iterate can diverge and the published bound does not return when the clamp stops
-  binding. Found by a property test on adversarial sequences before any data was touched.
-  The gate now reads the exact telescoping identity, which survives clamping, and the
-  clamp binding rate stays capped at 5%.
-- **The weighted arm's bound and its variance pull against each other.** A shorter
-  half-life tightens the Theorem 2a coverage-gap bound and shrinks the effective sample
-  that estimates the margin: at a 3-day half-life about 104 points survive out of 814, so
-  the 90% quantile rests on roughly ten effective tail observations. Measured, the margin
-  swung -40% to +18% across three refits of one run, and the swings cancel over a run, so
-  the arm moves coverage far less reliably than it looks like it should. **Theorem 2a
-  bounds the first effect and says nothing about the second**, so a half-life chosen to
-  make the bound look good buys a noisier interval without warning. The arm stays in the
-  real run anyway, because it is the only one that yields a stated number.
+Two things surfaced that are the human's call:
+
+- **The n=50 bar is under-powered for a 5% threshold.** A true 5% rate yields 0 to 6
+  rejections in 50 draws, so a pass and a fail at that size are barely distinguishable.
+  Both numbers were fixed in the spec before any data existed, which was the right
+  order; the observation is that the instrument cannot resolve the question it was
+  pointed at. Raising n or widening the bar is a spec amendment and should be argued
+  on its own, not after seeing a result.
+- **`max_tokens` 2048 is too small once thinking is on.** Every failure in the Sonnet 5
+  high-effort arm was a truncated-JSON parse error rather than a bad claim. It does not
+  bite at `effort: low`, which is the shipped setting, so nothing was changed.
 
 Releases 1 and 2 are otherwise complete; Release 3 has not started.
 
@@ -78,11 +71,13 @@ Releases 1 and 2 are otherwise complete; Release 3 has not started.
 | Data feed | complete, gated | `data` |
 | Backtest | complete, gated | `backtest` |
 | Serving | complete, gated | `api` |
-| Price forecaster | complete, gated; hyperparameters searched and left unchanged (R2.1f) | `forecaster` |
+| Price forecaster | complete, gated; hyperparameters searched and left unchanged (R2.1f), drift-robust calibration built and not adopted (R2.1g) | `forecaster` |
 | Scenario generation | complete, gated | `scenarios` |
 | Stochastic dispatch | complete, gated | `stochastic`, `recourse` |
 | Dispatch explainability | complete, gated | `explain` |
-| Studies | three nulls reported, plus one interim page awaiting data, see [studies/](studies/) | `studies` |
+| Dispatch narration | built and gated offline, **not adopted** (R2.4b); live rejection rate 5.3% at n=19 against a 5% bar, undecided | `narrate` |
+| Dispatch narration | built and gated offline; not adopted, live tier unrun | `narrate` |
+| Studies | nine pages, four nulls reported, see [studies/](studies/) | `studies` |
 
 ---
 
@@ -95,7 +90,20 @@ Releases 1 and 2 are otherwise complete; Release 3 has not started.
    probe, not the spec** (CLAUDE.md §7): `entsoe-py` exposes the imbalance endpoints,
    but whether NL and BE are actually populated on them is unverified, and thin data
    should change the gate wording up front rather than be discovered late.
-2. **Nothing else queued.** R2.8 is done, so every euro figure now carries both of its
+2. **Refit cadence, from R2.1g's null.** The largest coverage effect this project has
+   measured on the forecaster is not a calibration construction, it is how often the model
+   is refit: annual to monthly is worth +0.18 coverage on the NL 2022 crisis year and a
+   35% narrower interval. R2.1g could not adopt it (a scheduling change is not a
+   calibration change and was not in its scope) and deliberately did not. Needs a spec.
+   **The obvious trap is that "refit more often" has a cost nobody here has measured**:
+   fit time, and whether a model refit on a short recent window loses the crisis history
+   R2.1e found is useful under a de-levelled target.
+3. **Run R2.4b's live tier.** One command with an `ANTHROPIC_API_KEY` set:
+   `uv run pytest tests/integration/test_narration_live.py -q -s`. It is 50 model calls
+   and it decides whether the narrative endpoint ships. Above the 5% bar the endpoint
+   comes out, the verifier and fallback stay, and the rate is the finding. Do not tune
+   the prompt to get under the bar; that is out of scope in the spec for a reason.
+4. **Nothing else queued.** R2.8 is done, so every euro figure now carries both of its
    widths and no value claim is blocked on an unmeasured precision.
 
 ## Known blockers and carried findings

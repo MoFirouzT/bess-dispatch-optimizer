@@ -1,6 +1,10 @@
 # Spec R2.1g: Drift-robust conformal intervals
 
-**Status:** Approved (2026-08-31)
+**Status:** Implemented (2026-08-31). The gate returned **no adoption**: at a monthly
+refit both constructions add at most +0.019 worst-year coverage against a +0.03 bar.
+Nothing in `src/bess/forecaster/forecast.py` changed. The phase's larger finding is that
+the coverage decay it set out to repair is mostly **model** staleness at this cadence:
+refitting monthly rather than annually is worth +0.18 on the crisis year.
 **Release:** R2  **Depends on:** R2.1 (the forecaster and its conformal wrappers), R2.1b (the drift monitor this phase answers), R2.1d (the fold layout and gate statistics), R2.1e (the target settings held fixed), R2.1f (the selection discipline and the coverage-versus-trend measurement)
 **Phases:** R2.1g
 
@@ -338,8 +342,8 @@ Intra-package, no contract touched; the expected KEPT count stays **5**.
 - [x] Synthetic drift generators, seeded and committed: `synthetic_drift` in `bess.data` with calm, ramp, changepoint and volatility regimes, gated in `tests/property/test_drift_regimes.py`. A fourth regime was added beyond the three specified: volatility drift moves the scores without moving the level, which is the only case that separates what the two arms repair
 - [x] Live gate module for the arms on NL and BE, marked `studies`: `tests/integration/test_drift_robust_live.py`. **Five arms, not four**: the symmetric-unweighted baseline was added because turning on weighting also switches the CQR correction, so comparing against the shipped model would measure two changes at once. Written and collecting; it has not run, because ENTSO-E returned 503 throughout
 - [!] Decide the data span and refresh the cache: **decided (extend to 2019-01-01) and encoded as `EXTENDED_SPAN` beside an untouched `SPAN`, but the fetch did not happen**: the ENTSO-E API returned 503 on every attempt over 13 minutes, endpoint-wide and not token-related. The original-span reproduction check is still owed once the data lands
-- [ ] Report the four arms with both widths per R2.8, and record the coverage-gap bound beside each coverage number
-- [ ] Adoption, only if the gate's conditions are met: change the `PriceForecaster` defaults, re-run the R2.1/R2.1d/R2.1f gates, record the new incumbent
+- [x] Report the arms with both widths per R2.8 and the gap bound beside each coverage number: [studies/drift-robust-conformal](../studies/drift-robust-conformal.md). The day-block interval is reported per arm; the **seed spread is structurally zero** and is not reported as a stability result, per the carried R2.1f finding that deterministic single-threaded LightGBM gives `random_state` no entry point into the fit
+- [!] Adoption: **not reached.** No arm cleared the worst-year coverage bar, so no default changed and the R2.1/R2.1d/R2.1f gates were not re-run
 - [x] `formulation-uncertainty.md` §R2.1 edits (the two constructions; the out-of-scope line)
 - [!] `references.md` R2.1g entry written; the **ledger row is deliberately not written**, since a row records what a phase found and this one has not measured yet
 
@@ -378,16 +382,16 @@ oracles despite being a calibration change.
 *Blocks:* adoption of a new default calibration, and any later phase that consumes
 interval width. Every box must pass.
 
-- [ ] All four arms run to completion on NL and BE and reproduce bitwise on a second run at the same seed
-- [ ] On the worst-calibrated year in the span, the adopted arm's pooled coverage rises by at least **0.03** absolute over the incumbent, stated with its day-block bootstrap interval
-- [ ] On the best-calibrated year, the adopted arm's coverage interval still overlaps `[0.85, 0.95]`, so the fix does not trade a shift failure for a calm-regime failure
-- [ ] Median interval width on the calm years rises by less than **10%** over the incumbent, stated with both widths per R2.8 (day-block bootstrap over days, and the spread over `random_state` in {0, 1, 2})
-- [ ] `max_hour_deviation` on the reporting folds is no worse than the incumbent's, reusing R2.1f's constraint unchanged: coverage bought by widening only the calm hours is not a fix
-- [ ] Pinball skill against seasonal naive is no worse than the incumbent's at both edges
-- [ ] The sequential run's realized miscoverage matches the telescoping identity, and `aci_bound` is reported beside it with an explicit note of whether the run was clamp-free (where the published bound applies) or not
-- [ ] The ACI clamp binds on fewer than **5%** of days; if it binds more, the arm is reported as saturated and is not adoptable
-- [ ] The coverage-gap bound at the adopted half-life is published beside every coverage number, at a named changepoint lag
-- [ ] The result is recorded whether or not it is an improvement, and the four arms are reported separately rather than as a bundle
+- [x] All arms ran to completion on NL and BE and reproduce bitwise on a second run: coverage, width, per-year split and the final level all identical (NL, composed arm, 0.9016233667346877)
+- [!] Worst-year coverage up at least 0.03: **failed.** Best gain is **+0.019** on NL (0.870 to 0.889, composed arm) and **nothing** on BE (0.890 to 0.886). This is the box the null turns on
+- [x] Best-calibrated year stays in band: every arm lands 0.904 to 0.917 on its best year in both zones, so nothing traded a shift failure for a calm-regime one
+- [x] Median width rises by less than 10%: every arm lands within **2%** of the baseline (-1.9% to +1.6%). It passes trivially, and for the wrong reason: at a monthly refit there is no coverage left to buy, so no arm is spending width
+- [!] `max_hour_deviation` no worse: **NL passes** (0.055 against 0.056), **BE misses by 0.001** (0.042 against 0.041). Recorded as a miss rather than waved through as noise, because the constraint is stated as no-worse and R2.1f rejected a candidate on this same metric
+- [!] Pinball skill: **not run.** It is an adoption-conditional check and adoption was not reached; running it would not change the verdict
+- [x] The identity holds on real data (realized 0.001692233 against 0.001692233 expected) and the run was **clamp-free**, so Proposition 4.1's published bound applies rather than only the identity: 0.00169 against a bound of 0.132
+- [x] Clamp binding **0.0%** of 1369 days at a monthly refit. The 19.4% seen at an annual refit was an artefact of the stale baseline, not a property of the step size
+- [x] Gap bound published beside every coverage number: 0.500 at a 7-day half-life and a 7-day changepoint lag, against 1.000 (no claim at all) unweighted
+- [x] Recorded as the null it is, arms reported separately, with the refit-cadence confound that nearly hid it stated first
 
 ## Measured results
 

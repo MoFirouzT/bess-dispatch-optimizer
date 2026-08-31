@@ -70,6 +70,24 @@ class ExplainResponse(BaseModel):
     periods: list[PeriodOut]
 
 
+class NarrativeResponse(BaseModel):
+    """The `/explain` body plus a prose account of it (R2.4b).
+
+    ``verified`` is False exactly when ``narrative`` is the deterministic fallback,
+    and ``rejection`` then names why. A narration failure is never an error: the
+    fallback is the same facts in duller words, unlike the R1.5 greedy fallback,
+    which is a worse schedule (spec decision 2).
+    """
+
+    objective_eur: float
+    schedule: ScheduleOut
+    runs: list[RunOut]
+    periods: list[PeriodOut]
+    narrative: str
+    verified: bool
+    rejection: str | None
+
+
 class IssueOut(BaseModel):
     """One structured pre-flight issue (conventions §6: typed errors, no raw traces)."""
 

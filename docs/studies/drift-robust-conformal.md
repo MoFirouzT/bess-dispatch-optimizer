@@ -1,9 +1,12 @@
 # Drift-robust conformal: which repair survives a regime shift?
 
-**Interim, synthetic only.** The real-price run is pending an ENTSO-E outage, so nothing
-here is an adoption decision. What it does settle is which knob values are worth
-spending that run on, and it has already produced one finding that changes how the
-weighted arm should be read.
+**Answer: neither, at a realistic refit cadence.** On real prices both constructions add
+at most **+0.019** worst-year coverage against an adoption threshold of +0.03, and
+nothing on BE. The finding that survives is the one that was masking them: moving the
+forecaster's refit from annual to monthly is worth **+0.18** coverage on the crisis year
+and a **35% narrower** interval, which is a scheduling change and no new theory at all.
+One year is still unscored, and it is the worst one, because the fetch that would reach
+it is blocked.
 
 Governing spec: [R2.1g](../specs/drift-robust-conformal.md).
 
@@ -86,7 +89,7 @@ $\gamma = 0.01$ on 33.1%. A step change drives the level straight to the floor, 
 saturated arm is a fixed-level arm wearing ACI's name. Coverage alone would have chosen
 the larger step.
 
-## Selected for the real run
+## Selected for the real run (superseded by the real run below)
 
 **Half-life `None`, $\gamma = 0.005$**: the only arm feasible on all four regimes.
 Calm width +0.1%, worst-regime coverage 0.852, clamp binding at most 4.1%.
@@ -97,10 +100,52 @@ one-week-old regime break at 0.5 coverage where unweighted conformal bounds it a
 which is to say not at all. Whether that bound is worth its variance is a question for
 real prices.
 
+## On real prices: a null, and a bigger finding underneath it
+
+The cached 2021-2025 span (both zones, 1369 scored days from 2022-01-01) was run while
+the extended fetch stayed blocked. 2021 is warm-up here, so the worst scoreable year is
+**2022**, the crisis year.
+
+The first run used an **annual** refit and produced a dramatic result: the NL baseline
+covered 2022 at 0.689, and weighting lifted it to 0.836, the composed arm to 0.864.
+Those numbers are not reported as a finding, because R2.1f measured 2022 at 0.847 and
+that gap was the protocol, not the market. Refitting once a year leaves the model fitted
+on 2021 data serving the whole of the crisis, which is a staler forecaster than the
+project publishes anywhere.
+
+Rerun at a **monthly** refit, which is what the block harness effectively does:
+
+| arm | NL 2022 | NL worst yr | NL width | BE 2022 | BE worst yr | BE width |
+| --- | --- | --- | --- | --- | --- | --- |
+| symmetric unweighted | 0.870 | 0.870 | +0.0% | 0.890 | 0.890 | +0.0% |
+| weights only | 0.886 | 0.884 | -0.5% | 0.898 | 0.884 | -0.1% |
+| ACI only | 0.893 | 0.885 | -1.4% | 0.900 | 0.883 | -1.9% |
+| both | 0.889 | 0.889 | +1.4% | 0.898 | 0.886 | +1.6% |
+
+**The phase's own gate says no.** Best worst-year gain is **+0.019** on NL and **nothing**
+on BE, against an adoption threshold of +0.03. ACI's clamp binding falls from 19.4% to
+0.0%, so the saturation that failed the gate at annual cadence was also an artefact of
+the stale baseline. Every arm now sits within 2% of the baseline width, so the width cap
+passes trivially and there is simply no coverage left to buy.
+
+**The finding worth keeping is the one that was in the way.** Moving the refit from
+annual to monthly is worth **+0.18 coverage** on the NL crisis year and a **35% narrower**
+interval (median 184.90 to 120.06 EUR/MWh). That dwarfs anything either published
+construction delivers here, costs no new theory, and is a scheduling change rather than a
+calibration one. The coverage decay R2.1f attributed to exchangeability failure is, at
+this cadence, mostly **model** staleness rather than **calibration** staleness.
+
+**What is still untested.** R2.1f's worst year is 2021 at 0.791, and 2021 cannot be
+scored without the extended span the ENTSO-E outage is blocking. The arms are being
+judged here on a 0.870 starting point, not a 0.791 one, and a construction that adds
++0.019 where there is little to repair may do more where there is more. That is the run
+this study still owes.
+
 ## What this does not show
 
-Synthetic drift, one seed, one refit schedule. The regimes were built to be
-diagnostic rather than realistic, and the variance finding above is precisely a warning
-that a single instrument can mislead. Coverage on real prices, the width paid on years
-that are already calibrated, and whether NL and BE agree are all the real run's to
-answer.
+Synthetic drift, one seed, one refit schedule for the selection; and on real prices, one
+span that excludes the worst year in the data. The regimes were built to be diagnostic
+rather than realistic, and the reversal between the synthetic selection (ACI) and the
+real-price ranking (weighting, then neither) is itself the warning that a single
+instrument misleads. Coverage on the 2021 ramp, and whether either arm earns its width
+where the baseline is genuinely broken, are still open.

@@ -26,7 +26,7 @@ whose later phases answered a different question has several.
 | Data feed | [data-feed](data-feed.md) | R1.4b, R1.4c | `bess.data` |
 | Backtest | [backtest](backtest.md) | R1.4a | `bess.backtest` |
 | Serving | [serving](serving.md) | R1.5 | `bess.api` |
-| Price forecaster | [price-forecaster](price-forecaster.md), [forecaster-evaluation](forecaster-evaluation.md), [target-normalization](target-normalization.md), [interval-sharpness](interval-sharpness.md) | R2.1, R2.1b, R2.1c / R2.1d / R2.1e / R2.1f | `bess.forecaster` |
+| Price forecaster | [price-forecaster](price-forecaster.md), [forecaster-evaluation](forecaster-evaluation.md), [target-normalization](target-normalization.md), [interval-sharpness](interval-sharpness.md), [drift-robust-conformal](drift-robust-conformal.md) | R2.1, R2.1b, R2.1c / R2.1d / R2.1e / R2.1f / R2.1g | `bess.forecaster` |
 | Scenario generation | [scenario-generation](scenario-generation.md), [scenario-tail](scenario-tail.md), [scenario-tail-conditioning](scenario-tail-conditioning.md) | R2.2 / R2.2b / R2.2c | `bess.scenarios` |
 | Stochastic dispatch | [stochastic-dispatch](stochastic-dispatch.md) | R2.3 | `bess.stochastic`, `bess.recourse` |
 | Dispatch explainability | [explainability](explainability.md) | R2.4 | `bess.explain` |
@@ -43,7 +43,7 @@ found nothing.
 
 | Spec | Phase | Status | What it proposes |
 | --- | --- | --- | --- |
-| [drift-robust-conformal](drift-robust-conformal.md) | R2.1g | Approved, machinery built and gated, not yet measured | Replace the conformal calibration step with a weighted quantile over the calibration scores (Barber et al.) and an online update of the target level (Gibbs and Candès), so the coverage decay R2.1f measured across regimes is bounded rather than only monitored |
+| [dual-narration](dual-narration.md) | R2.4b | Approved, built, not adopted | A prose account of a solved dispatch in which the model emits placeholders and never a number, verified against the R2.4 `Explanation` before it is served, with a deterministic fallback. Built and gated offline; live rejection rate 5.3% at n=19 against a 5% bar and a specified n of 50, so adoption is undecided |
 
 ---
 
@@ -83,6 +83,7 @@ work orders were merged into one document and the rows still record the sequence
 | [R2.7](study-windowing.md) | 2026-07-29 | study | the value studies re-measured on 260 days over four years and two markets | **The three nulls hardened and the one positive result shrank.** VSS falls from +12.90 to +3.56 on NL, whose interval now includes zero, while BE holds at +8.36; about 4 EUR of that was a seeding defect where a window's result depended on its position in the series. The unpriced delivery gap was the only quantity the wider window strengthened |
 | [R2.8](draw-noise.md) | 2026-07-29 | study | seed reproducibility of the value headlines | Draw noise is worth 4.85 EUR on the VSS median and 11.19 on forecast value, about a third of each study's window interval and covered by no interval reported before. Both published headlines were low draws, so the pages now lead with the mean across seeds. **The draw moves magnitudes, not signs**: every finding keeps its direction under reseeding |
 | [R2.1f](interval-sharpness.md) | 2026-08-31 | Price forecaster | hyperparameter search for the narrowest calibrated interval | Sharpness is available and is not free, so the shipped defaults stand. An exhaustive 324-configuration grid, selected on blocks disjoint from every block the gate scores, found a 4.5% narrower NL interval (+6.22 EUR/MWh, 95% CI [+3.17, +9.35]) whose per-hour calibration the gate then rejected: narrower everywhere fixes over-coverage at 21:00 and pushes 11:00 to 0.830. BE's winner failed on pinball skill, and the two zones chose different configurations. Also measured what R2.1 only asserted: conformal coverage falls with trend, 0.897 in 2024 to 0.791 across the 2021 crisis ramp |
+| [R2.1g](drift-robust-conformal.md) | 2026-08-31 | Price forecaster | weighted (nonexchangeable) conformal and adaptive conformal inference | **Null, and the confound that hid it is the real finding.** Both constructions were built and gated against their published theorems (Barber et al. 2023 Thm 2a; Gibbs and Candes 2021 Prop 4.1), then measured: at a monthly refit they add at most +0.019 worst-year coverage on NL and nothing on BE, against a +0.03 bar. A first run at an *annual* refit showed the baseline covering the 2022 crisis year at 0.689 and the arms repairing it to 0.864, all of which was protocol rather than market. **Refitting monthly rather than annually is worth +0.18 coverage and a 35% narrower interval**, so the decay R2.1f attributed to exchangeability failure is mostly model staleness at this cadence. Also found that the shipped CQR interval is the asymmetric variant, not the symmetric one §R2.1 defines, and that clamping the ACI level removes the feedback its guarantee rests on. 2021, the worst year, stayed unscored: the fetch was blocked by an ENTSO-E outage |
 
 ---
 

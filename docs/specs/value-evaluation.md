@@ -145,7 +145,7 @@ Walk-forward discipline: the forecaster is refit on data strictly before each ``
 ## Decisions
 
 Phase-local formulation / interface / build decisions only. Roadmap and
-positioning questions stay in the Tier 0 planning log, never here.
+positioning questions stay in the gitignored `planning/` log, never here.
 
 - Should the VSS study window be a day or a week? **Resolved:** a UTC day (matches the R1.4 gate and the DA commitment horizon); weekly numbers are aggregation, not a second mechanism (2026-07-20).
 - Does `forecast_value` belong in `bess.stochastic` given it needs the forecast group at runtime? **Resolved:** yes, in `study.py` with a lazy import and a clear error; layering already allows stochastic → forecaster, and splitting a new top-level module for two functions is over-structure. A token-free core `forecast_value_from_sets(conformal, naive, realized, battery)` carries the golden/property gates; the `forecast_value(prices, …)` wrapper owns the forecaster plumbing (2026-07-20).

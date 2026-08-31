@@ -64,7 +64,7 @@ Reader-facing write-ups belong in `docs/studies/`; this is the builder's record.
 ## Decisions
 
 Phase-local formulation / interface / build decisions only. Roadmap and
-positioning questions stay in the Tier 0 planning log, never here.
+positioning questions stay in the gitignored `planning/` log, never here.
 
 Pose each with a proposed answer, then resolve it in place at review, keeping the
 proposal so the section becomes the decision trail rather than a list of questions

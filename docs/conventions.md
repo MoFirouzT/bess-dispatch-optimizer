@@ -144,7 +144,7 @@ Inline math must not start or end with a space (`$ x$`), which can stop GitHub p
     State the failure mode before the mechanics (the grid-side-metering rule is the model).
 5. **✓ lint: every doc opens with a purpose line and an `*Assumes:*` line.**
     Name what the doc takes as given (prerequisite docs, house conventions, defined terms) and link there, so a reader knows where to start.
-    Point to prerequisites; do not gate on the reader's background. (Enforced on the canonical Tier-1/2 docs.)
+    Point to prerequisites; do not gate on the reader's background. (Enforced on the README, `architecture.md`, and the canonical references.)
 6. **No cold jargon.**
     Define or link any term/symbol at first use;
     `big-M`, `LP relaxation`, `epigraph`, `aFRR` get a `glossary.md` / `conventions.md` link the first time they appear.
@@ -161,7 +161,7 @@ Inline math must not start or end with a space (`$ x$`), which can stop GitHub p
     Skip "it's worth noting" / "in essence", don't reach for a rule-of-three list every time, don't hedge.
     Plain words over flourish.
 11. **✓ lint: no career or self-positioning language in committed files.**
-    The specific banned words live in [`CLAUDE.md`](../CLAUDE.md) §2 (one source of truth); strategy stays Tier 0.
+    The specific banned words live in [`CLAUDE.md`](../CLAUDE.md) §2 (one source of truth); strategy stays in the gitignored `planning/` log.
 12. **Reader confusion is data.**
     When someone trips on a passage, capture the fix as a glossary `*Gotcha:*` or an FAQ entry, not a one-off reply.
 13. **Anti-patterns are explicit**:

@@ -18,7 +18,7 @@ No constraint, objective term, or efficiency placement changes.
 
 ## Decisions
 
-Both are **Accepted**; the reasoning, alternatives, and failure modes live in the ADRs (Tier 2 canonical), not here.
+Both are **Accepted**; the reasoning, alternatives, and failure modes live in the ADRs, not here.
 
 - The greedy heuristic lives in `bess.optimizer.heuristics`, not `bess.backtest`, so the serving breaker can reuse it without the serving chain depending on the offline harness.
     The breaker needs greedy at serving time, but `backtest` is an offline tool the serving chain must not depend on, so `greedy_window` moves to `bess.optimizer.heuristics` and `backtest` imports it from there. A pure move: the R1.4a greedy oracles are the regression check.

@@ -125,7 +125,7 @@ Unlike R2.1's coverage, scenario *reduction* on a tiny fixed set has an exact an
 
 ## Decisions (reviewed 2026-07-08)
 
-Phase-local decisions only; roadmap/positioning stays in the Tier 0 log.
+Phase-local decisions only; roadmap/positioning stays in the gitignored `planning/` log.
 
 1. **Governing reference under the textbook-first policy.** The canonical *method* references (Dupačová/Gröwe-Kuska/Römisch 2003; Heitsch-Römisch 2003) are papers, not textbooks. **Resolved: name Dupačová et al. / Heitsch-Römisch (2003) governing** for the reduction theory (the method is paper-defined and has no textbook substitute of equal precision), with King & Wallace subordinate for scenario-generation framing; the deviation from textbook-first is noted explicitly in `references.md`, exactly as R2.1 does for the López de Prado evaluation discipline. Sections/editions marked for verification before relying.
 2. **Generation method.** **Resolved: residual-path bootstrap** off the R2.1 forecaster (self-contained, preserves intra-day error correlation, token-free-testable); independent per-hour sampling rejected (destroys temporal structure), ARIMA/GARCH deferred ([the residual-path bootstrap](../decisions/residual-path-bootstrap.md)).

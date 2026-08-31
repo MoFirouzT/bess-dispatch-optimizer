@@ -8,29 +8,45 @@ Measurement protocols live in [formulation-evaluation.md](formulation-evaluation
 The same rules apply here: specs, the README, and ADRs **point here**, they never restate equations.
 
 *Assumes: [formulation.md](formulation.md) and the house notation in [Conventions](conventions.md) (grid-side power, per-unit SoC, `π / e / η / Δt`).
-The R1.1 dispatch model is reused unchanged as the per-scenario physics throughout; battery and power-market terms are defined in the [glossary](glossary.md).*
+The R1.1 dispatch model is reused unchanged as the per-scenario physics throughout;
+battery and power-market terms are defined in the [glossary](glossary.md).*
 
-GitHub renders the `$$…$$` LaTeX below. The changelog for all three files is at the end of [formulation.md](formulation.md#changelog).
+GitHub renders the `$$…$$` LaTeX below.
+The changelog for all three files is at the end of [formulation.md](formulation.md#changelog).
 
 ---
 
 ## R2.1. Probabilistic price forecast (conformal intervals; no optimizer change)
 
-*Governing reference: Angelopoulos & Bates, *A Gentle Introduction to Conformal Prediction* (see [`references.md`](references.md): R2.1). This section summarizes only the coverage guarantee the forecaster relies on; it adds **no constraint, variable, or objective term** to the dispatch MILP above.*
+*Governing reference:
+Angelopoulos & Bates, *A Gentle Introduction to Conformal Prediction* (see [`references.md`](references.md): R2.1).
+This section summarizes only the coverage guarantee the forecaster relies on;
+it adds **no constraint, variable, or objective term** to the dispatch MILP above.*
 
-R2.1 replaces a point price $\pi_t$ with an **interval** $[\underline{\pi}_t, \overline{\pi}_t]$ carrying a distribution-free coverage guarantee, the uncertainty input the R2.2+ stochastic layer samples. Let a base regressor be fit on a *proper-training* split and a disjoint *calibration* split $\mathcal C$ (of size $n$) held out, with target miscoverage $\alpha$ (so $\text{confidence} = 1-\alpha$).
+R2.1 replaces a point price $\pi_t$ with an **interval** $[\underline{\pi}_t, \overline{\pi}_t]$ carrying a distribution-free coverage guarantee, the uncertainty input the R2.2+ stochastic layer samples.
+Let a base regressor be fit on a *proper-training* split and a disjoint *calibration* split $\mathcal C$ (of size $n$) held out, with target miscoverage $\alpha$ (so $\text{confidence} = 1-\alpha$).
 
-*Notation reconciled to house style.* The reference writes the interval bounds as generic lower/upper limits and the conformal margin as $\hat q$. Here the bounds take the price symbol $\pi$ ($\underline{\pi}_t, \overline{\pi}_t$) and the margin is $\hat s$, because $\hat q_{\alpha/2}$ already names the quantile regressors below and $u_t$ is the R1.1 binary.
+*Notation reconciled to house style.*
+The reference writes the interval bounds as generic lower/upper limits and the conformal margin as $\hat q$.
+Here the bounds take the price symbol $\pi$ ($\underline{\pi}_t, \overline{\pi}_t$) and the margin is $\hat s$, because $\hat q_{\alpha/2}$ already names the quantile regressors below and $u_t$ is the R1.1 binary.
 
-**Split conformal.** With calibration residuals $R_i = |y_i - \hat\mu(x_i)|$ for $i\in\mathcal C$, let $\hat s$ be the $\lceil(1-\alpha)(n+1)\rceil/n$ empirical quantile of $\{R_i\}$. The interval $\hat\mu(x)\pm\hat s$ then satisfies the **marginal coverage** bound
+**Split conformal.**
+With calibration residuals $R_i = |y_i - \hat\mu(x_i)|$ for $i\in\mathcal C$, let $\hat s$ be the $\lceil(1-\alpha)(n+1)\rceil/n$ empirical quantile of $\{R_i\}$.
+The interval $\hat\mu(x)\pm\hat s$ then satisfies the **marginal coverage** bound
 
 $$ \boxed{ \mathbb P\big(y \in [\hat\mu(x)-\hat s,\ \hat\mu(x)+\hat s]\big) \ \ge\ 1-\alpha } $$
 
-for exchangeable data, in finite samples, *independent of the model's accuracy*: the property the coverage gate checks empirically. Width is **constant** in $x$.
+for exchangeable data, in finite samples, *independent of the model's accuracy*:
+the property the coverage gate checks empirically.
+Width is **constant** in $x$.
 
 **CQR (the default; [CQR over split conformal](decisions/cqr-over-split-conformal.md)).** Replace the point model with lower/upper quantile regressors $\hat q_{\alpha/2}, \hat q_{1-\alpha/2}$; conformalize on $\mathcal C$ with the signed score $E_i = \max\{\hat q_{\alpha/2}(x_i)-y_i,\ y_i-\hat q_{1-\alpha/2}(x_i)\}$ and its $(1-\alpha)$ quantile $\hat s$, giving $[\hat q_{\alpha/2}(x)-\hat s,\ \hat q_{1-\alpha/2}(x)+\hat s]$. Same marginal guarantee; width is now **input-adaptive**, which matters because day-ahead prices are heteroscedastic (volatile peaks, calm nights).
 
-**Gate (statistical, not a hand-solved oracle).** The claim is that empirical coverage under the R1.4 walk-forward lies within $\pm 0.05$ of nominal (so $0.9 \Rightarrow [0.85, 0.95]$). Because coverage is a *sampling statistic* whose indicators cluster within a day, that claim is tested by a **day-block bootstrap interval** rather than by a point estimate: the gate fails only when the whole interval falls outside the band, that is, only when the data can rule the claim out ([R2.1d](specs/forecaster-evaluation.md)). Intervals obey $\underline{\pi}_t \le \hat\mu_t \le \overline{\pi}_t$; features are strictly pre-gate-closure (no leakage). Coverage is gated alongside **sharpness** (pinball loss against a seasonal-naive baseline), since coverage alone is satisfiable by an arbitrarily wide interval. **Exchangeability** is the critical assumption; a price-distribution shift breaks it, which is exactly what the R2.1b drift monitor and the 7-day rolling recalibration exist to manage.
+**Gate (statistical, not a hand-solved oracle).** The claim is that empirical coverage under the R1.4 walk-forward lies within $\pm 0.05$ of nominal (so $0.9 \Rightarrow [0.85, 0.95]$). Because coverage is a *sampling statistic* whose indicators cluster within a day, that claim is tested by a **day-block bootstrap interval** rather than by a point estimate: the gate fails only when the whole interval falls outside the band, that is, only when the data can rule the claim out ([R2.1d](specs/forecaster-evaluation.md)). Intervals obey $\underline{\pi}_t \le \hat\mu_t \le \overline{\pi}_t$; features are strictly pre-gate-closure (no leakage). Coverage is gated alongside **sharpness** (pinball loss against a seasonal-naive baseline), since coverage alone is satisfiable by an arbitrarily wide interval. **Exchangeability** is the critical assumption; a price-distribution shift breaks it, which is exactly what the R2.1b drift monitor and the 7-day rolling recalibration exist to manage. Measured, not only asserted ([R2.9](specs/interval-sharpness.md)): at one fixed placement on NL, pooled coverage falls monotonically with how hard the price level trends, from $0.897$ in 2024 to $0.791$ across the 2021 crisis ramp.
+
+**Selection on sharpness ([R2.9](specs/interval-sharpness.md)).** The learners' hyperparameters are not free parameters left at library defaults but are *chosen*, so the choice is part of what the shipped forecaster means. Conformal calibration makes that a search over width alone: whatever the quantile models do, the conformal step moves the bounds until marginal coverage lands near $1-\alpha$, so a worse base model yields a wider interval rather than an uncovered one. Writing $\bar w$ for mean interval width, $\hat c$ for pooled coverage and $\delta_h$ for the largest deviation of per-hour coverage from nominal, the shipped configuration is
+$$ C^\star = \arg\min_{C} \bar w(C) \quad \text{s.t.} \quad \hat c(C) \in [1-\alpha-0.05,\ 1-\alpha+0.05], \quad \delta_h(C) \le \delta_h(C_0), $$
+with $C_0$ the incumbent, always a candidate. The second constraint is not decoration: $\bar w$ alone is minimized by an interval that is tight overnight and too tight at the evening peak, which marginal coverage cannot see. Selection runs on blocks **disjoint from every block the gate scores**, so the width the gate reports is not the width the winner was chosen on.
 
 **Normalized target ([R2.1e](specs/target-normalization.md)).** Optionally the learner is fit not on $\pi_t$ but on the standardized target $z_t = (\pi_t - m_t)/s_t$, where the level $m_t$ and scale $s_t$ are the mean and standard deviation of a trailing window ending at $t - 24 \text{h}$ (so both are known at gate closure, exactly like the lags). Predictions and both interval bounds are mapped back by $\pi = m_t + s_t z$. Because $m_t, s_t$ are **known constants at prediction time** and $s_t > 0$, that map is a strictly increasing affine bijection, so coverage transfers point by point:
 
@@ -86,11 +102,21 @@ With $\pi^{DA}=\bar\pi$ this reduces to $\mathbb E_s[\text{profit}_s] = \mathbb 
 
 ### Risk-aware objective (CVaR mean-risk; Rockafellar-Uryasev)
 
-Let $L_s = - \text{profit}_s$, tail level $\alpha\in(0,1)$, risk weight $\lambda\in[0,1]$. Introduce the VaR auxiliary $\eta$ and tail slacks $z_s\ge 0$:
+Let $L_s = - \text{profit}_s$, tail level $\alpha\in(0,1)$, risk weight $\lambda\in[0,1]$. $\text{CVaR}_\alpha(L)$ is a number, the mean of the worst $1-\alpha$ tail of the loss, but it is *defined* by a minimization: $\text{CVaR}_\alpha(L)=\min_\zeta\big[\zeta + \tfrac{1}{1-\alpha}\mathbb E(L-\zeta)^+\big]$. Since it enters the objective with the weight $-\lambda\le 0$, that inner minimum flips and merges into the outer maximization, so the VaR auxiliary $\zeta$ and the tail slacks $z_s\ge 0$ become decision variables of the same program ($\zeta$, not $\eta$: the house $\eta$ is efficiency):
 
-$$\boxed{ \max_{g^{DA}, g^{(s)}, \eta, z_s} \ (1-\lambda)\sum_s p_s \text{profit}_s - \lambda\underbrace{\Big(\eta + \tfrac{1}{1-\alpha}\sum_s p_s z_s\Big)}_{\text{CVaR}_\alpha(L)} \quad\text{s.t.}\quad z_s \ge L_s - \eta,\ \ z_s\ge 0. }$$
+$$\boxed{ \max_{g^{DA}, g^{(s)}, \zeta, z_s} \ (1-\lambda)\sum_s p_s \text{profit}_s - \lambda\underbrace{\Big(\zeta + \tfrac{1}{1-\alpha}\sum_s p_s z_s\Big)}_{\text{CVaR}_\alpha(L)} \quad\text{s.t.}\quad z_s \ge L_s - \zeta,\ \ z_s\ge 0. }$$
 
-The bracket is $\text{CVaR}_\alpha$ of the loss; at the optimum $\eta$ recovers the Value-at-Risk. $\lambda=0$ is the risk-neutral expectation (the RP objective below); sweeping $\lambda$ traces the **mean-CVaR frontier**. Every term is LP-representable, so the program stays a MILP (the only integrality is the per-scenario $u^{(s)}_t$) solved by HiGHS, no new dependency.
+The bracket is $\text{CVaR}_\alpha$ of the loss; at the optimum $\zeta$ recovers the Value-at-Risk. $\lambda=0$ is the risk-neutral expectation (the RP objective below); sweeping $\lambda$ traces the **mean-CVaR frontier**. Every term is LP-representable, so the program stays a MILP solved by HiGHS, no new dependency.
+
+### Program structure (how it is solved)
+
+The program is built in its **extensive form** (the deterministic equivalent): every stage and every scenario is written out explicitly as one flat MILP and handed to HiGHS in a single solve. Nothing is decomposed into a master problem and subproblems (Benders is out of scope, below), and nothing is solved scenario by scenario.
+
+The model is a stack of R1.1 blocks. One **day-ahead block** carries the commitment $g^{DA}$ with its own physics variables $p^{ch,DA}_t, p^{dis,DA}_t, e^{DA}_t, u^{DA}_t$, because the commitment has to be deliverable in its own right. $S$ **recourse blocks** carry the $g^{(s)}$, one full R1.1 model per scenario. Two constraint families couple the stack: the recourse budget, which ties each scenario to the commitment period by period, and the CVaR cuts $z_s \ge L_s - \zeta$, which tie every scenario to the one shared $\zeta$. Remove both and the blocks fall apart into independent single-price dispatch problems, which is what makes the coupling the whole content of the stochastic layer.
+
+Size follows directly: $S+1$ copies of the R1.1 variable set, plus $\zeta$ and one $z_s$ per scenario. The only integrality is still the mutual-exclusion binary $u_t$, but there is now one copy per block, so $T(S+1)$ binaries in total. Solve time is the branch-and-bound cost on that stack ([LP relaxation](glossary.md#optimization)), and it stays modest at the house $S$ because the budget couples each scenario only to the commitment, never to another scenario.
+
+The §R2.6 bid-curve variant breaks that property, which is why it is the one variant that does not scale: it replaces the single day-ahead block with one branch per scenario and chains the branches to each other within every hour, so the blocks are no longer near-separable. The measurements and the resulting cap on $S$ are in [specs/bid-curves.md](specs/bid-curves.md).
 
 ### Recourse realization (receding-horizon MPC)
 

@@ -41,7 +41,9 @@ Approved-but-unbuilt and draft specs live here too, and are listed separately be
 they carry no ledger row: a row records what a phase found, and an unbuilt phase has
 found nothing.
 
-*Nothing in flight.*
+| Spec | Status | What it will settle |
+| --- | --- | --- |
+| [interval-sharpness](interval-sharpness.md) | Approved, in build (R2.9) | Whether the forecaster's quantile learners, whose hyperparameters were left at library defaults, can be chosen for a narrower interval without giving up coverage or per-hour calibration |
 
 ---
 

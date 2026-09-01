@@ -7,7 +7,7 @@ Neither section here adds a constraint, variable, or objective term.
 They define **what a reported number means**: which information the decision was allowed to see, which revenue quantities are comparable, and how a value claim is scored out of sample.
 Grouping them together is deliberate, because the leakage discipline in §R1.4 is what makes the §R2.5 protocols honest, and the two rot as a pair when they drift.
 
-The findings these protocols produced are written up in [studies/](studies/).
+The findings these protocols produced are written up in [studies/](studies/README.md).
 
 *Assumes: [formulation.md](formulation.md) and the house notation in [Conventions](conventions.md) (grid-side power, per-unit SoC, `π / e / η / Δt`).*
 

@@ -94,6 +94,21 @@ soft check**: capacity and the terminal-SoC target cap the daily cycle either wa
 solving quarter-hourly data at `dt=1.0` still lands within about 0.5%. The energy cycled
 comes out roughly 4x too small, which is the assertion that bites.
 
+**Documentation site added (2026-09-01), not published.** `mkdocs.yml` builds the same
+Markdown that renders on GitHub into a searchable site with the reading order from
+`architecture.md` as its nav (`uv run --group docs mkdocs serve`). GitHub stays the
+primary rendering, so the toc extension uses GitHub's slugifier and the same
+`file.md#anchor` links resolve in both. No API reference is generated from docstrings:
+the docs are the argument and a listing of every module would bury it. Seven links leave
+`docs/` (to the README, the operating contract, the example scripts) and warn rather than
+fail. `.github/workflows/docs.yml` builds on every push and **deploys only on a manual
+`workflow_dispatch`**, so merging it publishes nothing; the first publish also needs Pages
+enabled with its source set to GitHub Actions, which nobody has done. Known cosmetic
+limitation, recorded in `docs/javascripts/mathjax.js`: the two `formulation.md` headings
+containing math show raw delimiters in the sidebar, because the toc is built from heading
+text and the math span is stripped. Rewording them would change anchors other docs link
+to, so they stay.
+
 **Still open: the 15-minute economics.** The fixture's quarter-hourly form carries no
 intra-hour spread by construction, so it proves the plumbing and measures nothing. Real
 intra-hour spread should raise the arbitrage ceiling and change where the ramp limit
@@ -113,8 +128,7 @@ below.
 | Stochastic dispatch | complete, gated | `stochastic`, `recourse` |
 | Dispatch explainability | complete, gated | `explain` |
 | Dispatch narration | built and gated offline, **not adopted** (R2.4b); live rejection rate 5.3% at n=19 against a 5% bar, undecided | `narrate` |
-| Dispatch narration | built and gated offline; not adopted, live tier unrun | `narrate` |
-| Studies | nine pages, four nulls reported, see [studies/](studies/) | `studies` |
+| Studies | nine pages, four nulls reported, see [studies/](studies/README.md) | `studies` |
 
 ---
 
@@ -127,6 +141,15 @@ below.
    probe, not the spec** (CLAUDE.md §7): `entsoe-py` exposes the imbalance endpoints,
    but whether NL and BE are actually populated on them is unverified, and thin data
    should change the gate wording up front rather than be discovered late.
+   **The probe is written and unrun**: `scripts/probe_imbalance.py`, one command with a
+   token. It asks four things, in the order they can kill the phase: whether the endpoint
+   returns anything for BE and NL, what the schema is (NL settles a single price per ISP
+   with corrections, BE adds an alpha component, and neither column shape is guessable),
+   whether the resolution is the 15-minute settlement period, and how far back the record
+   goes. That last one is the gate question: the value studies score 260 days across 2022
+   to 2025, and a record starting in 2024 cannot be scored on that span. Blocked on the
+   platform migration below; run it from 2026-09-03 and write the answers into the spec
+   before its gate.
 2. **Refit cadence, from R2.1g's null.** The largest coverage effect this project has
    measured on the forecaster is not a calibration construction, it is how often the model
    is refit: annual to monthly is worth +0.18 coverage on the NL 2022 crisis year and a

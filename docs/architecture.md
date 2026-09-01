@@ -29,11 +29,11 @@ The map between them and the capabilities below is in the [phase ledger](specs/R
 3. [formulation.md](formulation.md): the math. Start at *Conventions* (the grid-side metering rule), then the deterministic core. Uncertainty and evaluation are in its two companion files, [formulation-uncertainty.md](formulation-uncertainty.md) and [formulation-evaluation.md](formulation-evaluation.md).
 4. [conventions.md](conventions.md): units, sign/metering, time, naming. Locked; changes need an ADR.
 5. [glossary.md](glossary.md) and [market_reference.md](market_reference.md): domain background, read as needed.
-6. [studies/](studies/): what the stack was measured to be worth, nulls included.
-7. [specs/&lt;phase&gt;.md](specs/): the frozen work order for a given phase, with its test contract.
+6. [studies/](studies/README.md): what the stack was measured to be worth, nulls included.
+7. [specs/&lt;phase&gt;.md](specs/README.md): the frozen work order for a given phase, with its test contract.
 
 One source of truth per fact:
-the specs, the README, and the [ADRs](decisions/) point to the formulation; they never restate an equation.
+the specs, the README, and the [ADRs](decisions/README.md) point to the formulation; they never restate an equation.
 
 ---
 

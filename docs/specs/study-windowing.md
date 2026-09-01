@@ -373,7 +373,7 @@ table it rewrites. Every box must pass.
 
 Live runs of 2026-07-29, real NL and BE day-ahead prices, 260 evaluated days in 52
 blocks over 2022-01-01 to 2025-09-29. The builder's record; the reader-facing write-ups
-are in [studies/](../studies/).
+are in [studies/](../studies/README.md).
 
 ### Build task 6: the seeding effect, isolated from the window effect
 

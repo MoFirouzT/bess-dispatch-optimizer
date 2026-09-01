@@ -7,7 +7,7 @@ schedule, and the scope this project does not cover.
 *Assumes:*
 the capability map in [architecture.md](architecture.md);
 the evaluation semantics in [formulation-evaluation.md](formulation-evaluation.md);
-each number's method is named in the [study](studies/) it comes from.
+each number's method is named in the [study](studies/README.md) it comes from.
 
 ---
 
@@ -110,7 +110,7 @@ The stochastic *structure* earns money. Three attempts to earn more by feeding i
 
 All three share one mechanism: **intraday recourse adjusts after the price is known**, so a sharper day-ahead forecast has little left to improve. Each was separated from a broken comparison by a designed instance where the effect *is* detected, and each carries golden and property gates on its scoring arithmetic.
 
-Re-measuring all four on the wider span moved every one in the same direction: **the three nulls hardened and the one positive result shrank.** The delivery gap was the only quantity the wider window strengthened, which is why imbalance settlement is the next thing worth building. The full set, including how the nulls were validated, is in **[docs/studies/](studies/)**.
+Re-measuring all four on the wider span moved every one in the same direction: **the three nulls hardened and the one positive result shrank.** The delivery gap was the only quantity the wider window strengthened, which is why imbalance settlement is the next thing worth building. The full set, including how the nulls were validated, is in **[docs/studies/](studies/README.md)**.
 
 Solve time grows manageably on both axes ([details](studies/solve-scaling.md)): the deterministic MILP grows with the horizon, from ~9 ms for a day to ~120 ms for a month, while the two-stage program grows with the scenario count, from ~0.5 s at 10 scenarios to ~2.0 s at 50. That second axis is exactly the cost the reduction step (~300 → ~50 paths) keeps bounded.
 

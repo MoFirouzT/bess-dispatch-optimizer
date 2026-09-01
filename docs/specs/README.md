@@ -94,7 +94,7 @@ resolved decision trail, and what it ruled out are in its own spec, under
 **Decisions**, which is where a reader should go for the reasoning.
 
 For findings written up for a reader rather than a builder, see
-[studies/](../studies/).
+[studies/](../studies/README.md).
 
 ## Adding a phase
 

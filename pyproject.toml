@@ -42,6 +42,11 @@ dev = [
 # Plotting for the worked example (bess.viz / examples/). Not installed by default
 # or in CI; the figure smoke test skips when matplotlib is absent.
 examples = ["matplotlib>=3.8"]
+# Documentation site (mkdocs.yml). Not needed to run, test, or serve anything: the
+# docs render on GitHub first and the site is a convenience over the same files.
+docs = [
+    "mkdocs-material>=9.5",
+]
 # Probabilistic forecaster (bess.forecaster, R2.1). Heavy ML stack kept out of the
 # core install and the R1 CI job; a dedicated CI step installs this group and runs
 # the coverage gate. Forecaster tests skip when the stack is absent.

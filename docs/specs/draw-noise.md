@@ -21,7 +21,7 @@ EUR. Neither run is more correct: both draw 30 equiprobable paths from the same
 bootstrap, and the seed decides which. So about 4 EUR of a 13 EUR claim was never a
 property of the market at all.
 
-Every euro figure in [studies/](../studies/) has this width and none of them report it.
+Every euro figure in [studies/](../studies/README.md) has this width and none of them report it.
 The block-bootstrap interval R2.7 added answers a different question, "how much would
 this move on other delivery days", and cannot absorb seed noise: it resamples a *fixed*
 set of per-window values, all of which came from one seed.

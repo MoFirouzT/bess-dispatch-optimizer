@@ -1,13 +1,13 @@
 # Documentation site (mkdocs.yml).
 #
 # Two jobs, deliberately split. `build` runs on every push and pull request and only
-# proves the site still assembles, so a renamed file or a broken nav entry fails here
-# rather than silently. `deploy` publishes, and runs **only when started by hand**:
-# merging this file does not put a site on the internet, and the first publish is a
-# decision someone makes rather than a side effect of a commit.
+# proves the site still assembles, so a renamed file or a broken nav entry fails there
+# rather than silently. `deploy` publishes, and runs on pushes to `main` (and by hand,
+# to re-publish without a commit). A pull request never deploys, so a branch cannot put
+# anything on the live site before it merges.
 #
-# Before the first deploy, GitHub Pages has to be enabled for the repository with its
-# source set to GitHub Actions. Without that, `deploy` fails on the last step.
+# The repository's Pages source must be set to GitHub Actions, not "deploy from a
+# branch". With the branch setting these runs go green and change nothing.
 
 name: Docs
 
@@ -16,6 +16,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+
+# One deploy at a time, and never cancel one midway: an interrupted Pages deployment
+# leaves the site serving a half-published state.
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -44,8 +50,8 @@ jobs:
           path: build/site
 
   deploy:
-    # Manual only. See the note at the top of this file.
-    if: github.event_name == 'workflow_dispatch'
+    # Every push to `main`, plus a manual run. Never on a pull request.
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:

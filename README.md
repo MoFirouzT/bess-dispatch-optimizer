@@ -4,6 +4,7 @@
 [![tests](https://img.shields.io/badge/tests-546_(497_CI_%2B_49_live)-brightgreen.svg)](tests/)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![docs](https://img.shields.io/badge/docs-site-8a2be2.svg)](https://mofirouzt.github.io/bess-dispatch-optimizer/)
 
 Revenue-maximizing charge/discharge schedules for a grid-scale **battery energy storage system (BESS)** in the Belgian/Dutch day-ahead market, from a deterministic mixed-integer linear program through to a risk-aware stochastic program for when tomorrow's prices are not known.
 
@@ -111,8 +112,15 @@ flowchart LR
 The `bess` package is split into layers with a strict downward-only import direction (`api` at the top, `assets` at the base), enforced in CI by import-linter.
 The headline invariant is `optimizer ⊥ api`: the deterministic core never depends on the serving layer, so it stays testable in isolation.
 [docs/architecture.md](docs/architecture.md) has the layer map and the order to read the rest of the docs in.
+The same docs are browsable with a search box at [mofirouzt.github.io/bess-dispatch-optimizer](https://mofirouzt.github.io/bess-dispatch-optimizer/).
 
 ## Development
+
+Python, with [Pyomo](https://pyomo.org) over [HiGHS](https://highs.dev) for the MILP,
+LightGBM under conformal prediction for the forecaster, FastAPI and Docker for serving,
+and pandas throughout. Correctness rests on golden oracles and
+[Hypothesis](https://hypothesis.readthedocs.io) property tests; CI additionally checks
+static types, the layering contract, and the docs' own writing rules.
 
 ```bash
 uv sync                       # environment + dependencies

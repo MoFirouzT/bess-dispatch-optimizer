@@ -101,9 +101,10 @@ primary rendering, so the toc extension uses GitHub's slugifier and the same
 `file.md#anchor` links resolve in both. No API reference is generated from docstrings:
 the docs are the argument and a listing of every module would bury it. Seven links leave
 `docs/` (to the README, the operating contract, the example scripts) and warn rather than
-fail. `.github/workflows/docs.yml` builds on every push and **deploys only on a manual
-`workflow_dispatch`**, so merging it publishes nothing; the first publish also needs Pages
-enabled with its source set to GitHub Actions, which nobody has done. Known cosmetic
+fail. `.github/workflows/docs.yml` builds on every push and pull request and **deploys on every
+push to `main`**, so the site cannot drift behind the docs; a pull request never deploys.
+Pages is enabled and its source must stay set to GitHub Actions, because the branch
+setting makes these runs go green and change nothing. Known cosmetic
 limitation, recorded in `docs/javascripts/mathjax.js`: the two `formulation.md` headings
 containing math show raw delimiters in the sidebar, because the toc is built from heading
 text and the math span is stripped. Rewording them would change anchors other docs link

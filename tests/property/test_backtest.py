@@ -143,3 +143,65 @@ def test_no_future_leakage(case, perturbation):
     for t in range(w):  # first window unchanged
         assert s1.p_charge[t] == pytest.approx(s2.p_charge[t], abs=EPS)
         assert s1.p_discharge[t] == pytest.approx(s2.p_discharge[t], abs=EPS)
+
+
+# --- Resolution ---------------------------------------------------------------
+# The hypothesis cases above vary `dt` over plain sequences with integer windows, so
+# they gate the *arithmetic* at 15-minute steps but never the seam that a real
+# quarter-hourly feed goes through: a tz-aware `15min` DatetimeIndex grouped into
+# calendar-day windows (conventions §1, docs/decisions/day-ahead-15min-native.md).
+# SDAC moved the day-ahead market time unit to 15 minutes on 2025-10-01, so that seam
+# carries the live path and nothing exercised it.
+
+
+def _quarter_hourly_matches_hourly(spec: BatterySpec, days: int = 3) -> None:
+    """Same prices, two resolutions, one answer.
+
+    A price held constant across an hour's four quarters must earn exactly what the
+    hourly series earns: energy per period is P * dt, so four 0.25 h periods carry the
+    same MWh as one 1 h period, and a linear wear cost on throughput scales the same way.
+
+    Revenue alone is a soft check, because capacity and the terminal-SoC target cap the
+    daily cycle either way: solving the quarter-hourly series at `dt = 1.0` still lands
+    within about 0.5% of the right answer. The **energy cycled** is the sharp one. It
+    comes out roughly four times too small under that defect, which is what a dropped
+    `dt` does to a per-period quantity.
+    """
+    from bess.data.fixtures import synthetic_day_ahead
+
+    hourly = synthetic_day_ahead(days=days)
+    quarterly = synthetic_day_ahead(days=days, freq="15min")
+
+    coarse = run_backtest(hourly, spec, dt=1.0, window="1D")
+    fine = run_backtest(quarterly, spec, dt=0.25, window="1D")
+
+    assert fine.rolling.window_sizes == [96] * days  # the calendar-day grouping seam
+    assert coarse.rolling.window_sizes == [24] * days
+    assert fine.constraint_satisfaction
+
+    for name in ("greedy", "rolling", "perfect_foresight"):
+        assert getattr(fine, name).revenue_eur == pytest.approx(
+            getattr(coarse, name).revenue_eur, abs=EPS_ORDER
+        )
+    # Annualization divides by wall-clock hours, so it must not move with the step.
+    assert fine.annualized_ceiling_per_mwh == pytest.approx(
+        coarse.annualized_ceiling_per_mwh, rel=1e-9
+    )
+
+    # The sharp check: MWh moved, not euros earned.
+    for name in ("greedy", "rolling", "perfect_foresight"):
+        fine_sched = getattr(fine, name).schedule
+        coarse_sched = getattr(coarse, name).schedule
+        for side in ("p_charge", "p_discharge"):
+            assert sum(getattr(fine_sched, side)) * 0.25 == pytest.approx(
+                sum(getattr(coarse_sched, side)) * 1.0, abs=EPS
+            )
+
+
+def test_resolution_invariance_without_wear():
+    _quarter_hourly_matches_hourly(BatterySpec())
+
+
+def test_resolution_invariance_with_wear():
+    """Degradation is priced per MWh of throughput, so it must scale with `dt` too."""
+    _quarter_hourly_matches_hourly(BatterySpec(degradation=DegradationSpec(cost_per_mwh=15.0)))

@@ -24,8 +24,15 @@ The **real BE/NL day-ahead market is 15-minute** (96 periods/day) since 2025-10-
 The pipeline stores the native market resolution.
 
 - `Δt` (period length in hours) is an **explicit parameter everywhere**: never hard-coded.
-- The R1.1 deterministic core may use hourly toy data (`Δt = 1.0`) as a deliberate first-pass simplification;
-the backtest (R1.4) and all downstream work use the native 15-minute series (`Δt = 0.25`).
+The model is resolution-agnostic and the loader emits whatever resolution the market published
+([day-ahead is 15-minute native](decisions/day-ahead-15min-native.md)).
+- The R1.1 golden oracles use hourly `Δt` so their optima stay hand-checkable.
+- **The committed studies and examples run at `Δt = 1.0`**, because their evaluation windows close
+before the 2025-10-01 switch, when the published series really was hourly.
+That is a fact about the data, not a limit of the model:
+`tests/property/test_backtest.py` gates a quarter-hourly series against its hourly equivalent
+(same revenue, same MWh cycled, calendar-day windows of 96 periods), and the hypothesis cases
+throughout `tests/property/` draw `Δt` from {0.25, 0.5, 1.0}.
 - Each timestamp marks the **start** of its interval; values at `t` apply over `[t, t + Δt)`.
 
 ### DST and period counts

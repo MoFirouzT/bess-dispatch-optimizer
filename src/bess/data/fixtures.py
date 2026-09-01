@@ -19,8 +19,10 @@ import pandas as pd
 PRICE_COL = "price_eur_mwh"
 
 
-def synthetic_day_ahead(days: int = 90, seed: int = 42, spread_scale: float = 1.0) -> pd.Series:
-    """Deterministic, copyright-clean NL-like hourly day-ahead series.
+def synthetic_day_ahead(
+    days: int = 90, seed: int = 42, spread_scale: float = 1.0, freq: str = "1h"
+) -> pd.Series:
+    """Deterministic, copyright-clean NL-like day-ahead series, hourly or quarter-hourly.
 
     A single dominant daily cycle (cheap nights, morning ramp, evening peak) with
     day-to-day level noise and an occasional solar-driven midday dip. Shaped like a
@@ -36,6 +38,15 @@ def synthetic_day_ahead(days: int = 90, seed: int = 42, spread_scale: float = 1.
     see docs/decisions/no-committed-market-data.md). At the default the arithmetic is untouched, so
     the series is
     bit-identical to before the parameter existed.
+
+    ``freq`` selects the market time unit: ``"1h"`` (the default, 24 periods per day)
+    or ``"15min"`` (96), the resolution SDAC moved to on 2025-10-01. The quarter-hourly
+    form holds each hourly price across its own four quarters, which is the degenerate
+    case of the market's convention that the 60-minute index is the *average* of the
+    15-minute clearing prices. It therefore carries **no intra-hour spread**: use it to
+    exercise the resolution path (a `Δt = 0.25` solve, calendar-day windows of 96), not
+    to measure 15-minute economics, where the real intra-hour spread is the whole point.
+    The default is bit-identical to before the parameter existed.
     """
     rng = np.random.default_rng(seed)
     shape = np.array(
@@ -52,7 +63,16 @@ def synthetic_day_ahead(days: int = 90, seed: int = 42, spread_scale: float = 1.
         if rng.random() < 0.10:  # occasional solar-driven midday dip
             p[11:15] -= rng.uniform(25, 45)
         out.append(p)
-    return pd.Series(np.concatenate(out), index=idx, name=PRICE_COL)
+    hourly = pd.Series(np.concatenate(out), index=idx, name=PRICE_COL)
+    if freq == "1h":
+        return hourly
+    if freq == "15min":
+        return pd.Series(
+            np.repeat(hourly.to_numpy(), 4),
+            index=pd.date_range("2024-01-01", periods=days * 96, freq="15min", tz="UTC"),
+            name=PRICE_COL,
+        )
+    raise ValueError(f"freq must be '1h' or '15min' (conventions §1), not {freq!r}")
 
 
 #: The drift regimes R2.1g selects its knobs on. Named rather than free-form because

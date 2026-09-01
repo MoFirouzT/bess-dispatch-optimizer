@@ -75,6 +75,31 @@ plotting. Its smoke test is deliberately its own module,
 matplotlib is absent, which is exactly the base CI job the quickstart claims to run in.
 No source, math, or gate changed.
 
+**Resolution claim corrected (2026-09-01).** `conventions.md` §1 said the backtest and
+all downstream work run on the native 15-minute series at `Δt = 0.25`. They do not, and
+never did: every committed study and example passes `dt=1.0` on a window that closes
+before the 2025-10-01 SDAC switch, when the published series was hourly. The wording now
+says that, and says it is a fact about the data rather than a limit of the model. This
+aligns the doc with [day-ahead is 15-minute native](decisions/day-ahead-15min-native.md),
+which was already correct, so it is a correction and not a new decision.
+
+**What was untested is now gated.** The hypothesis cases draw `Δt` from {0.25, 0.5, 1.0}
+over plain sequences, so the arithmetic was covered, but the seam a real quarter-hourly
+feed goes through was not: a tz-aware `15min` index grouped into calendar-day windows of
+96. `synthetic_day_ahead` gained a `freq` argument (`"1h"` default, bit-identical;
+`"15min"` holds each hourly price across its four quarters), and
+`test_backtest.py::test_resolution_invariance_*` solves the same prices at both
+resolutions and requires the same revenue and the same MWh cycled. **Revenue alone is a
+soft check**: capacity and the terminal-SoC target cap the daily cycle either way, so
+solving quarter-hourly data at `dt=1.0` still lands within about 0.5%. The energy cycled
+comes out roughly 4x too small, which is the assertion that bites.
+
+**Still open: the 15-minute economics.** The fixture's quarter-hourly form carries no
+intra-hour spread by construction, so it proves the plumbing and measures nothing. Real
+intra-hour spread should raise the arbitrage ceiling and change where the ramp limit
+binds, and that needs post-2025-10 prices from the live API. Blocked with the outage
+below.
+
 ## Capability status
 
 | Capability | Status | Packages |
@@ -128,6 +153,13 @@ No source, math, or gate changed.
   `extended_span_prices` deliberately bypass `guarded_fetch` for the R1.4c reason below,
   so a study fetch during an outage simply raises: the project's circuit breaker does not
   cover the path that most needs a long fetch to succeed.
+  **Update 2026-09-01:** the Transparency Platform is migrating to new infrastructure on
+  **2026-09-02**, and website downloads are capped at 30 days until it completes. Treat the
+  live path as unavailable through the migration and re-probe from 2026-09-03. Nothing has
+  fetched against the new infrastructure yet, so the 49 token-gated tests are the first
+  thing to run afterwards, and a real sample gets printed before any new code is written
+  against it (CLAUDE.md §7). Both the R3.1 imbalance probe and the 15-minute economics run
+  wait on this.
 - **A submodule is shadowed by a same-named export.** `bess.studies.forecast_value`
   resolves to the exported *function*, not the module, so `import bess.studies.forecast_value as m`
   yields a function and attribute access on it fails. Nothing in the shipped code

@@ -1,8 +1,9 @@
 # examples
 
-Runnable scripts, split by what they are for. **Studies** measure something and
-report a number; their findings are written up in [`docs/studies/`](../docs/studies/).
-**Demonstrations** render a mechanism and regenerate a committed figure.
+Runnable scripts, split by what they are for. **`quickstart.py`** is the front door
+and runs on the base install. **Studies** measure something and report a number; their
+findings are written up in [`docs/studies/`](../docs/studies/). **Demonstrations**
+render a mechanism and regenerate a committed figure.
 
 Scripts marked "token" use real ENTSO-E prices when `ENTSOE_API_TOKEN` is set and
 fall back to a synthetic series otherwise; the rest are synthetic by design. No
@@ -13,6 +14,25 @@ Most plotting scripts need the optional dependency group:
 ```bash
 uv sync --group examples
 ```
+
+---
+
+# Start here
+
+## `quickstart.py`
+
+The whole stack in one command, on the **base install**: no ENTSO-E token, no optional
+dependency group, no plotting. It solves one day, bounds that schedule between the
+greedy floor and the perfect-foresight ceiling over a month, prints the water value and
+no-trade band that explain a hold, and catches a frozen price feed.
+
+```bash
+uv sync
+uv run python examples/quickstart.py
+```
+
+Runs in about two seconds on synthetic prices, so its numbers are illustrative. The
+real-data equivalents are `worked_example.py` and the studies below.
 
 ---
 

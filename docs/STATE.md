@@ -63,6 +63,18 @@ Two things surfaced that are the human's call:
 
 Releases 1 and 2 are otherwise complete; Release 3 has not started.
 
+**Presentation pass (2026-09-01), outside the phase ladder.** The README was cut from
+278 lines to 153: the headline numbers and the quickstart now sit above the fold, and
+the full results narrative, every figure, and the scope limits moved verbatim to
+[results.md](results.md), which is now their canonical home. The baseline table lives
+in the README only, and `results.md` points at it (charter rule 1). Added
+`examples/quickstart.py`, a front-door script that runs the whole stack on the **base
+install** in about two seconds: no ENTSO-E token, no optional dependency group, no
+plotting. Its smoke test is deliberately its own module,
+`tests/unit/test_quickstart_smoke.py`, because `test_examples_smoke.py` skips whenever
+matplotlib is absent, which is exactly the base CI job the quickstart claims to run in.
+No source, math, or gate changed.
+
 ## Capability status
 
 | Capability | Status | Packages |

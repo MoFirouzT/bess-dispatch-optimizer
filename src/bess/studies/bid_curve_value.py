@@ -104,7 +104,7 @@ def bid_curve_value_across_windows(
     seed: int = 0,
     only_days: Sequence[pd.Timestamp] | pd.DatetimeIndex | None = None,
 ) -> list[WindowBCV]:
-    """Per-window bid-curve value over every scoreable UTC-day window (token-free).
+    """Per-window bid-curve value over every UTC-day window that can be scored (token-free).
 
     Same harness shape as :func:`tail_value_across_windows`: the point forecast is the
     mean of the trailing ``history_days`` days and the residuals are those days minus

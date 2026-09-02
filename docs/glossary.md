@@ -149,7 +149,7 @@ capacity/health loss from cycling and calendar age.
 
 **Stuck / frozen feed**: a feed repeating a bit-identical value long past when a real market would have moved. *Why here:* the guard's headline anomaly check. *Gotcha:* key on the *repetition*, not the value; zero and negative prices are legitimate in BE/NL, so flagging "€0.00" would misread a real solar-glut day as corruption.
 
-**EPEX SDAC price limits**: the harmonised clearing-price bounds of the single day-ahead coupling: min −600 €/MWh (from 2026-05-28), max 4000 €/MWh, escalatable in +1000 steps. *Why here:* the guard's out-of-band check is grounded in these, not a guessed range. *Gotcha:* it's a *market technical bound*, not the year-specific revenue sanity band; a value outside it cannot be a real clearing price.
+**EPEX SDAC price limits**: the harmonised clearing-price bounds of the single day-ahead coupling: min −600 €/MWh (from 2026-05-28), max 4000 €/MWh, which can be raised in +1000 steps. *Why here:* the guard's out-of-band check is grounded in these, not a guessed range. *Gotcha:* it's a *market technical bound*, not the year-specific revenue sanity band; a value outside it cannot be a real clearing price.
 
 **Provenance composition**: combining the ingestion status and the solver mode into one overall trust label. *Why here:* R1.4c / [the shared degradation vocabulary](decisions/separate-ingestion-breaker.md); a solve that is optimal on stale fallback data is reported *degraded*, not healthy. *Gotcha:* if a consumer reads `mode="optimal"` alone it re-opens the silent-stale-dispatch hole; the composition exists to prevent that.
 

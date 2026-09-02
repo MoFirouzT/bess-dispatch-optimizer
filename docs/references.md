@@ -93,6 +93,29 @@ Each entry lists the source first, then (as sub-bullets) exactly what the projec
 
 ---
 
+## R2.1d, R2.1e, R2.6. Phases that ship ungoverned
+
+Three phases named a candidate reference from memory and never verified it, so none of
+the three has a governing reference and no entry is written for them above. Recording
+that here is the point: an absent section otherwise reads as "no reference needed",
+which is a different statement.
+
+- **R2.1d, the walk-forward protocol.** Candidate: Lago, Marcjasz, De Schutter & Weron,
+  *Forecasting day-ahead electricity prices: a review of state-of-the-art algorithms,
+  best practices and an open-access benchmark* (Applied Energy, 2021). Edition and
+  section unchecked.
+- **R2.1e, locally-weighted conformal.** Candidate: Lei, G'Sell, Rinaldo, Tibshirani &
+  Wasserman, *Distribution-free predictive inference for regression* (JASA, 2018).
+  Edition and section unchecked.
+- **R2.6, price-contingent bid curves.** Candidates: Fleten & Kristoffersen;
+  Loehndorf & Wozabal. Unverified on the same terms.
+
+Neither forecaster phase depends on its candidate: the walk-forward harness and the
+de-levelled target are both this project's own construction, gated on their own tests.
+A phase that wants to rely on any of these verifies it first and writes the entry.
+
+---
+
 ## R2.1g. Drift-robust conformal (weighted quantiles + ACI)
 
 *Both selected and **verified from source** at R2.1g draft ([spec](specs/drift-robust-conformal.md)), 2026-08-31: PDF text pulled and the cited results read, not recalled.*

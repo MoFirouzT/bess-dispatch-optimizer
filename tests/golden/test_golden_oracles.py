@@ -1,4 +1,4 @@
-"""Golden oracles — hand-solved exact values; the un-fakeable correctness gate.
+"""Golden oracles — hand-solved exact values; the correctness gate that cannot be faked.
 
 Contract: docs/specs/dispatch-core.md § "Golden oracles".
 Math: docs/formulation.md § "R1.1 — Deterministic core".

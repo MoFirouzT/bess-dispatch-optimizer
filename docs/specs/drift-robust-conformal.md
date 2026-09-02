@@ -354,7 +354,7 @@ oracles despite being a calibration change.
 
 | # | inputs | expected | why this case |
 | --- | --- | --- | --- |
-| 1 | `weight_half_life_days=None` on a fixed seed and price window | point, lower, upper bitwise identical to the shipped R2.1e model | the opt-in identity, and the un-fakeable proof that the weighted path contains the incumbent rather than approximating it |
+| 1 | `weight_half_life_days=None` on a fixed seed and price window | point, lower, upper bitwise identical to the shipped R2.1e model | the opt-in identity, and proof, which cannot be faked, that the weighted path contains the incumbent rather than approximating it |
 | 2 | 4 scores `[1, 2, 3, 10]` with hand-written weights, level 0.9 | the hand-computed $\hat s$, with the atom the level lands on named | pins the weighted-quantile arithmetic, including which side of an atom the level falls |
 | 3 | weights small enough that $\tilde w_{n+1} > \alpha$ | $\hat s = \infty$, and the interval is the whole line | the degenerate case, which a naive implementation returns as `max(scores)` and silently voids the bound |
 | 4 | a weight vector containing 1.5 | `ValueError` | the theorem is stated for $w_i \in [0, 1]$; rescaling is not a no-op because it moves the $+\infty$ atom's mass |

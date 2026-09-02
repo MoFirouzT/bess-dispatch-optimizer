@@ -4,7 +4,7 @@ Spec: ``docs/specs/forecaster-evaluation.md`` § "Property tests". The load-bear
 invariants are that no fold can train on data at or after the block it tests, that
 folds never overlap (which would pool the same test day into coverage twice), and
 that the bootstrap actually resamples **whole days** rather than individual hours.
-That last one is the un-fakeable check here: a resampler that quietly ignored the
+That last one is the check that cannot be faked here: a resampler that quietly ignored the
 day blocking would satisfy every other property in this file while reporting an
 interval several times too narrow, which is exactly the defect this phase exists to
 remove.
@@ -150,7 +150,7 @@ def test_interval_narrows_as_test_days_grow():
 
 
 def test_day_block_resampling_really_blocks():
-    """The un-fakeable one: blocking must widen the interval versus resampling hours.
+    """The one that cannot be faked: blocking must widen the interval versus resampling hours.
 
     Two datasets with the *same* pooled coverage of 0.5 over 100 days. In the first the
     indicator is constant within a day (perfect intra-day correlation, the realistic

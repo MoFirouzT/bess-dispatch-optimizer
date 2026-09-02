@@ -104,7 +104,7 @@ Live (token-gated), in the R2.1 style: over many disjoint real NL weeks, the per
 
 ## Amendment: FV as a per-window distribution (2026-07-22)
 
-The first live runs showed exactly why a single FV number is not a claim: +46.77 EUR on the 2024-06-30 window, −17.64 EUR on 2024-06-04. This amendment applies the VSS study's own remedy to FV: repeat the measurement over every scoreable window and report the distribution (median, quartiles, share above zero). Same honesty rule; the distribution's center is the finding.
+The first live runs showed exactly why a single FV number is not a claim: +46.77 EUR on the 2024-06-30 window, −17.64 EUR on 2024-06-04. This amendment applies the VSS study's own remedy to FV: repeat the measurement over every window that can be scored and report the distribution (median, quartiles, share above zero). Same honesty rule; the distribution's center is the finding.
 
 Additions (same formulation quantities, no new math):
 

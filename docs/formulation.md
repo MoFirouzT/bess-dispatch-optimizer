@@ -92,7 +92,7 @@ The program reduces to the deterministic MILP at $S=1$, and reports VSS $=\mathr
 
 $$\pi^{(s)}_t\le\pi^{(s')}_t\implies g^{DA,(s)}_t\le g^{DA,(s')}_t,\qquad \pi^{(s)}_t=\pi^{(s')}_t\implies g^{DA,(s)}_t=g^{DA,(s')}_t.$$
 
-The two families make the map $\pi^{(s)}_t\mapsto g^{DA,(s)}_t$ single-valued and nondecreasing, so it *is* a submittable curve $q_t$; R2.3's shared schedule is the constant case. Both legs settle at the clearing price, so $\text{profit}_s=\sum_t \Delta t\ \pi^{(s)}_t g^{(s)}_t$ as before, and the recourse budget and CVaR objective are R2.3's unchanged. At $\lambda=0$ the two programs optimize the same objective over nested feasible sets: R2.6 is never worse, and equals R2.3 when all branches coincide.
+The two families make the map $\pi^{(s)}_t\mapsto g^{DA,(s)}_t$ single-valued and nondecreasing, so it *is* a curve that can be submitted, $q_t$; R2.3's shared schedule is the constant case. Both legs settle at the clearing price, so $\text{profit}_s=\sum_t \Delta t\ \pi^{(s)}_t g^{(s)}_t$ as before, and the recourse budget and CVaR objective are R2.3's unchanged. At $\lambda=0$ the two programs optimize the same objective over nested feasible sets: R2.6 is never worse, and equals R2.3 when all branches coincide.
 
 **Solver.**
 A MILP throughout (the only integrality is $u_t$, one copy per model block), solved by HiGHS via `appsi_highs`; no non-convex or SOS structure.
@@ -390,7 +390,7 @@ The changelog below covers all three.
 | R2.3 | day-ahead commitment, per-scenario recourse under a budget, CVaR mean-risk objective, still a MILP on HiGHS |
 | R2.4 | water value, no-trade band and breakeven slippage read off the solved dispatch; MILP duals by fix-and-resolve under [the re-solve rule](decisions/milp-dual-resolve-rule.md) |
 | R2.5 | per-window out-of-sample VSS, the forecast-value baseline FV, pinball loss; reported, not sign-asserted ([the protocol](decisions/risk-aware-two-stage-design.md)) |
-| R2.6 | a first stage indexed by scenario, monotone and single-valued in each hour's clearing price, so the commitment is a submittable curve; reproduces R2.3 at $\lambda=0$ and dominates it there; carries the unpriced delivery gap |
+| R2.6 | a first stage indexed by scenario, monotone and single-valued in each hour's clearing price, so the commitment is a curve that can be submitted; reproduces R2.3 at $\lambda=0$ and dominates it there; carries the unpriced delivery gap |
 | R2.7 | window-selection protocol for the §R2.5 distributions: date-keyed draws, and a block interval on a distribution's median |
 | R2.8 | seed reproducibility of the §R2.5 distributions: the headline is the mean over seeds of the per-seed median, with the observed range beside it |
 

@@ -2,7 +2,7 @@
 
 Spec: ``docs/specs/target-normalization.md`` § "Property tests".
 
-Two of these carry most of the weight. **Opt-in identity** is the un-fakeable anchor
+Two of these carry most of the weight. **Opt-in identity** is the anchor that cannot be faked
 that nothing else moved: with normalization off, the feature matrix must be
 byte-identical to R2.1d's, so the phase cannot silently change the shipped model.
 **Width scales with recent volatility** is the non-vacuity check: coverage being

@@ -164,7 +164,7 @@ def _tick_keys(prices: np.ndarray) -> np.ndarray:
 
 
 def _register_curve_constraints(m: pyo.ConcreteModel, paths: np.ndarray, g_da) -> None:
-    """The two families that make the branches a submittable bid curve (§R2.6).
+    """The two families that make the branches a bid curve that can be submitted (§R2.6).
 
     Within each hour, sort the scenarios by that hour's clearing price and constrain
     adjacent pairs: strictly rising price gives ``≤`` (monotone, also an exchange
@@ -266,7 +266,7 @@ def solve_stochastic(
 
     ``bid_curve=True`` switches on the R2.6 delta: the commitment is indexed by
     scenario and constrained to be monotone in, and single-valued in, each hour's
-    clearing price, so what is committed is a submittable curve rather than one
+    clearing price, so what is committed is a curve that can be submitted rather than one
     schedule. Both legs then settle at the realised clearing price, which makes
     ``pi_da`` meaningless, and the returned ``g_da`` is only a probability-weighted
     summary of the branches: ``g_da_branches`` and ``curve`` are the decision.

@@ -89,7 +89,7 @@ def curve_response(curve, prices) -> list[float]:
 #                                                   # sorted by price, one step per tied price
 # g_da keeps its meaning when bid_curve=False. Under a curve there is no single commitment,
 # so it carries the probability-weighted mean of the branches: a reporting summary, and NOT a
-# submittable object. The branches and the curve are the decision.
+# object that can be submitted. The branches and the curve are the decision.
 
 # src/bess/stochastic/  (study layer, alongside the R2.5/R2.5b harnesses)
 def bid_curve_value_from_sets(...) -> "BidCurveValue"   # token-free core, realized-euro scoring
@@ -110,7 +110,7 @@ def bid_curve_value_across_windows(...) -> list         # per-window distributio
 
 ## Result: a null
 
-Measured on real NL 2024 (Mar-May, 33 scoreable windows, `S=10`, `history_days=28`, verified 2026-07-26):
+Measured on real NL 2024 (Mar-May, 33 windows scored, `S=10`, `history_days=28`, verified 2026-07-26):
 
 | rho | BCV median | BCV mean | positive | quartiles | delivery gap, curve vs scalar |
 |---|---|---|---|---|---|

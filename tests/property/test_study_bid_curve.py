@@ -5,7 +5,7 @@
   apply) and stays well defined where it does not;
 - the value is exactly null on a degenerate scenario set, and deterministic;
 - the across-windows harness is well formed: strictly-prior training data, one
-  result per scoreable window, and a delivery gap reported beside every euro.
+  result per window that can be scored, and a delivery gap reported beside every euro.
 """
 
 from __future__ import annotations
@@ -118,7 +118,7 @@ def _price_series(days: int, seed: int = 0) -> pd.Series:
 
 
 def test_across_windows_is_well_formed() -> None:
-    """One result per scoreable window, in order, each carrying its delivery gap."""
+    """One result per window that can be scored, in order, each carrying its delivery gap."""
     prices = _price_series(days=10)
     out = bid_curve_value_across_windows(
         prices, _BATT, history_days=7, n_scenarios=4, rho=0.4, seed=0

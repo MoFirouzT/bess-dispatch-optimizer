@@ -148,7 +148,7 @@ def test_forecast_value_reported_across_the_span(zone):
     days = span_fold_days(prices)
     windows = fv_across_windows(prices, _BATT, rho=0.5, only_days=days, **_KW)
 
-    assert len(windows) >= 200, f"only {len(windows)} scoreable FV windows of {len(days)}"
+    assert len(windows) >= 200, f"only {len(windows)} FV windows of {len(days)} can be scored"
     fvs = np.array([w.fv_eur for w in windows])
     assert np.isfinite(fvs).all()
     for w in windows:
@@ -188,7 +188,7 @@ def test_bid_curve_value_reported_across_the_span(rho):
     )
 
     assert len(windows) >= 0.6 * len(days), (
-        f"only {len(windows)} of {len(days)} windows scoreable at rho={rho}: too many "
+        f"only {len(windows)} of {len(days)} windows can be scored at rho={rho}: too many "
         "infeasible evaluation programs for the distribution to describe the span"
     )
     bcv = np.array([w.bcv_eur for w in windows])

@@ -228,7 +228,7 @@ def test_graceful_fallback_when_fundamentals_missing(caplog):
 def test_normalize_target_off_is_identical_to_r21d():
     """The opt-in identity: `normalize_target=False` cannot move the shipped model.
 
-    Spec oracle 5. This is the un-fakeable anchor that R2.1e changed nothing for
+    Spec oracle 5. This is the anchor that cannot be faked, that R2.1e changed nothing for
     existing callers; every other gate in the phase is statistical.
     """
     prices = synthetic_day_ahead(days=60, seed=5)

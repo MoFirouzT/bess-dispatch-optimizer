@@ -2,7 +2,7 @@
 
 Spec: ``docs/specs/data-feed.md`` § "Golden oracles". Hand-constructed
 feeds with a *known* fault → the exact expected classification and reason. The
-un-fakeable counterpart, for data, to the MILP golden oracles: the corruption is
+counterpart that cannot be faked, for data, to the MILP golden oracles: the corruption is
 objective (a gap is a gap), so "catch it and label it" is checked against inputs
 the implementation cannot fudge.
 
@@ -262,7 +262,7 @@ def test_fetch_schema_failure_keeps_the_validators_diagnosis(caplog):
         res = guarded_fetch(bad_fetch, last_known_good=lkg)
 
     assert res.status is FeedStatus.ANOMALY
-    assert res.reason == "schema:invalid"  # stable, greppable token
+    assert res.reason == "schema:invalid"  # stable token, easy to search for
     assert "valueerror" not in caplog.text.lower()  # not the Python type name
     assert msg in caplog.text  # the actual diagnosis survived
 

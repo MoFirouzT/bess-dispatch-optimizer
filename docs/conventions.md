@@ -120,7 +120,7 @@ no f-string-built log messages that hide fields.
 ## 7. Writing charter (documentation quality)
 
 The rules that keep the docs clear and consistent.
-The four marked **✓ lint** are enforced by `scripts/lint_docs.py` in CI; the rest are review judgment.
+The five marked **✓ lint** are enforced by `scripts/lint_docs.py` in CI; the rest are review judgment.
 Math and theory discipline live in [`CLAUDE.md`](../CLAUDE.md) §1; doc-tier governance in §2.
 This section is about the *writing*.
 A line that must break a per-line check (for instance, to quote a banned word) can end with a `<!-- lint-ok -->` comment, used sparingly.
@@ -136,6 +136,18 @@ GitHub treats a backslash before ASCII punctuation as a Markdown escape and drop
 Control *words* (`\quad`, `\Bigl`, `\sum`) are unaffected.
 Spacing is cosmetic: delete it rather than reach for a workaround.
 Inline math must not start or end with a space (`$ x$`), which can stop GitHub parsing the span as math at all. <!-- lint-ok -->
+
+### Word choice
+
+0. **✓ lint: use the most common word that is exactly as precise, and coin nothing.**
+    A less common word must earn its place by carrying meaning the common one lacks; if it only sounds more considered, it is costing the reader and buying nothing.
+    The commonest failure is a coined adjective, so an `-able` or `-ability` word English does not have becomes the verb phrase instead: not *un-fakeable* but *cannot be faked*, not *scoreable* but *can be scored*. <!-- lint-ok: quotes the words the rule bans -->
+    Terms of art are exempt and are used verbatim: a code identifier, a symbol from `formulation.md`, a phase ID.
+    Where the project needs a name for a concept, **borrow the field's term and pin it in the [glossary](glossary.md)** rather than inventing one: *water value* comes from hydro-thermal scheduling, *incumbent* from optimization.
+
+    The check consults `REPO_VOCABULARY` in the linter before any dictionary.
+    That set is this repo's own vocabulary, regenerated with `uv run python scripts/lint_docs.py --vocabulary`, never grown by hand one CI failure at a time.
+    `/usr/share/dict/words` differs by operating system, so verify against the lower bound before pushing: `WORD_LIST= uv run python scripts/lint_docs.py`.
 
 ### Structure
 

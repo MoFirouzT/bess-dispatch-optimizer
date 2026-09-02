@@ -57,7 +57,7 @@ def test_bid_curve_value_distribution_on_real_windows():
         windows = bid_curve_value_across_windows(
             prices, _BATT, history_days=28, n_scenarios=_N_SCENARIOS, rho=rho, seed=0
         )
-        assert windows, f"no scoreable windows at rho={rho}"
+        assert windows, f"no windows can be scored at rho={rho}"
 
         bcv = np.array([w.bcv_eur for w in windows])
         gap = np.array([w.delivery_gap_curve_mwh for w in windows])

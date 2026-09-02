@@ -38,7 +38,7 @@ _BATT = BatterySpec(capacity=2.0, soc_initial=0.5, soc_terminal=0.5)
 @settings(max_examples=25, deadline=None)
 @given(st.data())
 def test_window_selection_is_a_filter_for_any_subset(data) -> None:
-    """For an arbitrary subset of scoreable days, selection returns exactly that subset."""
+    """For an arbitrary subset of days that can be scored, selection returns exactly that subset."""
     prices = synthetic_day_ahead(days=55, seed=11)
     full = window_sets(prices, history_days=28, n_scenarios=30, seed=0)
     starts = [w[0] for w in full]
@@ -58,7 +58,7 @@ def test_window_selection_is_a_filter_for_any_subset(data) -> None:
 
 
 def test_unknown_days_are_ignored_not_invented() -> None:
-    """Days outside the scoreable set drop out; they never create an empty window.
+    """Days outside the set that can be scored drop out; they never create an empty window.
 
     A caller passing a fold layout wider than the series (or a day inside the history
     head) must get the intersection, not a crash and not a padded window.
@@ -145,7 +145,7 @@ def test_fold_blocks_are_disjoint_and_have_history(n_folds, test_days) -> None:
 
 
 def test_fold_days_over_complete_days_only_is_fully_scoreable() -> None:
-    """Placing folds over complete days makes every selected day a scoreable window.
+    """Placing folds over complete days makes every selected day a window that can be scored.
 
     Build task 0's finding: a span whose final day is partial selects a day that
     `window_sets` then drops, so the promised window count exceeds the delivered one.

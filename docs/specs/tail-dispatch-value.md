@@ -69,7 +69,7 @@ def tail_value_from_sets(tail: ScenarioSet, plain: ScenarioSet, realized, batter
 def tail_value_across_windows(prices, battery, *, residual_load=None, history_days=28,
                               n_scenarios=30, rho=0.5, seed=0,
                               threshold_quantile=0.95) -> list[WindowTV]:
-    """Per-window TV over every scoreable UTC-day window: build the plain and the
+    """Per-window TV over every UTC-day window that can be scored: build the plain and the
     (conditional) tail scenario set from the same forecast/residuals + residual-load
     covariate, score each fixed on the realized path. Needs the forecast group."""
 ```
@@ -93,7 +93,7 @@ Value studies get real oracles by tying to designed instances (as R2.5 does).
 - **Tail-off identity:** identical plain/tail sets ⇒ `TV = 0` (within solver tolerance).
 - **Antisymmetry:** swapping the two sets negates `TV`.
 - **Determinism:** fixed seed + inputs ⇒ bit-stable `TV`.
-- **Well-formed distribution:** `tail_value_across_windows` returns one `WindowTV` per scoreable window, each with `tv = profit_tail − profit_plain`.
+- **Well-formed distribution:** `tail_value_across_windows` returns one `WindowTV` per window that can be scored, each with `tv = profit_tail − profit_plain`.
 
 ## Acceptance gate
 

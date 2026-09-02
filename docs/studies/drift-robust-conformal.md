@@ -103,7 +103,7 @@ real prices.
 ## On real prices: a null, and a bigger finding underneath it
 
 The cached 2021-2025 span (both zones, 1369 scored days from 2022-01-01) was run while
-the extended fetch stayed blocked. 2021 is warm-up here, so the worst scoreable year is
+the extended fetch stayed blocked. 2021 is warm-up here, so the worst year that can be scored is
 **2022**, the crisis year.
 
 The first run used an **annual** refit and produced a dramatic result: the NL baseline

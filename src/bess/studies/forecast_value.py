@@ -28,7 +28,7 @@ from bess.stochastic.vss import _net_to_pair
 from bess.studies.windows import _HOURS, _as_utc_days, _complete_day_matrix, window_seed
 
 # The forecaster's week-scale lags plus its train/calibration split need this much
-# history before the first scoreable window.
+# history before the first window that can be scored.
 _MIN_LAG_DAYS = 9
 
 
@@ -117,7 +117,7 @@ def fv_across_windows(
     refit_days: int = 7,
     only_days: Sequence[pd.Timestamp] | pd.DatetimeIndex | None = None,
 ) -> list[WindowFV]:
-    """The forecast-value distribution over every scoreable UTC-day window.
+    """The forecast-value distribution over every UTC-day window that can be scored.
 
     The per-window form of :func:`forecast_value` (spec amendment 2026-07-22),
     under the R2.1 walk-forward discipline: the forecaster is refit on data

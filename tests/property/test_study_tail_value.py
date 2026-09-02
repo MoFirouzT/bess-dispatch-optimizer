@@ -59,7 +59,7 @@ def test_determinism():
 
 
 def test_across_windows_well_formed():
-    """The per-window harness returns one WindowTV per scoreable window, TV = tail − plain."""
+    """One WindowTV per window that can be scored, TV = tail − plain."""
     rng = np.random.default_rng(3)
     days = 20
     # A synthetic hourly series with a daily shape plus occasional evening spikes.

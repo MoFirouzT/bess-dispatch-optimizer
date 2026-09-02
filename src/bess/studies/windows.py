@@ -105,7 +105,7 @@ def window_sets(
     R2.7 fold layout selects its 260 evaluated days. It is a **filter and nothing
     more**: each surviving window carries exactly the draws it would have carried in
     the unfiltered call, because those draws come from ``(seed, the window's date)``.
-    Days that are not scoreable (outside the series, or inside the ``history_days``
+    Days that cannot be scored (outside the series, or inside the ``history_days``
     head) are dropped silently rather than padded, mirroring how incomplete days are
     handled: a window is one full day or it is not a window.
     """

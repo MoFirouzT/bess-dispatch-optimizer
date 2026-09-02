@@ -2,7 +2,7 @@
 
 Pure pandas: these run without the ``forecast`` dependency group. The load-bearing
 check is that a feature row for a target day depends only on *prior-day* prices, so
-mutating that day's (and later) prices cannot change it — the un-fakeable leakage
+mutating that day's (and later) prices cannot change it — the leakage
 guard, the forecasting counterpart to the backtest's gate C.
 """
 

@@ -253,7 +253,7 @@ forecasting change.
 | 2 | a target whose baseline window ends at `t-24h`; mutate every price from `t-24h` onward | `level` and `scale` at `t` unchanged | the leakage gap, as an oracle rather than only a property |
 | 3 | a flat price window (zero variance) | `scale` equals the floor, not zero; the inverse transform is finite | the division edge case that would otherwise produce infinities |
 | 4 | standardized bounds `lo`, `hi` with known `level`, `scale` | inverted bounds equal `level + scale*lo` and `level + scale*hi` to floating-point exactness, and ordering is preserved | pins the affine inversion the coverage argument rests on |
-| 5 | `normalize_target=False` on a fixed seed and input | point, lower and upper bit-identical to the R2.1d model | the opt-in identity, the un-fakeable anchor for "nothing else moved" |
+| 5 | `normalize_target=False` on a fixed seed and input | point, lower and upper bit-identical to the R2.1d model | the opt-in identity, the anchor that cannot be faked for "nothing else moved" |
 
 ## Property tests
 

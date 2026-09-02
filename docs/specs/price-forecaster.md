@@ -281,7 +281,7 @@ Linux CI links `libgomp` already.
 
 ## Golden oracles
 
-Feature construction is exact arithmetic, so these are un-fakeable rather than
+Feature construction is exact arithmetic, so these cannot be faked; they are not
 statistical.
 
 | # | inputs | expected | why this case |
@@ -291,7 +291,7 @@ statistical.
 | 3 | `fundamentals=None` | feature matrix byte-identical to the price+calendar model | pins the opt-in contract |
 | 4 | forecast at `t` aligned to target `t` | `residual_load` at row `t` equals the forecast for `t`, not `t−1` | pins contemporaneous, not lagged, alignment |
 
-Forecasting itself has **no exact oracle**. The un-fakeable anchors are coverage on
+Forecasting itself has **no exact oracle**. The anchors that cannot be faked are coverage on
 data the model did not calibrate on, and deterministic reproducibility.
 
 ## Property tests
@@ -328,7 +328,7 @@ data the model did not calibrate on, and deterministic reproducibility.
 *Blocks:* scenario generation. Every box must pass.
 
 These are **statistical** gates, like the ingestion classifier's, not the MILP's
-un-fakeable arithmetic. Stated so they are not overclaimed.
+arithmetic, which cannot be faked. Stated so they are not overclaimed.
 
 - [x] **Coverage (headline):** empirical coverage of the interval at nominal `0.9`
       lands within `0.9 ± 0.05`, that is empirical coverage in `[0.85, 0.95]`, decided by

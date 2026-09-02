@@ -168,7 +168,7 @@ R2.6 changes what the first stage *is*. §R2.3 commits one day-ahead schedule sh
 
 ### The bid curve as a measurability condition
 
-Index the first stage by scenario, $g^{DA,(s)}$, each branch R1.1-feasible in its own right with its own SoC trajectory $e^{DA,(s)}$ (whichever branch clears must be physically deliverable). Two constraint families, imposed **within each hour** $t$, make the family a submittable curve:
+Index the first stage by scenario, $g^{DA,(s)}$, each branch R1.1-feasible in its own right with its own SoC trajectory $e^{DA,(s)}$ (whichever branch clears must be physically deliverable). Two constraint families, imposed **within each hour** $t$, make the family a curve that can be submitted:
 
 $$\boxed{ \pi^{(s)}_t \le \pi^{(s')}_t \implies g^{DA,(s)}_t \le g^{DA,(s')}_t \quad (\text{monotone}), \qquad \pi^{(s)}_t = \pi^{(s')}_t \implies g^{DA,(s)}_t = g^{DA,(s')}_t \quad (\text{ties}). }$$
 

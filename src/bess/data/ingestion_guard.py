@@ -295,7 +295,7 @@ def _degraded(
 ) -> GuardResult:
     """Log the degradation and substitute the last-known-good series, or hard-stop.
 
-    ``reason`` is the stable, greppable token; ``detail`` carries the underlying
+    ``reason`` is the stable token to search for; ``detail`` carries the underlying
     diagnosis (e.g. the validator's message) into the log and the hard-stop error.
     Without it the operator sees only the token, which for a fetch-path schema
     failure is the same string for every cause: exactly the conflation
@@ -338,7 +338,7 @@ def guarded_fetch(
     try:
         series = fetch_fn()
     except ValueError as exc:  # schema/validation raised inside the fetch
-        # The token stays stable and greppable; the validator's message is the only
+        # The token stays stable and easy to search for; the validator's message is the only
         # thing that says *which* rule failed (tz, gap, duplicate, resolution change,
         # window truncation), so it must not be thrown away. Naming the token after
         # the Python type instead, as this once did, bucketed every cause together.

@@ -110,7 +110,7 @@ The GPD fit and the splice are exact arithmetic, so R2.2b gets real golden oracl
 
 - [x] **Tail coverage at the support ceiling (headline, honest):** on real ENTSO-E NL (Feb–Jun 2024, held-out days), the fraction of realized prices above the scenario set's per-hour **support ceiling** (its maximum, the highest price it gives any probability) falls from **7.4% with the capped bootstrap to 1.0% with the GPD tail** (verified live 2026-07-24): the tail covers spikes the plain set assigns zero probability. Reported with provenance; the tail must *improve or tie*. *(Measured finding: the *body* 99th-percentile coverage the draft proposed is dominated by the crude point forecast, not the tail, so the ceiling, where the cap actually bites, is the honest metric. Token-gated; the EVT analogue of R2.1's coverage gate and R2.1c's honesty rule.)*
 - [x] **Body unchanged:** below-threshold residual components are bit-identical to R2.2 (the `test_body_preserved_only_exceedances_change` property, stronger than the drafted statistical check). The tail does not distort the body.
-- [x] **Fit / splice goldens (un-fakeable):** oracles pass exactly (PWM fit `(ξ,β)=(-1,4)` on `[1,2,3]`; GPD quantile; opt-in and no-exceedance identity; splice touches only exceedances).
+- [x] **Fit / splice goldens (cannot be faked):** oracles pass exactly (PWM fit `(ξ,β)=(-1,4)` on `[1,2,3]`; GPD quantile; opt-in and no-exceedance identity; splice touches only exceedances).
 - [x] **Opt-in identity + un-capping properties** pass (off ⇒ exactly R2.2; ξ>0 ⇒ exceeds history). **Reduction retains the tail** (open question 1, measured: no quota needed).
 
 ## Out of scope

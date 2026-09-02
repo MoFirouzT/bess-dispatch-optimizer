@@ -96,7 +96,7 @@ def tail_value_across_windows(
     threshold_quantile: float = 0.95,
     only_days: Sequence[pd.Timestamp] | pd.DatetimeIndex | None = None,
 ) -> list[WindowTV]:
-    """Per-window tail value over every scoreable UTC-day window (token-free).
+    """Per-window tail value over every UTC-day window that can be scored (token-free).
 
     For each window: the point is the mean of the trailing ``history_days`` days and
     the residuals are those days minus the point (the R2.2-live construction). A tail

@@ -13,7 +13,22 @@ happened before 2026-07-28.
 
 ## Current phase
 
-**No active phase.** R2.4b (dual-grounded narration) is built, gated offline, and
+**No active phase.**
+
+**The documentation contract moved out of this repo** (2026-09-02). The portable half
+of `CLAUDE.md` (document tiers, the workflow, the writing charter, working preferences)
+now lives in the `project-discipline` plugin, and this repo holds the project-specific
+half. Section numbers in `CLAUDE.md` are unchanged because about fifteen frozen specs
+cite them. `scripts/lint_docs.py` came back from the plugin with three checks this repo
+did not have: coined `-able` words, HTML anchors, and a line-cap exemption list. A
+vocabulary sweep replaced 53 coined words across docs, source docstrings and test prose.
+
+**The coined-word check depends on a word list CI must install.** `/usr/share/dict/words`
+differs by operating system, so the check is green on macOS and would flag 382 words on a
+bare runner. `REPO_VOCABULARY` in the linter pins this repo's 84, regenerated with
+`--vocabulary` and never grown by hand, and CI installs `wamerican` with a guard so the
+check cannot skip silently and pass. Verify a push with
+`WORD_LIST= uv run python scripts/lint_docs.py`. R2.4b (dual-grounded narration) is built, gated offline, and
 **not adopted**: the endpoint exists and the adoption question is open. It turns the
 R2.4 `Explanation` into prose in which the model emits placeholders and never a digit,
 verified against the solved object before anything is served.
@@ -169,6 +184,13 @@ below.
 
 ## Known blockers and carried findings
 
+Live blockers, and carried defects that no phase owns. A finding that is already
+written down where it belongs does not belong here as well: results live in the
+[phase ledger](specs/README.md) and the study pages, caveats about a measurement live
+in the spec that made it, and unverified sources live in
+[references.md](references.md). This section is rewritten each session and grows
+without bound if that rule slips, which is what happened by 2026-09-02.
+
 - **The ENTSO-E API was down and the study path has no fallback.** Every request
   returned 503 across 13 minutes of probing, endpoint-wide: an unauthenticated request
   got the same, and the transparency portal stayed up, so it was a partial outage on
@@ -184,11 +206,6 @@ below.
   thing to run afterwards, and a real sample gets printed before any new code is written
   against it (CLAUDE.md §7). Both the R3.1 imbalance probe and the 15-minute economics run
   wait on this.
-- **A submodule is shadowed by a same-named export.** `bess.studies.forecast_value`
-  resolves to the exported *function*, not the module, so `import bess.studies.forecast_value as m`
-  yields a function and attribute access on it fails. Nothing in the shipped code
-  imports it that way, and it cost a debugging cycle during R2.7. Renaming either the
-  function or the module would fix it; neither was in scope.
 - **R1.4c stuck-feed rule does not survive long windows.** `guarded_fetch` classifies
   the NL 2021-2025 span ANOMALY/`stuck_feed` on a 5-hour run of exactly 64.00 EUR/MWh
   (2021-05-15) plus 4-hour runs at 42.30 / 140.66 / 95.60, against
@@ -199,50 +216,11 @@ below.
   from 8 hours to 24. **R2.1d and R2.7 work around it** by fetching the span unguarded
   (`span_prices` in `tests/integration/span.py`, shared by both); revisit that
   workaround once the rule is fixed. **Do not simply raise the constant.**
-- **Two governing references named from memory and NOT verified**, so both phases ship
-  ungoverned and `references.md` is deliberately unwritten for them (CLAUDE.md §1):
-  Lago, Marcjasz, De Schutter & Weron (Applied Energy, 2021) for R2.1d's walk-forward
-  protocol, and Lei, G'Sell, Rinaldo, Tibshirani & Wasserman (JASA, 2018) for R2.1e's
-  locally-weighted conformal. Neither phase depends on either. The R2.6 candidates
-  (Fleten & Kristoffersen; Loehndorf & Wozabal) are unverified on the same terms.
-- **`_net_to_pair` is imported across a package boundary.** `bess.studies` reads this
-  private helper from `bess.stochastic.vss`. It was an intra-package private import
-  before S1 moved the studies out, and the move made it worse rather than introducing
-  it. Promoting it is a small follow-up, deliberately not folded into a phase whose
-  invariant is that nothing changes.
-- **The seed-width rule does not transfer to the forecaster.** R2.8 requires every new
-  value claim to report its draw spread. R2.1f's width claim has none, and the zero it
-  measures is **structural**: LightGBM runs with `deterministic=True`, `n_jobs=1` and no
-  bagging or feature subsampling, so `random_state` has no entry point into the fit. Do
-  not report that 0.00 as a stability result; the day-block bootstrap is the only width a
-  forecaster claim carries.
-- **`max_hour_deviation` is symmetric and arguably should not be.** It scored the
-  incumbent's over-coverage at 21:00 and R2.1f's candidate's undercoverage at 11:00 on one
-  scale, and for a battery those differ: too wide wastes opportunity, too narrow misprices
-  risk. A signed rule would have reached a different verdict on NL. **Deliberately not
-  changed**, because rewriting a metric after watching it reject a candidate is not a
-  change the phase that watched it can make. Recorded in
-  [specs/interval-sharpness.md](specs/interval-sharpness.md) for a phase that can argue
-  it on its own terms.
-- **Scenario-draw noise is measured, and it is not small** (R2.8, resolved). Over ten
-  seeds the VSS median spans 4.85 EUR and over six the FV median spans 11.19, roughly a
-  third of each study's window interval. Both published headlines were low draws, so the
-  two pages now lead with the mean across seeds. **The live constraint is that the two
-  widths are independent and must never be combined**, and that the draw spread is not a
-  confidence interval. Any new value claim must report both widths; budget about 11 min
-  per FV seed and 2.5 per VSS seed for a sweep.
-- **The value-study window is settled; regime dependence is the live caveat.**
-  R2.7 fixed the window at 260 days over 2022-2025. What remains open is that the
-  results are strongly regime-dependent (VSS pays several times more in the 2022 crisis
-  year than after it) and, on NL, no longer separable from zero. Per-year rows rest on
-  about 70 windows each and sit inside their own sampling noise: the full 1705-day sweep
-  contradicted a monotone-decay reading that the 52-block per-year rows appeared to
-  support. Read the per-year tables with their intervals, never as a trend.
-- **The `## Decisions` lint check only requires at least one such section.** The
-  heading normalization left one spec with two, which the merge caught by hand. Tighten
-  to "exactly one" if it recurs.
-- **The doc linter's module check is a word search, not symbol resolution.**
-  `_module_exists` falls back to `re.search` in the parent package's `__init__.py`, so
-  a spec naming a symbol that has moved *within* a surviving package passes. This gave
-  a false negative during S1 commit 1. The formulation-section check added in commit 3
-  is the pattern to follow if this is tightened.
+- **Two small code follow-ups in `bess.studies`, neither blocking anything.**
+  `bess.studies.forecast_value` resolves to the exported *function*, not the module, so
+  `import bess.studies.forecast_value as m` yields a function and attribute access on it
+  fails; nothing shipped imports it that way, and it cost a debugging cycle during R2.7.
+  Separately, `bess.studies` reads the private `_net_to_pair` from `bess.stochastic.vss`
+  across a package boundary; the S1 split made an intra-package private import worse
+  rather than introducing it. Renaming the one and promoting the other are both small,
+  and both were left out of phases whose invariant was that nothing changes.

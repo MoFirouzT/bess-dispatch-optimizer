@@ -32,6 +32,15 @@ jobs:
       - name: Import layers (import-linter)
         run: uv run lint-imports
 
+      # The coined-word check reads the system word list and **skips silently** when
+      # there is none, so without this the step would pass while that check did nothing.
+      # `wamerican` is what provides /usr/share/dict/words on this image; the guard after
+      # it is what turns a silently-inert check into a red build.
+      - name: Word list (for the coined-word check)
+        run: |
+          sudo apt-get update && sudo apt-get install -y wamerican
+          test -s /usr/share/dict/words
+
       - name: Docs (writing charter)
         run: uv run python scripts/lint_docs.py
 

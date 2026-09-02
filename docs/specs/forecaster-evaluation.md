@@ -227,7 +227,7 @@ by a property test rather than by memory.
 ## Golden oracles
 
 Fold placement is exact arithmetic, so unlike the rest of forecasting this phase
-does have un-fakeable oracles.
+does have oracles that cannot be faked.
 
 | # | inputs | expected | why this case |
 |---|--------|----------|---------------|

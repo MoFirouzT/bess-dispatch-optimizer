@@ -98,7 +98,7 @@ contradict what this spec assumed before the probe ran.
 - **1733 of those 1734 days are complete.** The span's final day, 2025-09-30, carries
   a single point at 00:00 UTC, because the span's upper bound is a timestamp rather
   than a day. `window_sets` drops incomplete days, so placing folds over the raw
-  day index selects 260 days of which only **259 are scoreable**, silently. Placing
+  day index selects 260 days of which only **259 can be scored**, silently. Placing
   them over the **complete-day index** selects 260 of 260 and ends the span at
   2025-09-29. The spec takes the second option; see Decisions.
 - **Blocks land 26 to 27 days apart, not the ~33 this spec first claimed.** The
@@ -320,7 +320,7 @@ imports `bess.forecaster`, and nothing on the serving chain imports `bess.studie
 ## Property tests
 
 - **Filter commutes with scoring** for all four studies: scoring `only_days=D` equals
-  subsetting the full result to `D`, for arbitrary `D` drawn from the scoreable days.
+  subsetting the full result to `D`, for arbitrary `D` drawn from the days that can be scored.
 - A window's result is **invariant to the span it was computed in**: the same day
   scored inside a 3-month series and inside a 2-year series returns the same numbers.
   This fails on today's code and is the reason for build task 1.
@@ -434,7 +434,7 @@ intervals for exactly this reason and should not be read as a trend.
 
 ### Build task 8: does the 52-block sample track a full sweep?
 
-Every scoreable NL day scored, 1705 windows in 15.0 minutes, against the 260-day block
+Every NL day that can be scored was scored, 1705 windows in 15.0 minutes, against the 260-day block
 estimate.
 
 | Estimate | n | Median | >0 |
@@ -557,7 +557,7 @@ place at review, so this reads as the decision trail rather than a list of quest
 - **Place folds over the raw day index or the complete-day index?** **Resolved:
   complete-day index** (2026-07-28). Not anticipated at approval; build task 0 found
   it. The span's final day holds one hour, so the raw index selects a day that
-  `window_sets` then silently drops, giving 259 scoreable windows where the layout
+  `window_sets` then silently drops, giving 259 windows that can be scored where the layout
   promised 260. Selecting over complete days makes the promised count and the
   delivered count the same number, which is the property the fold layout has to have
   if "the identical 260 days" is to mean anything. Cost: the evaluated span ends

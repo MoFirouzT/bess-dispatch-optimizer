@@ -88,7 +88,7 @@ def span_fold_days(prices: pd.Series) -> pd.DatetimeIndex:
     Folds are placed over the **complete** days only. The span's last day carries a
     single hour (its upper bound is a timestamp, not a day), and `window_sets` drops
     incomplete days, so placing folds over the raw day index would select 260 days of
-    which only 259 are scoreable: a layout that promises one number and delivers
+    which only 259 can be scored: a layout that promises one number and delivers
     another (spec study-windowing.md, build task 0).
     """
     idx = pd.DatetimeIndex(prices.index)

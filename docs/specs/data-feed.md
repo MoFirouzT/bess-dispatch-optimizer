@@ -86,7 +86,7 @@ or an empty body. Distinct by construction, since an outage means *no present da
 while an anomaly means *present but untrustworthy data*.
 
 The band is grounded in the **EPEX SDAC harmonised clearing-price limits** (min −600
-€/MWh from 2026-05-28, max 4000 €/MWh base, escalatable in +1000 steps), with one
+€/MWh from 2026-05-28, max 4000 €/MWh base, which can be raised in +1000 steps), with one
 escalation step of headroom. A value outside it *cannot be a real clearing price*, so
 it is corruption by definition. This is a market technical bound, **not** the
 year-specific [sanity band](../formulation-evaluation.md#sanity-band-gate-d): it does
@@ -204,7 +204,7 @@ class FeedStatus(str, Enum):
 class GuardResult:
     status: FeedStatus
     prices: pd.Series      # HEALTHY -> the fetched series; degraded -> last-known-good
-    reason: str | None     # stable greppable token: "stuck_feed" | "out_of_band" |
+    reason: str | None     # stable token, found with grep: "stuck_feed" |
                            #   "non_finite" | "empty" | "schema:gap" |
                            #   "schema:resolution_change" | "schema:tz" |
                            #   "schema:duplicate" | "schema:unsorted" | "schema:index"
@@ -220,7 +220,7 @@ def is_focal_price(value: float, sanity_band=(-600.0, 5000.0)) -> bool:
 def classify_series(series, *, sanity_band, max_repeat, max_focal_repeat,
                     expected_slots_per_day) -> tuple[FeedStatus, str | None]:
     """Pure content classifier over an already-fetched series. HEALTHY or ANOMALY only;
-    transport is decided before this runs. No I/O: the un-fakeable core."""
+    transport is decided before this runs. No I/O: the core that cannot be faked."""
 
 def guarded_fetch(fetch_fn, *, last_known_good, sanity_band=(-600.0, 5000.0),
                   max_flat_hours=4.0, max_focal_flat_hours=24.0,

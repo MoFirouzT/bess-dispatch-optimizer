@@ -9,7 +9,7 @@ Revenue-maximizing charge/discharge schedules for a grid-scale **battery energy 
 
 **On real Dutch day-ahead prices a rolling, no-look-ahead policy captures 99.0% of the perfect-foresight revenue ceiling**, so the deterministic problem is close to solved and the value that remains is in price uncertainty.
 That value is measured, not asserted: a **median out-of-sample value of the stochastic solution of +8.36 EUR per window on BE** over 260 delivery days spanning 2022 to 2025, with a window interval above zero.
-Nine [studies](docs/studies/) measure what the stack is worth; **four came back null and are published as nulls.**
+Nine [studies](docs/studies/) measure what the stack is worth; **three came back null and are published as nulls.**
 
 *Assumes:* some familiarity with linear and integer programming. Battery and power-market terms are defined in the [glossary](docs/glossary.md).
 
@@ -54,7 +54,7 @@ Both releases are complete and gated by golden + property tests. Eight capabilit
 | **Stochastic dispatch** | A CVaR mean-risk two-stage MILP with intraday MPC recourse |
 | **Dispatch explainability** | The state-of-charge shadow price as a **water value**, with a no-trade band and per-trade breakeven that say *why* the battery holds rather than trades |
 
-A ninth, **dispatch narration**, is built and gated but **not adopted**: its live acceptance run has not been made at the size its [spec](docs/specs/dual-narration.md) requires.
+A ninth, **dispatch narration**, is built and gated but **not adopted**: its live acceptance run rejected 22% of narrations against the 5% bar its [spec](docs/specs/dual-narration.md) fixed beforehand, so the endpoint does not ship and the rate is the finding.
 The phase-by-phase build record is the [phase ledger](docs/specs/README.md).
 
 ## Results
@@ -124,6 +124,7 @@ static types, the layering contract, and the docs' own writing rules.
 ```bash
 uv sync                       # environment + dependencies
 uv run pytest                 # tests (golden + property gates)
+uv run pytest --cov=bess      # coverage (CI gates this at 85%)
 ruff check . && ruff format . # lint + format
 uv run mypy src               # static types
 uv run lint-imports           # layering contract
@@ -142,7 +143,7 @@ docker build -t bess-dispatch . && docker run -p 8000:8000 bess-dispatch
 `POST /dispatch` takes a price curve, a step, and a battery spec, and returns the optimal schedule.
 If the solver misses the latency budget (`BESS_LATENCY_BUDGET_S`, default 2.0 s) the circuit breaker serves the greedy schedule instead (`mode: "fallback_greedy"`) rather than failing the request; invalid input returns a structured 422.
 `POST /explain` adds the shadow-price explanation and is deliberately *not* behind the breaker: the greedy fallback has no duals, so a non-optimal solve returns 503 rather than an explanation of something else.
-`POST /explain/narrative` adds a prose account of that explanation, behind the optional `narrate` extra.
+There is no third endpoint: dispatch narration was built, gated, and [not adopted](docs/specs/dual-narration.md), so nothing serves it.
 
 ## Data
 

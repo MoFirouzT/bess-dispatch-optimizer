@@ -25,7 +25,9 @@ dependencies = [
 
 [project.optional-dependencies]
 # R2.4b narration. Not a core dependency: without it `bess.narrate` serves the
-# deterministic fallback, which is what CI exercises.
+# deterministic fallback, which is what CI exercises. Kept after the phase's gate
+# returned no adoption, because the live tier that measured the 22.0% rejection rate
+# still needs the SDK to be re-run; nothing on the serving path imports it.
 narrate = ["anthropic>=0.75"]
 
 [dependency-groups]

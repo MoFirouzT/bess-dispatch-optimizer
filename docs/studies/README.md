@@ -23,18 +23,16 @@ each page names the spec that governs its method.
 | [Target normalization](target-normalization.md) | Does de-levelling the forecast target improve the forecaster? | **Yes**, and it flips which training window is best |
 | [Storage duration](storage-duration.md) | How much does the economics depend on the energy-to-power ratio? | Strongly. The annualized ceiling falls by roughly a quarter from 1 h to 4 h |
 | [Interval sharpness](interval-sharpness.md) | Can the forecaster's intervals be made narrower without losing calibration? | **Yes but not adoptably**: 4.5% narrower on NL, rejected because the narrowing pushes 11:00 into undercoverage |
-| [Drift-robust conformal](drift-robust-conformal.md) | Which repair keeps the intervals calibrated through a regime shift? | **Null** at a monthly refit: at most +0.019 worst-year coverage against a +0.03 bar. Refitting monthly rather than annually is worth +0.18 and a 35% narrower interval, so the decay was mostly model staleness, not calibration staleness |
+| [Drift-robust conformal](drift-robust-conformal.md) | Which repair keeps the intervals calibrated through a regime shift? | **Both together**: weighted conformal composed with adaptive conformal inference adds +0.146 worst-year coverage on NL and +0.150 on BE against a +0.03 bar, at 5.3% and 5.7% width. Not adopted: the gain rests on a monthly refit that only the evaluation harness performs, so the cadence has to be settled first |
 | [Solve scaling](solve-scaling.md) | Does the program stay tractable as the horizon and scenario count grow? | Yes on both axes, at very different rates |
 
 ## Why the nulls are here rather than hidden
 
-Four of the nine came back null. Three of them share one mechanism:
+Three of the nine came back null, and all three share one mechanism:
 **intraday recourse adjusts after the price is known**, so a better *representation*
 of the day-ahead future has little left to improve. That is a result about this market
 and this asset, not a failure of the implementation, and each page says how it was
-distinguished from one. The fourth, drift-robust conformal, is null for an unrelated
-reason: the coverage decay it set out to repair turned out to be mostly model staleness,
-which a refit schedule fixes and a calibration construction cannot.
+distinguished from one.
 
 Each null is therefore held to the same standard as a
 positive result. The three euro-comparison studies (forecast, tail, bid curve) each
@@ -51,6 +49,20 @@ before the result was believed.
 
 **No result on these pages is sign-asserted.** The gates check that a number is
 computed correctly, never that it came out favourable.
+
+## Two results that were measured and not shipped
+
+[Interval sharpness](interval-sharpness.md) and
+[drift-robust conformal](drift-robust-conformal.md) both found a real effect on the
+forecaster, and neither changed a default. The first failed the gate it had to clear:
+narrowing the interval everywhere fixes over-coverage at 21:00 and pushes 11:00 into
+undercoverage. The second passes every threshold it was set, and the gain rests on
+refitting the model monthly, which only the evaluation harness does. Adopting it would
+ship a default whose benefit depends on an operating discipline nothing in `src/`
+implements, so the refit cadence became the precondition rather than a follow-on.
+
+Both are recorded with the adoption box left open rather than closed either way, which
+is the same standard the nulls are held to.
 
 ## Provenance
 

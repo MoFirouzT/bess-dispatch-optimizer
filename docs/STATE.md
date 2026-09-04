@@ -1,226 +1,198 @@
-# STATE: session continuity
+# STATE: closing state
 
-Read this first (after `CLAUDE.md`), update it at the end of every working session.
-Holds: current phase · capability status · what's next · known blockers.
+Where the project stands now that it is finished at its scope:
+what exists, what each capability's status is,
+the findings no phase owns, and what a successor would pick up first.
 
-**History is not here.** What each phase concluded is one row per phase in the
-[phase ledger](specs/README.md); the reasoning behind each is in that phase's spec,
-under Decisions. This file stays short on purpose: it is rewritten every
-session, so an append-only record inside it grows without bound, which is what
-happened before 2026-07-28.
+*Assumes:*
+the capability map in [architecture.md](architecture.md);
+the per-phase record in the [phase ledger](specs/README.md).
+
+**History is not here.**
+What each phase concluded is one row per phase in the ledger,
+the reasoning behind each is in that phase's spec under *Decisions*,
+and the reader-facing findings are in [studies/](studies/README.md).
+This file holds only what is still live.
 
 ---
 
-## Current phase
+## Status
 
-**No active phase.**
+**Finished at scope. No phase is active and none is planned.**
 
-**The documentation contract moved out of this repo** (2026-09-02). The portable half
-of `CLAUDE.md` (document tiers, the workflow, the writing charter, working preferences)
-now lives in the `project-discipline` plugin, and this repo holds the project-specific
-half. Section numbers in `CLAUDE.md` are unchanged because about fifteen frozen specs
-cite them. `scripts/lint_docs.py` came back from the plugin with three checks this repo
-did not have: coined `-able` words, HTML anchors, and a line-cap exemption list. A
-vocabulary sweep replaced 53 coined words across docs, source docstrings and test prose.
+Releases 1 and 2 are complete.
+Eight capabilities are built and gated by golden and property tests;
+a ninth, dispatch narration, is built and gated offline and is not adopted.
+Nine studies are published, including the nulls.
+Release 3 was scoped and not started.
 
-**The coined-word check depends on a word list CI must install.** `/usr/share/dict/words`
-differs by operating system, so the check is green on macOS and would flag 382 words on a
-bare runner. `REPO_VOCABULARY` in the linter pins this repo's 84, regenerated with
-`--vocabulary` and never grown by hand, and CI installs `wamerican` with a guard so the
-check cannot skip silently and pass. Verify a push with
-`WORD_LIST= uv run python scripts/lint_docs.py`. R2.4b (dual-grounded narration) is built, gated offline, and
-**not adopted**: the endpoint exists and the adoption question is open. It turns the
-R2.4 `Explanation` into prose in which the model emits placeholders and never a digit,
-verified against the solved object before anything is served.
-
-**Done.** `bess.narrate` (the six-type claim vocabulary and its predicates, the seven
-rejection rules, placeholder substitution, the deterministic fallback, the provider
-protocol with recorded and adversarial test doubles), `POST /explain/narrative`, the
-`narrate` optional extra, and the live tier. Golden, property and unit gates written
-failing first, all green. The full suite passes with `ANTHROPIC_API_KEY` unset, which
-is how CI runs it.
-
-**The first live run rejected 50 of 50, and the cause was the prompt, not the model.**
-The prompt named each claim type and stated none of the conditions the verifier checks,
-so the model was inferring rules like "a water-value step needs adjacent runs" and
-getting them wrong. Writing the six conditions into the prompt in the verifier's own
-words moved the rate to **1 rejection in 19 instances**. That 100% is an instrument
-reading and it is recorded in the spec beside the corrected number, because the two are
-easy to confuse later.
-
-**The rate is 5.3% against a 5% bar at n=19, which decides nothing.** The 95% interval
-runs from roughly 0.1% to 26%. The spec calls for 50 instances; that run was not
-repeated after the prompt fix, by the human's decision, to avoid the spend. **The
-adoption box is `- [!]`, not `- [x]`, and the endpoint does not ship until a run at the
-specified size says it should.**
-
-**A cheaper model was measured and rejected.** On the same 8 days: Opus 5 at effort low
-rejected 0 and took 11.1 s median; Sonnet 5 at low rejected 2 of 8 at 6.8 s; Haiku 4.5
-rejected 7 of 8 at 4.7 s, once by writing a literal digit, which is the one thing the
-design forbids and the verifier caught. Opus 5 stays the default.
-
-**The 10 s timeout was discarding correct work.** Measured latency is 9.5 to 14.8 s, so
-roughly half of all good narrations were timing out. Raised to 20 s, keeping the
-endpoint, on the grounds that `/explain/narrative` already solves a MILP and re-solves
-an LP before it narrates and was never a fast path.
-
-Two things surfaced that are the human's call:
-
-- **The n=50 bar is under-powered for a 5% threshold.** A true 5% rate yields 0 to 6
-  rejections in 50 draws, so a pass and a fail at that size are barely distinguishable.
-  Both numbers were fixed in the spec before any data existed, which was the right
-  order; the observation is that the instrument cannot resolve the question it was
-  pointed at. Raising n or widening the bar is a spec amendment and should be argued
-  on its own, not after seeing a result.
-- **`max_tokens` 2048 is too small once thinking is on.** Every failure in the Sonnet 5
-  high-effort arm was a truncated-JSON parse error rather than a bad claim. It does not
-  bite at `effort: low`, which is the shipped setting, so nothing was changed.
-
-Releases 1 and 2 are otherwise complete; Release 3 has not started.
-
-**Presentation pass (2026-09-01), outside the phase ladder.** The README was cut from
-278 lines to 153: the headline numbers and the quickstart now sit above the fold, and
-the full results narrative, every figure, and the scope limits moved verbatim to
-[results.md](results.md), which is now their canonical home. The baseline table lives
-in the README only, and `results.md` points at it (charter rule 1). Added
-`examples/quickstart.py`, a front-door script that runs the whole stack on the **base
-install** in about two seconds: no ENTSO-E token, no optional dependency group, no
-plotting. Its smoke test is deliberately its own module,
-`tests/unit/test_quickstart_smoke.py`, because `test_examples_smoke.py` skips whenever
-matplotlib is absent, which is exactly the base CI job the quickstart claims to run in.
-No source, math, or gate changed.
-
-**Resolution claim corrected (2026-09-01).** `conventions.md` §1 said the backtest and
-all downstream work run on the native 15-minute series at `Δt = 0.25`. They do not, and
-never did: every committed study and example passes `dt=1.0` on a window that closes
-before the 2025-10-01 SDAC switch, when the published series was hourly. The wording now
-says that, and says it is a fact about the data rather than a limit of the model. This
-aligns the doc with [day-ahead is 15-minute native](decisions/day-ahead-15min-native.md),
-which was already correct, so it is a correction and not a new decision.
-
-**What was untested is now gated.** The hypothesis cases draw `Δt` from {0.25, 0.5, 1.0}
-over plain sequences, so the arithmetic was covered, but the seam a real quarter-hourly
-feed goes through was not: a tz-aware `15min` index grouped into calendar-day windows of
-96. `synthetic_day_ahead` gained a `freq` argument (`"1h"` default, bit-identical;
-`"15min"` holds each hourly price across its four quarters), and
-`test_backtest.py::test_resolution_invariance_*` solves the same prices at both
-resolutions and requires the same revenue and the same MWh cycled. **Revenue alone is a
-soft check**: capacity and the terminal-SoC target cap the daily cycle either way, so
-solving quarter-hourly data at `dt=1.0` still lands within about 0.5%. The energy cycled
-comes out roughly 4x too small, which is the assertion that bites.
-
-**Documentation site added (2026-09-01), not published.** `mkdocs.yml` builds the same
-Markdown that renders on GitHub into a searchable site with the reading order from
-`architecture.md` as its nav (`uv run --group docs mkdocs serve`). GitHub stays the
-primary rendering, so the toc extension uses GitHub's slugifier and the same
-`file.md#anchor` links resolve in both. No API reference is generated from docstrings:
-the docs are the argument and a listing of every module would bury it. Seven links leave
-`docs/` (to the README, the operating contract, the example scripts) and warn rather than
-fail. `.github/workflows/docs.yml` builds on every push and pull request and **deploys on every
-push to `main`**, so the site cannot drift behind the docs; a pull request never deploys.
-Pages is enabled and its source must stay set to GitHub Actions, because the branch
-setting makes these runs go green and change nothing. Known cosmetic
-limitation, recorded in `docs/javascripts/mathjax.js`: the two `formulation.md` headings
-containing math show raw delimiters in the sidebar, because the toc is built from heading
-text and the math span is stripped. Rewording them would change anchors other docs link
-to, so they stay.
-
-**Still open: the 15-minute economics.** The fixture's quarter-hourly form carries no
-intra-hour spread by construction, so it proves the plumbing and measures nothing. Real
-intra-hour spread should raise the arbitrage ceiling and change where the ramp limit
-binds, and that needs post-2025-10 prices from the live API. Blocked with the outage
-below.
+Two questions are open and each is recorded below rather than closed by default:
+the drift-robust calibration arms clear their bar and are not adopted,
+and the stuck-feed rule has a known false-positive mode on long windows.
+A third was settled on 2026-09-04: the narration endpoint failed its acceptance gate and does not ship.
+None of them blocks anything that ships;
+all three are things a successor should read before touching the module they sit in.
 
 ## Capability status
 
 | Capability | Status | Packages |
 | --- | --- | --- |
 | Dispatch core | complete, gated | `assets`, `validation`, `optimizer` |
-| Data feed | complete, gated | `data` |
+| Data feed | complete, gated; carried defect in the stuck-feed rule, below | `data` |
 | Backtest | complete, gated | `backtest` |
 | Serving | complete, gated | `api` |
-| Price forecaster | complete, gated; hyperparameters searched and left unchanged (R2.1f), drift-robust calibration built and not adopted (R2.1g) | `forecaster` |
+| Price forecaster | complete, gated; hyperparameters searched and left unchanged (R2.1f); drift-robust calibration built, clears its bar, **not adopted** (R2.1g), below | `forecaster` |
 | Scenario generation | complete, gated | `scenarios` |
 | Stochastic dispatch | complete, gated | `stochastic`, `recourse` |
 | Dispatch explainability | complete, gated | `explain` |
-| Dispatch narration | built and gated offline, **not adopted** (R2.4b); live rejection rate 5.3% at n=19 against a 5% bar, undecided | `narrate` |
-| Studies | nine pages, four nulls reported, see [studies/](studies/README.md) | `studies` |
+| Dispatch narration | built and gated offline, **not adopted** (R2.4b); the acceptance gate ran at n=50 on 2026-09-04 and rejected 22.0% against a 5% bar, so the endpoint does not ship | `narrate` |
+| Studies | nine pages, see [studies/](studies/README.md) | `studies` |
 
 ---
 
-## Next (recommended order)
+## Adoption decisions
 
-1. **R3.1, imbalance-settlement recourse.** R2.7 strengthened the argument for it: the
-   bid-curve delivery gap was the *only* value quantity the wider window made more
-   solid, holding 4.26 to 7.91 MWh per day across four years on a 2 MWh asset, and
-   nothing in the model prices it. Needs a spec; none is drafted. **Start with the data
-   probe, not the spec** (CLAUDE.md §7): `entsoe-py` exposes the imbalance endpoints,
-   but whether NL and BE are actually populated on them is unverified, and thin data
-   should change the gate wording up front rather than be discovered late.
-   **The probe is written and unrun**: `scripts/probe_imbalance.py`, one command with a
-   token. It asks four things, in the order they can kill the phase: whether the endpoint
-   returns anything for BE and NL, what the schema is (NL settles a single price per ISP
-   with corrections, BE adds an alpha component, and neither column shape is guessable),
-   whether the resolution is the 15-minute settlement period, and how far back the record
-   goes. That last one is the gate question: the value studies score 260 days across 2022
-   to 2025, and a record starting in 2024 cannot be scored on that span. Blocked on the
-   platform migration below; run it from 2026-09-03 and write the answers into the spec
-   before its gate.
-2. **Refit cadence, from R2.1g's null.** The largest coverage effect this project has
-   measured on the forecaster is not a calibration construction, it is how often the model
-   is refit: annual to monthly is worth +0.18 coverage on the NL 2022 crisis year and a
-   35% narrower interval. R2.1g could not adopt it (a scheduling change is not a
-   calibration change and was not in its scope) and deliberately did not. Needs a spec.
-   **The obvious trap is that "refit more often" has a cost nobody here has measured**:
-   fit time, and whether a model refit on a short recent window loses the crisis history
-   R2.1e found is useful under a de-levelled target.
-3. **Run R2.4b's live tier.** One command with an `ANTHROPIC_API_KEY` set:
-   `uv run pytest tests/integration/test_narration_live.py -q -s`. It is 50 model calls
-   and it decides whether the narrative endpoint ships. Above the 5% bar the endpoint
-   comes out, the verifier and fallback stay, and the rate is the finding. Do not tune
-   the prompt to get under the bar; that is out of scope in the spec for a reason.
-4. **Nothing else queued.** R2.8 is done, so every euro figure now carries both of its
-   widths and no value claim is blocked on an unmeasured precision.
+Two capabilities were built, measured, and deliberately not adopted.
+The first is still open and a successor should settle it before changing the forecaster;
+the second is closed and what is left of it is a removal.
 
-## Known blockers and carried findings
+### R2.1g: the arms clear their bar, and adoption waits on the refit cadence
 
-Live blockers, and carried defects that no phase owns. A finding that is already
-written down where it belongs does not belong here as well: results live in the
-[phase ledger](specs/README.md) and the study pages, caveats about a measurement live
-in the spec that made it, and unverified sources live in
-[references.md](references.md). This section is rewritten each session and grows
-without bound if that rule slips, which is what happened by 2026-09-02.
+The R2.1g result was re-scored on 2026-09-03 and **the recorded null inverted**.
+The committed gate and the recorded gate numbers were two different experiments:
+the test ran `refit_every_days=365` on the extended span
+while every recorded number was measured at a monthly refit on the shorter span.
+Re-run monthly on the extended span,
+the baseline lands inside the band in both zones
+and the composed arm adds **+0.146 NL and +0.150 BE** worst-year coverage against a +0.03 bar,
+where the recorded run read +0.019 and nothing.
+The amendment is in [the spec](specs/drift-robust-conformal.md) and the write-up is in [the study](studies/drift-robust-conformal.md).
 
-- **The ENTSO-E API was down and the study path has no fallback.** Every request
-  returned 503 across 13 minutes of probing, endpoint-wide: an unauthenticated request
-  got the same, and the transparency portal stayed up, so it was a partial outage on
-  their side rather than a token or quota problem. This blocks R2.1g's data extension and
-  its real-data run, and nothing else. Worth noting that `span_prices` and
-  `extended_span_prices` deliberately bypass `guarded_fetch` for the R1.4c reason below,
-  so a study fetch during an outage simply raises: the project's circuit breaker does not
-  cover the path that most needs a long fetch to succeed.
-  **Update 2026-09-01:** the Transparency Platform is migrating to new infrastructure on
-  **2026-09-02**, and website downloads are capped at 30 days until it completes. Treat the
-  live path as unavailable through the migration and re-probe from 2026-09-03. Nothing has
-  fetched against the new infrastructure yet, so the 49 token-gated tests are the first
-  thing to run afterwards, and a real sample gets printed before any new code is written
-  against it (CLAUDE.md §7). Both the R3.1 imbalance probe and the 15-minute economics run
-  wait on this.
-- **R1.4c stuck-feed rule does not survive long windows.** `guarded_fetch` classifies
-  the NL 2021-2025 span ANOMALY/`stuck_feed` on a 5-hour run of exactly 64.00 EUR/MWh
-  (2021-05-15) plus 4-hour runs at 42.30 / 140.66 / 95.60, against
-  `DEFAULT_MAX_FLAT_HOURS = 4.0`. Those are ordinary merit-order flats. The nonfocal
-  rule is a fixed run length applied regardless of window length, so its false-positive
-  rate grows with the span; 2024 happens to contain no such run, which is why the
-  year-long guard test passes. Same class of defect that forced the *focal* threshold
-  from 8 hours to 24. **R2.1d and R2.7 work around it** by fetching the span unguarded
-  (`span_prices` in `tests/integration/span.py`, shared by both); revisit that
-  workaround once the rule is fixed. **Do not simply raise the constant.**
+**Nothing in `src/` changed and adoption is deliberately not taken.**
+`refit_every_days` lives only in the evaluation harness;
+nothing in the serving path schedules a refit,
+and the same arm clamps 71.6% of days and fails outright at an annual one.
+Adopting now would ship a default whose benefit rests on an operating discipline this repo does not implement.
+**So the refit cadence is R2.1g's precondition, not a follow-on:** settle it, re-score, then adopt if the arm still clears.
+The cost nobody here has measured is fit time,
+and whether a model refit on a short recent window loses the crisis history R2.1e found useful under a de-levelled target.
+
+The reader-facing documents were reconciled with this on 2026-09-04:
+the R2.1g ledger row, the null count in the README and in `studies/README.md`,
+and the drift-robust paragraph in `results.md`.
+Three studies came back null, not four.
+
+### R2.4b: the narration endpoint does not ship
+
+**Settled on 2026-09-04.**
+The live tier ran at its specified 50 instances against a real model and rejected **11 of 50, 22.0%**,
+against the 5% bar the spec fixed before the first live call.
+So `POST /explain/narrative` does not ship.
+The verifier, the deterministic fallback and the offline gates stay,
+and the rate is the finding: on this task, constrained generation under a whole-response check did not reach the quality the phase set for it.
+The n=19 reading of 5.3% had a 95% interval of roughly 0.1% to 26%, and the larger sample landed near the top of it.
+
+**The endpoint was removed on 2026-09-04**, which is what a failed gate calls for:
+the `POST /explain/narrative` route and `NarrativeResponse`, its two route tests, and the README, architecture and `.env.example` lines that described it.
+The `bess.narrate` package itself stays.
+It is the phase's own record of what was built and measured, its offline gates are green, and the layering contract still pins it above `explain` so that layer cannot acquire a network call.
+`api` no longer imports it, and the `narrate` extra stays so the live tier can be re-run.
+
+The run also found **a defect in the gate rather than in the design**.
+`test_a_verified_narration_contains_no_number_the_model_wrote` omitted state of charge from its set of sourced tokens,
+so it rejected a correct narration on `2.000`, a value the solver produced and the renderer substituted.
+Rule 1 forbids the model from writing a literal digit outside a placeholder, so that token could not have come from the model.
+The oracle now covers every placeholder the renderer can emit.
+
+One thing was noted before the run and did not bind on it:
+**the n=50 bar is under-powered for a 5% threshold**, since a true 5% rate yields 0 to 6 rejections in 50.
+Eleven is far outside that range, so the under-powering would only have mattered had the answer been close.
+
+---
+
+## Carried findings no phase owns
+
+Defects and gaps that are real, are not blocking anything, and belong to no phase.
+A finding already written down where it belongs does not repeat here:
+results live in the [phase ledger](specs/README.md) and the study pages,
+caveats about a measurement live in the spec that made it,
+and unverified sources live in [references.md](references.md).
+
+- **The R1.4c stuck-feed rule does not survive long windows.**
+  `guarded_fetch` classifies the NL 2021 to 2025 span ANOMALY/`stuck_feed`
+  on a 5-hour run of exactly 64.00 EUR/MWh (2021-05-15) plus 4-hour runs at 42.30 / 140.66 / 95.60,
+  against `DEFAULT_MAX_FLAT_HOURS = 4.0`.
+  Those are ordinary merit-order flats.
+  The nonfocal rule is a fixed run length applied regardless of window length,
+  so its false-positive rate grows with the span;
+  2024 happens to contain no such run, which is why the year-long guard test passes.
+  Same class of defect that forced the *focal* threshold from 8 hours to 24.
+  R2.1d and R2.7 work around it by fetching the span unguarded
+  (`span_prices` in `tests/integration/span.py`, shared by both);
+  revisit that workaround once the rule is fixed.
+  **Do not simply raise the constant.**
+
 - **Two small code follow-ups in `bess.studies`, neither blocking anything.**
-  `bess.studies.forecast_value` resolves to the exported *function*, not the module, so
-  `import bess.studies.forecast_value as m` yields a function and attribute access on it
-  fails; nothing shipped imports it that way, and it cost a debugging cycle during R2.7.
-  Separately, `bess.studies` reads the private `_net_to_pair` from `bess.stochastic.vss`
-  across a package boundary; the S1 split made an intra-package private import worse
-  rather than introducing it. Renaming the one and promoting the other are both small,
+  `bess.studies.forecast_value` resolves to the exported *function*, not the module,
+  so `import bess.studies.forecast_value as m` yields a function and attribute access on it fails;
+  nothing shipped imports it that way, and it cost a debugging cycle during R2.7.
+  Separately, `bess.studies` reads the private `_net_to_pair` from `bess.stochastic.vss` across a package boundary;
+  the S1 split made an intra-package private import worse rather than introducing it.
+  Renaming the one and promoting the other are both small,
   and both were left out of phases whose invariant was that nothing changes.
+
+- **The 15-minute economics are unmeasured.**
+  The plumbing is gated: `synthetic_day_ahead` takes a `freq` argument
+  and `test_backtest.py::test_resolution_invariance_*` solves the same prices at both resolutions,
+  requiring the same revenue and the same MWh cycled.
+  But the fixture's quarter-hourly form carries no intra-hour spread by construction,
+  so it proves the seam and measures nothing.
+  Real intra-hour spread should raise the arbitrage ceiling and change where the ramp limit binds,
+  and that needs post-2025-10 prices from the live API.
+  The fetch path works and nothing has been run against them.
+
+- **Every committed study and example runs hourly, at `dt = 1.0`.**
+  Each closes before the 2025-10-01 SDAC switch, when the published series was hourly.
+  This is a fact about the data rather than a limit of the model;
+  `conventions.md` §1 says so, aligned with [day-ahead is 15-minute native](decisions/day-ahead-15min-native.md).
+
+---
+
+## What a successor would pick up
+
+In the order the measurements argue for.
+
+1. **Refit cadence for the forecaster.**
+   The largest coverage effect this project has measured is not a calibration construction, it is how often the model is refit:
+   annual to monthly is worth +0.18 on the NL 2022 crisis year, **+0.34 on 2021**, and a 35% narrower interval.
+   It now blocks R2.1g's adoption.
+   Needs a spec.
+
+2. **R3.1, imbalance-settlement recourse.**
+   R2.7 strengthened the argument for it:
+   the bid-curve delivery gap was the *only* value quantity the wider window made more solid,
+   holding 4.26 to 7.91 MWh per day across four years on a 2 MWh asset, and nothing in the model prices it.
+   Needs a spec; none is drafted.
+
+   **The data probe was run (2026-09-03) and it does not kill the phase.**
+   Its four answers, to be written into the spec before its gate:
+   *Populated?* Yes, `query_imbalance_prices` returns data for both zones in every window tried.
+   *Schema?* Both zones come back the same shape, two float columns named `Long` and `Short`.
+   That is **not** what `market_reference.md` §6 predicts
+   (NL a single price with corrections, BE a single price plus an alpha component).
+   The two columns are equal in most settlement periods and diverge in others,
+   NL 2024-04-01 00:00 being Long -40.00 against Short 1988.17.
+   Reconcile the doc with what `entsoe-py` actually returns before the gate is worded;
+   the probe deliberately does not judge which is right.
+   *Resolution?* 15 minutes, in every window including 2022,
+   so the settlement period was always quarter-hourly and does not depend on the 2025-10 day-ahead switch.
+   *How far back?* At least 2019-01-01 for both zones at 15 minutes,
+   checked beyond the script's own windows, which stop at 2022-08.
+   **The gate question is answered: the record spans every day the 2022 to 2025 value studies score.**
+
+   One gap to design around:
+   NL `query_imbalance_volumes` raises `NoMatchingDataError` on every historical window and works only on the recent one,
+   while BE has it throughout.
+   NL volume history is reachable only through `query_current_balancing_state`, which is 1-minute rather than the 15-minute settlement period.
+
+3. **Nothing else is queued.** Every phase is closed, every adoption question has an answer or a named precondition, and the serving surface matches the record.

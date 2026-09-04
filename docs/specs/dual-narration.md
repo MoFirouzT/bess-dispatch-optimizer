@@ -1,6 +1,11 @@
 # Spec R2.4b. Dual-grounded narration
 
-**Status:** Approved (seven decisions resolved 2026-08-31)
+**Status:** Implemented (2026-08-31). The acceptance gate ran at its specified size on
+2026-09-04 and returned **no adoption**: **11 of 50 narrations were rejected, 22.0%**,
+against a 5% bar fixed before the first live call. `POST /explain/narrative` does not
+ship. The verifier, the deterministic fallback and the offline gates stay, and the rate
+is the finding: on this task, constrained generation under a whole-response check did
+not reach the quality the phase set for it.
 **Release:** R2  **Depends on:** R2.4 (the `Explanation` object this narrates), R1.5 (the serving surface it extends)
 **Phases:** R2.4b (approved 2026-08-31)
 
@@ -167,7 +172,7 @@ This extends the existing layers contract rather than adding one, so the contrac
 - [x] `bess/narrate/narrate.py`: the pipeline, including every fallback trigger.
 - [x] `api`: the `/explain/narrative` endpoint and its response model.
 - [x] `pyproject.toml`: `anthropic` as an optional extra, so the core install stays offline.
-- [ ] the live tier, marked like the existing ENTSO-E live tests and excluded from CI.
+- [x] the live tier, marked like the existing ENTSO-E live tests and excluded from CI: `tests/integration/test_narration_live.py`, run at its specified size on 2026-09-04.
 
 ## Golden oracles
 
@@ -197,8 +202,8 @@ Every box must pass.
 - [x] The seeded adversarial claim set covers all seven rejection rules, and every member is rejected.
 - [x] `uv run lint-imports` reports 5 contracts KEPT with `narrate` in the core chain.
 - [x] The full CI suite passes with `ANTHROPIC_API_KEY` unset and no network, exercising the fallback path end to end.
-- [!] **Live tier, opt-in.** Not run at the specified 50 instances. Run at 50 once against the *first* prompt (100% rejected, see Measured results), then at 19 instances against the corrected prompt, which is what the reported rate rests on. The 50-instance run was not repeated, by the human's decision, to avoid the spend.
-- [!] **Adoption.** Undecided. The measured rate is **1 rejection in 19 instances, 5.3%**, straddling the 5% bar; at that sample size the 95% interval runs from roughly 0.1% to 26%, so the run neither clears the bar nor fails it. The endpoint is built and does not ship until a run at the specified size says it should.
+- [x] **Live tier, opt-in.** Run at the specified 50 instances against the corrected prompt on 2026-09-04. Earlier readings are superseded: 50 instances against the *first* prompt (100% rejected) and 19 against the corrected one (5.3%), both recorded in Measured results because the sequence is the point.
+- [x] **Adoption: not taken.** The rate at the specified size is **22.0%, 11 rejections in 50**, against a 5% bar. That is not a straddle, so the question the n=19 reading left open is closed: the endpoint does not ship.
 
 ## Measured results
 
@@ -215,6 +220,37 @@ Writing the six conditions into the prompt in the verifier's own words took the 
 **1 rejection in 19 instances (5.3%)**.
 The 100% was an instrument reading, not a result about constrained generation, and it
 is recorded here because the two are easy to confuse.
+
+**The run at the specified size rejected 22.0%, and that is the phase's answer.**
+50 instances, corrected prompt, `claude-opus-5` at `effort: low`, 2026-09-04:
+**11 rejections in 50**, against the 5% bar fixed before the first live call.
+The n=19 reading of 5.3% sat on the bar with a 95% interval of roughly 0.1% to 26%, and
+the larger sample lands near the top of that interval rather than the bottom.
+The per-rule breakdown the test prints was not retained from this run, so what is
+recorded here is the rate and nothing about which rules fired.
+Under the spec's own reading of the bar, more than one rejected narrative in twenty
+means the constrained-generation approach has not worked on this task, and that is what
+is reported.
+
+**The n=50 bar is under-powered for a 5% threshold, and it did not need to be here.**
+A true 5% rate yields 0 to 6 rejections in 50, so a pass and a marginal fail at that size
+are barely distinguishable, which is a real limitation of the instrument and was noted
+before the run.
+It does not bind on this result: 11 rejections is far outside that range, so the
+under-powering would only have mattered had the answer been close.
+
+**The oracle on the no-digit invariant was incomplete, and the live run is what found it.**
+`test_a_verified_narration_contains_no_number_the_model_wrote` built its set of sourced
+tokens from prices, water values, band edges, slippage and the objective, and omitted
+**state of charge**, which is one of the eight placeholders and renders at three decimals
+rather than two.
+A correct narration was therefore rejected by the test on `2.000`, a state of charge the
+solver produced and the renderer substituted.
+Rule 1 (`digit_in_text`) forbids the model from writing a literal digit outside a
+placeholder, so the token could not have come from the model.
+The oracle now covers every placeholder the renderer can emit.
+This is a defect in the gate rather than in the design, and it went unseen because no
+offline fixture happened to narrate a state of charge.
 
 **Whole-response rejection amplifies a small per-claim error rate.**
 A narration carries up to 8 claims, so at a per-claim error rate of 10% the response

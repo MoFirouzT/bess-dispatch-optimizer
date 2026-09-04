@@ -1,11 +1,15 @@
-"""FastAPI app for the dispatch service (R1.5, R2.4, R2.4b).
+"""FastAPI app for the dispatch service (R1.5, R2.4).
 
 ``POST /dispatch`` wraps ``solve()`` behind the circuit breaker
 (``bess.api.service.dispatch``); ``POST /explain`` (R2.4) returns the same solve plus
-its shadow-price explanation, **without** the breaker (decision 5);
-``POST /explain/narrative`` (R2.4b) adds a prose account of that explanation, which
-falls back to a deterministic rendering rather than failing; ``GET /health``
-reports solver availability. Invalid input becomes a structured **422** (the pre-flight
+its shadow-price explanation, **without** the breaker (decision 5); ``GET /health``
+reports solver availability.
+
+There is no narration endpoint. ``bess.narrate`` (R2.4b) is built and gated, and its
+acceptance gate rejected 22.0% of narrations at n=50 against a 5% bar, so it is not
+served (``docs/specs/dual-narration.md`` § "Acceptance gate").
+
+Invalid input becomes a structured **422** (the pre-flight
 issue list), never a raw solver trace (conventions §6). Operational knobs (latency
 budget, greedy percentiles) are env-overridable settings with R1.5 defaults; model
 parameters live in the request body.
@@ -29,14 +33,12 @@ from bess.api.models import (
     HealthResponse,
     IssueOut,
     IssuesResponse,
-    NarrativeResponse,
     PeriodOut,
     RunOut,
     ScheduleOut,
 )
 from bess.api.service import dispatch
 from bess.explain.duals import DualityError, Explanation, explain_schedule
-from bess.narrate.narrate import narrate
 from bess.validation.preflight import PreflightError
 
 SOLVER = "appsi_highs"
@@ -161,29 +163,6 @@ def post_explain(request: DispatchRequest) -> ExplainResponse | JSONResponse:
     if isinstance(exp, JSONResponse):
         return exp
     return ExplainResponse(**_explanation_body(exp))
-
-
-@app.post("/explain/narrative", response_model=NarrativeResponse)
-def post_explain_narrative(request: DispatchRequest) -> NarrativeResponse | JSONResponse:
-    """The explanation plus a prose account of it (R2.4b).
-
-    The solve failures are `/explain`'s and keep its status codes. A *narration*
-    failure is not one of them: the deterministic fallback carries the same facts in
-    duller words, so it is served with `verified=False` rather than as an error. That
-    is the opposite of the R1.5 breaker, whose fallback is a worse schedule, and the
-    asymmetry is deliberate (spec decision 2). With no `ANTHROPIC_API_KEY` set, this
-    is the only path taken and no client is constructed.
-    """
-    exp = _solve_explanation(request)
-    if isinstance(exp, JSONResponse):
-        return exp
-    result = narrate(exp)
-    return NarrativeResponse(
-        **_explanation_body(exp),
-        narrative=result.text,
-        verified=result.verified,
-        rejection=result.rejection,
-    )
 
 
 @app.get("/health", response_model=HealthResponse)

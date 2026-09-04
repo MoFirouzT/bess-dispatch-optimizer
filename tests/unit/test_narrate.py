@@ -4,6 +4,9 @@ Contract: docs/specs/dual-narration.md § "Rejection rules", § "Acceptance gate
 
 One case per rejection rule, each rejected. Nothing here opens a socket: the provider
 is injected, and the credential-absent path is exercised with the environment cleared.
+
+These gate `bess.narrate` itself, not a route: the acceptance gate rejected 22.0% at
+n=50 against a 5% bar, so no endpoint serves this module (spec § "Acceptance gate").
 """
 
 import pytest
@@ -124,50 +127,3 @@ def test_the_prompt_states_the_digit_rule_and_carries_the_solved_facts(exp):
 def test_the_config_defaults_match_the_spec():
     config = NarrationConfig()
     assert (config.model, config.effort, config.max_claims) == ("claude-opus-5", "low", 8)
-
-
-def test_the_narrative_endpoint_serves_the_fallback_without_a_credential(monkeypatch):
-    """`/explain/narrative` is a 200 with `verified=False`, never an error (R2.4b).
-
-    The R1.5 breaker returns a 503 on `/explain` because its fallback would be a worse
-    *schedule*. Here the fallback is the same facts in duller words, so the endpoint
-    serves it and says so in the body.
-    """
-    from fastapi.testclient import TestClient
-
-    from bess.api.app import app
-
-    monkeypatch.delenv(CREDENTIAL_ENV, raising=False)
-    body = {
-        "prices_eur_mwh": [10.0, 100.0, 200.0],
-        "dt_hours": 1.0,
-        "battery": SPEC.model_dump(),
-    }
-    response = TestClient(app).post("/explain/narrative", json=body)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["verified"] is False
-    assert data["rejection"] == "no_credential"
-    assert data["narrative"].startswith("Generated narration was unavailable")
-    # The explanation half of the body is `/explain`'s, unchanged.
-    assert data["objective_eur"] == pytest.approx(190.0, abs=1e-6)
-    assert [p["action"] for p in data["periods"]] == ["charge", "idle", "discharge"]
-
-
-def test_the_narrative_endpoint_keeps_the_explain_failure_codes(monkeypatch):
-    """A solve failure is still a 503: only *narration* failures fall back."""
-    from fastapi.testclient import TestClient
-
-    from bess.api import app as app_module
-
-    def _boom(*args, **kwargs):
-        raise RuntimeError("solver missed optimality")
-
-    monkeypatch.setattr(app_module, "explain_schedule", _boom)
-    body = {
-        "prices_eur_mwh": [10.0, 100.0, 200.0],
-        "dt_hours": 1.0,
-        "battery": SPEC.model_dump(),
-    }
-    response = TestClient(app_module.app).post("/explain/narrative", json=body)
-    assert response.status_code == 503

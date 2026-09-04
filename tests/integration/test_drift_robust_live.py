@@ -55,9 +55,11 @@ _HALF_LIFE = 7.0
 _GAMMA = 0.005
 
 #: The reporting run. `train_days` matches R2.1d's window so the forecaster being scored
-#: is the one the other gates score; refitting annually keeps the base learners fixed
-#: across each year the per-year breakdown reports.
-_RUN = dict(train_days=365, refit_every_days=365, confidence_level=0.9, method="cqr")
+#: is the one the other gates score. **Monthly refit** since the 2026-09-03 amendment:
+#: an annual refit measures calibration failure and model staleness at once, and this
+#: phase puts staleness an order of magnitude ahead, so scoring the boxes there answers
+#: a question the phase did not ask (spec § Amendment).
+_RUN = dict(train_days=365, refit_every_days=30, confidence_level=0.9, method="cqr")
 
 #: Scoring opens one full training window after the span starts, so every scored day has
 #: 365 days behind it. With EXTENDED_SPAN that is 2020-01-01, which is what makes 2021 a

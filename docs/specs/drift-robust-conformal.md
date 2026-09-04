@@ -1,10 +1,13 @@
 # Spec R2.1g: Drift-robust conformal intervals
 
-**Status:** Implemented (2026-08-31). The gate returned **no adoption**: at a monthly
-refit both constructions add at most +0.019 worst-year coverage against a +0.03 bar.
-Nothing in `src/bess/forecaster/forecast.py` changed. The phase's larger finding is that
-the coverage decay it set out to repair is mostly **model** staleness at this cadence:
-refitting monthly rather than annually is worth +0.18 on the crisis year.
+**Status:** Implemented (2026-08-31), **gate re-opened and the null inverted by amendment
+(2026-09-03)**. The 2026-08-31 gate returned **no adoption** on a run whose worst year
+was 2022, at most +0.019 against a +0.03 bar. On the extended span at the corrected monthly
+cadence the worst year is 2021 and the composed arm adds **+0.146 NL and +0.150 BE**, clearing
+every threshold in both zones. **Nothing in `src/bess/forecaster/forecast.py` has changed**:
+adoption waits on the refit cadence, which the evaluation harness sets and the serving path
+does not implement. The phase's other finding stands: refitting monthly rather than annually
+is worth +0.18 on 2022 and +0.34 on 2021.
 **Release:** R2  **Depends on:** R2.1 (the forecaster and its conformal wrappers), R2.1b (the drift monitor this phase answers), R2.1d (the fold layout and gate statistics), R2.1e (the target settings held fixed), R2.1f (the selection discipline and the coverage-versus-trend measurement)
 **Phases:** R2.1g
 
@@ -240,7 +243,7 @@ separated measurement did not.
 | `aci_gamma` | 0.0, 0.0025, 0.005, 0.01, 0.02 | 0.0 (no adaptation) |
 | `aci_alpha_clamp` | fixed | `(0.01, 0.5)` |
 | `aci_step` | fixed | one update per delivery day |
-| `refit_every_days` | fixed | 365, matching the R2.1d training window |
+| `refit_every_days` | fixed | **30 (monthly)** since the 2026-09-03 amendment below; 365 until then, and kept as a reported contrast |
 
 `weight_half_life_days` is configured in days and converted to a per-point
 $\rho = 2^{-1/(24 h)}$ for hourly data, because a half-life in days is the quantity a
@@ -281,7 +284,6 @@ def changepoint_gap_bound(*, half_life_days: float | None, lag_days: float) -> f
 
 def drift_gap_bound(*, half_life_days: float | None, epsilon: float) -> float:
     """Theorem 2a under Lipschitz drift: 2 * epsilon / (1 - rho). inf when rho = 1."""
-
 
 @dataclass(frozen=True)
 class AciState:
@@ -340,8 +342,8 @@ Intra-package, no contract touched; the expected KEPT count stays **5**.
 - [x] `sequential_coverage` in `evaluate.py`, carrying the ACI iterate across days and refitting on the schedule; leakage, the inert baseline, per-year partitioning and state carry-over are gated
 - [x] Golden + property tests below, written failing first; the ACI pair rejected the approved clamp wording before any data was touched
 - [x] Synthetic drift generators, seeded and committed: `synthetic_drift` in `bess.data` with calm, ramp, changepoint and volatility regimes, gated in `tests/property/test_drift_regimes.py`. A fourth regime was added beyond the three specified: volatility drift moves the scores without moving the level, which is the only case that separates what the two arms repair
-- [x] Live gate module for the arms on NL and BE, marked `studies`: `tests/integration/test_drift_robust_live.py`. **Five arms, not four**: the symmetric-unweighted baseline was added because turning on weighting also switches the CQR correction, so comparing against the shipped model would measure two changes at once. Written and collecting; it has not run, because ENTSO-E returned 503 throughout
-- [!] Decide the data span and refresh the cache: **decided (extend to 2019-01-01) and encoded as `EXTENDED_SPAN` beside an untouched `SPAN`, but the fetch did not happen**: the ENTSO-E API returned 503 on every attempt over 13 minutes, endpoint-wide and not token-related. The original-span reproduction check is still owed once the data lands
+- [x] Live gate module for the arms on NL and BE, marked `studies`: `tests/integration/test_drift_robust_live.py`. **Five arms, not four**: the symmetric-unweighted baseline was added because turning on weighting also switches the CQR correction, so comparing against the shipped model would measure two changes at once. Written and collecting; **first run 2026-09-03**, which failed four boxes at the approved annual cadence and produced the amendment below
+- [!] Decide the data span and refresh the cache: **decided (extend to 2019-01-01) and encoded as `EXTENDED_SPAN` beside an untouched `SPAN`. The fetch landed 2026-09-03** once the outage ended, and both zones cache 2019 to 2025. The original-span reproduction check is still owed
 - [x] Report the arms with both widths per R2.8 and the gap bound beside each coverage number: [studies/drift-robust-conformal](../studies/drift-robust-conformal.md). The day-block interval is reported per arm; the **seed spread is structurally zero** and is not reported as a stability result, per the carried R2.1f finding that deterministic single-threaded LightGBM gives `random_state` no entry point into the fit
 - [!] Adoption: **not reached.** No arm cleared the worst-year coverage bar, so no default changed and the R2.1/R2.1d/R2.1f gates were not re-run
 - [x] `formulation-uncertainty.md` §R2.1 edits (the two constructions; the out-of-scope line)
@@ -382,6 +384,8 @@ oracles despite being a calibration change.
 *Blocks:* adoption of a new default calibration, and any later phase that consumes
 interval width. Every box must pass.
 
+**Superseded configuration (2026-09-03).** Every box below was scored on `SPAN` at a monthly refit, before the `EXTENDED_SPAN` reporting run the amendment sets. The adoption boxes are re-scored underneath the amendment; the rest are owed a re-run.
+
 - [x] All arms ran to completion on NL and BE and reproduce bitwise on a second run: coverage, width, per-year split and the final level all identical (NL, composed arm, 0.9016233667346877)
 - [!] Worst-year coverage up at least 0.03: **failed.** Best gain is **+0.019** on NL (0.870 to 0.889, composed arm) and **nothing** on BE (0.890 to 0.886). This is the box the null turns on
 - [x] Best-calibrated year stays in band: every arm lands 0.904 to 0.917 on its best year in both zones, so nothing traded a shift failure for a calm-regime one
@@ -395,8 +399,7 @@ interval width. Every box must pass.
 
 ## Measured results
 
-*Implementation is in progress; this section holds what the build has established so
-far, not the phase's outcome.*
+*Written during implementation; superseded in part by the 2026-09-03 amendment below.*
 
 **A pre-existing defect was found en route: the shipped CQR interval is not the one
 §R2.1 describes.**
@@ -427,42 +430,58 @@ at once, the reading error R2.1e had to undo.
 Every arm therefore runs symmetric, and the incumbent-equivalent baseline is
 **symmetric, unweighted**, not the shipped model.
 
-**A first reading on synthetic drift, which is not the gate.** A 400-day series with a
-hard level ramp reproduces the failure in miniature: the incumbent arm covers **0.784**,
-against the 0.791 R2.1f measured on real NL 2021. Against that baseline, weighting alone
-reaches 0.802 at 3% more width, ACI alone reaches 0.885 at 26% more width, and the two
-together reach 0.887. The clamp never bound, so the published bound applies to both
-adaptive arms.
-
-Read as a smoke test and nothing more: it is synthetic, one seed, one drift shape, and
-selected on nothing. What it establishes is that the harness runs end to end and that the
-arms separate in the direction the theory predicts. It also suggests the composition may
-not clear its bar (it adds 0.002 over ACI alone), and that the width cost of ACI on a
-*drifting* stretch is far above the 10% the gate allows on *calm* years, which is the
-tension the real measurement has to resolve.
+**A first reading on synthetic drift, which is not the gate**, is in
+[studies/drift-robust-conformal](../studies/drift-robust-conformal.md): the harness runs end
+to end and the arms separate in the direction the theory predicts.
 
 ### Synthetic probe and knob selection
 
-Moved to [studies/drift-robust-conformal](../studies/drift-robust-conformal.md), which
-is where the reader-facing write-up belongs and where this spec's line budget sends it.
-The builder's summary:
+Moved to [studies/drift-robust-conformal](../studies/drift-robust-conformal.md), which is
+where the reader-facing write-up belongs and where this spec's line budget sends it. What it
+decided for the build: **half-life `None` and $\gamma = 0.005$**, the only arm feasible on all
+four regimes, with ACI the arm that moves coverage and the clamp gate, not coverage, picking
+$\gamma$. Both approved grids were moved down after the probe and the approved values are
+recorded there as having been wrong. The weighted arm stays in the run anyway, because it is
+the only one that yields a stated bound.
 
-- **ACI is the arm that moves coverage** (worst regime 0.785 to 0.852) at **+0.1%**
-  width on calm data, because it widens only when it is missing. The 10% calm-year cap
-  is therefore not in tension with the width needed on a drifting stretch, which is the
-  question the probe existed to answer.
-- **The clamp gate picks $\gamma$, not coverage.** At 0.01 the changepoint regime
-  saturates on 33.1% of days against 4.1% at 0.005.
-- **The weighted arm is high-variance across refits.** Its margin swung -40% to +18%
-  across three refits of one run, because a 3-day half-life leaves an effective sample
-  of about 104 points from 814. Shortening the half-life tightens the coverage-gap bound
-  and shrinks the sample estimating the margin; **Theorem 2a bounds the first and says
-  nothing about the second**. Both approved grids were moved down after the probe, and
-  the approved values are recorded as having been wrong.
-- **Selected for the real run: half-life `None`, $\gamma = 0.005$**, the only arm
-  feasible on all four regimes. The weighted arm stays in the run anyway, because it is
-  the only one that yields a stated bound.
+## Amendment: the reporting run's refit cadence (2026-09-03)
 
+**The committed gate and the recorded gate results are two different experiments, and the
+difference between them is the confound this phase named.** `test_drift_robust_live.py` ran for
+the first time on 2026-09-03 and failed four boxes. It runs `refit_every_days=365` on
+`EXTENDED_SPAN` (2100 scored days), as the Parameters table specifies; every recorded gate
+number was measured at a monthly refit on `SPAN` (1369 days). The numbers are in
+[studies/drift-robust-conformal](../studies/drift-robust-conformal.md); the tell is 2022 at
+0.681, beside the **0.689** recorded here for annual rather than the **0.864** for monthly, so
+the failures are close to what this spec already says annual produces.
+
+**The reporting run becomes monthly**, with annual retained as a reported contrast. Fixing 365
+had a real reason, that holding the base learners fixed inside each reported year keeps the
+per-year split clean, but it buys that clarity by building the confound into the instrument:
+annual measures calibration failure and staleness at once, and this phase puts staleness an
+order of magnitude ahead (+0.18 against +0.019).
+
+**Nothing in the gate is loosened**: the band, the 5% clamp gate and the +0.03 worst-year bar
+all stand, and the cadence is what gets fixed instead.
+
+**Measured the same day, and the null does not survive it.** At a monthly refit on
+`EXTENDED_SPAN` the baseline covers 0.8517 on NL [0.842, 0.861] and 0.8619 on BE [0.853, 0.871],
+so the precondition passes and the arms have a reference. The baseline worst year is 2021 at
+0.712 NL and 0.701 BE, and the composed arm adds **+0.146 NL and +0.150 BE** at +5.3% and +5.7%
+width, clamping 4.0% and 3.2%: all three thresholds, both zones, where the recorded run read
++0.019 and nothing. **ACI alone does not**, clamping 8.4% and 9.4%. Weights alone clears the
+thresholds at lower width and is still not the headline: its worst year ends outside the band
+(0.794 NL, 0.782 BE), and the composed arm is the only one that returns it (0.858, 0.851). Numbers in
+[studies/drift-robust-conformal](../studies/drift-robust-conformal.md).
+
+**Re-scored on the corrected reporting run**, same thresholds:
+
+- [x] Worst-year coverage up at least 0.03: **passes**, +0.146 NL and +0.150 BE on the composed arm, where the superseded run read +0.019 and nothing
+- [x] Median width rises by less than 10%: +5.3% NL and +5.7% BE composed, and this time not trivially, since there was coverage to buy
+- [!] Clamp binding under 5%: **composed passes** (4.0% NL, 3.2% BE), **ACI alone fails** (8.4%, 9.4%), so the composition is what the result argues for rather than ACI
+- [!] The identity holds and the bound applies: identity holds (realized gap 0.00014 NL, 0.00048 BE); neither adaptive run is clamp-free, so Proposition 4.1 applies to neither
+- [x] Bitwise reproduction on a second run: **identical**, all 18 reported result lines across both zones, four arms and the two identity runs
+- [!] Adoption: **not taken.** Thresholds met, default unchanged: the result is conditional on a monthly refit only the evaluation harness performs. See Decisions
 ## Out of scope
 
 - **Reweighting the R2.2 residual bank.** The same decay weights apply to the
@@ -536,6 +555,18 @@ The builder's summary:
   not return when the clamp stops binding. The clamp and its 5% gate stand; what changed
   is that the gate now reads the exact telescoping identity, which survives clamping,
   rather than asserting a bound that does not.
+- **Which cadence is the reporting run, now that the live module has actually run?**
+  *Proposed:* monthly. The approved parameter was annual, the recorded numbers were monthly,
+  and the outage kept the module from running, so nobody noticed. **Resolved:** monthly,
+  annual kept as a contrast (2026-09-03); see the amendment above.
+- **The thresholds are met on the corrected run. Adopt?** *Proposed:* not yet.
+  The composed arm clears worst-year coverage, width and the clamp gate in both zones, which
+  is the adoption condition as written. What the condition did not anticipate is that the
+  result is conditional on a refit cadence: `refit_every_days` lives in the evaluation
+  harness, nothing in the serving path schedules a refit, and the same arm clamps 71.6% and
+  fails outright at an annual one. Adopting would ship a default whose measured benefit rests
+  on an operating discipline this repo neither implements nor enforces.
+  **Resolved:** cadence first, then re-score and adopt if it still clears (2026-09-03).
 - **MAPIE stays on the unweighted path.** *Proposed:* yes. Writing our own conformal step
   for the weighted case is unavoidable (MAPIE exposes no weighted quantile), but
   replacing the shipped path too would put the incumbent's numbers at the mercy of a new

@@ -89,6 +89,22 @@ $\gamma = 0.01$ on 33.1%. A step change drives the level straight to the floor, 
 saturated arm is a fixed-level arm wearing ACI's name. Coverage alone would have chosen
 the larger step.
 
+### The first end-to-end reading, moved here from the spec
+
+**A first reading on synthetic drift, which is not the gate.** A 400-day series with a
+hard level ramp reproduces the failure in miniature: the incumbent arm covers **0.784**,
+against the 0.791 R2.1f measured on real NL 2021. Against that baseline, weighting alone
+reaches 0.802 at 3% more width, ACI alone reaches 0.885 at 26% more width, and the two
+together reach 0.887. The clamp never bound, so the published bound applies to both
+adaptive arms.
+
+Read as a smoke test and nothing more: it is synthetic, one seed, one drift shape, and
+selected on nothing. What it establishes is that the harness runs end to end and that the
+arms separate in the direction the theory predicts. It also suggests the composition may
+not clear its bar (it adds 0.002 over ACI alone), and that the width cost of ACI on a
+*drifting* stretch is far above the 10% the gate allows on *calm* years, which is the
+tension the real measurement has to resolve.
+
 ## Selected for the real run (superseded by the real run below)
 
 **Half-life `None`, $\gamma = 0.005$**: the only arm feasible on all four regimes.
@@ -135,16 +151,77 @@ construction delivers here, costs no new theory, and is a scheduling change rath
 calibration one. The coverage decay R2.1f attributed to exchangeability failure is, at
 this cadence, mostly **model** staleness rather than **calibration** staleness.
 
-**What is still untested.** R2.1f's worst year is 2021 at 0.791, and 2021 cannot be
-scored without the extended span the ENTSO-E outage is blocking. The arms are being
-judged here on a 0.870 starting point, not a 0.791 one, and a construction that adds
-+0.019 where there is little to repair may do more where there is more. That is the run
-this study still owes.
+**The extended span finally ran (2026-09-03), at the wrong cadence.** The outage ended, the
+2019 to 2025 fetch landed, and `test_drift_robust_live.py` ran for the first time. It carries
+the approved `refit_every_days=365`, so what came back is an annual-refit run over 2100 scored
+days, not the monthly reporting run the table above uses:
+
+| arm | NL pooled | NL 2021 | NL width | clamp | BE pooled | BE 2021 |
+| --- | --- | --- | --- | --- | --- | --- |
+| symmetric unweighted | 0.748 | 0.361 | +0.0% | 0.0% | 0.782 | 0.390 |
+| weights only | 0.769 | 0.379 | -5.2% | 0.0% | 0.821 | 0.405 |
+| ACI only | 0.888 | 0.614 | +142.4% | 73.9% | 0.892 | 0.601 |
+| both | 0.893 | 0.608 | +73.8% | 71.6% | 0.898 | 0.594 |
+
+Four gates fail on it: the pooled baseline sits outside the (0.85, 0.95) band in both zones,
+so the arms have no reference to be read against, and ACI clamps on roughly three days in four,
+which the saturation check rejects (alpha runs 0.100 to -0.028 on NL, 1551 of 2100 days clamped,
+so Proposition 4.1's bound does not apply).
+
+**Read the cadence before reading the market.** NL 2022 lands at 0.681 here, next to the 0.689
+this study reports for an annual refit rather than the 0.864 for a monthly one, and the clamp
+rate moves 0.0% to 73.9% the same way it moved 0.0% to 19.4% before. The 2021 figure of 0.361
+is therefore **not** a measurement of how bad 2021 is; it is mostly the same staleness effect,
+now applied to the year with the most drift in it. R2.1f's 0.791 for 2021 came from a different
+protocol and is not the comparison.
+
+## The monthly run on the extended span: the null inverts
+
+That run happened the same day, and it is the one this study had wanted all along: the
+extended span at a monthly refit, which repairs the cadence without touching a threshold.
+
+| arm | NL pooled | NL 2021 | NL worst gain | NL width | NL clamp | BE 2021 | BE worst gain |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| symmetric unweighted | 0.8517 | 0.712 | reference | +0.0% | 0.0% | 0.701 | reference |
+| weights only | 0.8660 | 0.794 | +0.082 | -1.5% | 0.0% | 0.782 | +0.081 |
+| aci only | 0.8998 | 0.849 | +0.137 | +2.9% | 8.4% | 0.838 | +0.138 |
+| both | 0.8975 | 0.858 | **+0.146** | +5.3% | 4.0% | 0.851 | **+0.150** |
+
+The baseline now sits inside the (0.85, 0.95) band in both zones, so the arms finally have a
+reference. Against a +0.03 worst-year bar, a 10% width cap and a 5% clamp gate, **the composed
+arm clears all three in both zones**, by three to five times on the bar that decides adoption.
+The recorded run reported +0.019 on NL and nothing on BE. That null was the refit cadence.
+The run reproduces bitwise: both executions agree on all 18 reported result lines.
+
+**Weighting alone clears every threshold too, and the composition is still the headline.**
+Weights only gains +0.082 and +0.081 at 1.5% *less* width, so on the gate's arithmetic it
+passes more cheaply. What it does not do is repair the year: its worst year ends at 0.794 NL
+and 0.782 BE, outside the (0.85, 0.95) band, and ACI alone ends outside it as well at 0.849
+and 0.838. Only the composed arm brings the worst year back inside, at 0.858 and 0.851. The
++0.03 bar asks whether an arm *moves* worst-year coverage; the band is what says whether the
+interval is calibrated once it gets there, and the composition is the only arm that does both.
+
+**ACI alone is the arm that fails**, clamping 8.4% and 9.4% of days against the 5% gate.
+Weighting is what relieves that pressure: the composed arm clamps 4.0% and 3.2%. Neither
+adaptive run is clamp-free, so Proposition 4.1's bound applies to neither, and the exact
+telescoping identity is what carries (realized gap 0.00014 NL and 0.00048 BE).
+
+**2021 is the year that decides it, and it is not repaired by cadence alone.** Monthly lifts
+the 2021 baseline from 0.363 to 0.712, worth +0.34 and nearly double the +0.18 this study
+records for 2022, but 0.712 is still far outside the band. The arms cover the remaining
+distance, which is exactly the case, a genuinely broken baseline, that this study said it had
+never tested.
+
+**What is still owed** is the operating question underneath the result. `refit_every_days`
+exists only in the evaluation harness; nothing in the serving path schedules a refit. So the
+composed arm's +0.146 is measured under a monthly retraining discipline the project does not
+implement, and at an annual refit the same arm clamps 71.6% and fails outright. The cadence
+therefore has to be settled before the calibration default changes.
 
 ## What this does not show
 
 Synthetic drift, one seed, one refit schedule for the selection; and on real prices, one
-span that excludes the worst year in the data. The regimes were built to be diagnostic
+span whose worst year has only ever been scored at a refit cadence that confounds it. The regimes were built to be diagnostic
 rather than realistic, and the reversal between the synthetic selection (ACI) and the
 real-price ranking (weighting, then neither) is itself the warning that a single
 instrument misleads. Coverage on the 2021 ramp, and whether either arm earns its width

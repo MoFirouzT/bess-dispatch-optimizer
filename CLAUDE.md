@@ -46,7 +46,7 @@ One phase at a time. Do not start a Release-2 module until Release-1 gates are g
 
 - env / deps: `uv sync` · run: `uv run <cmd>`
 - lint + format: `ruff check .` · `ruff format .` · types: `uv run mypy src`
-- tests: `uv run pytest` · coverage: `uv run pytest --cov=bess`
+- tests: `uv run pytest` · coverage: `uv run pytest --cov=bess` (CI gates this at 85%, measured with every optional group installed)
 - layers: `uv run lint-imports`
 - docs: `uv run python scripts/lint_docs.py` (writing charter — `conventions.md` §7)
 - docs, as CI sees them: `WORD_LIST= uv run python scripts/lint_docs.py` — the coined-word check reads the system word list, which differs by OS, so this lower bound is what proves a push survives CI. Regenerate the repo's own vocabulary with `--vocabulary`, never by hand.

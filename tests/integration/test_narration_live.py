@@ -126,6 +126,12 @@ def test_a_verified_narration_contains_no_number_the_model_wrote():
     sourced = {f"{p.price_eur_mwh:.2f}" for p in exp.periods}
     sourced |= {f"{r.water_value_eur_mwh:.2f}" for r in exp.runs}
     sourced |= {f"{exp.schedule.objective:.2f}"}
+    # `soc` is one of the eight placeholders and renders at three decimals, not two
+    # (`render.resolve`). Omitting it here made this oracle incomplete rather than
+    # strict: the 2026-09-04 live run failed on `2.000`, a state of charge the solver
+    # produced and the renderer substituted, which rule 1 (`digit_in_text`) forbids the
+    # model from having written. Every placeholder the renderer can emit belongs here.
+    sourced |= {f"{v:.3f}" for v in exp.schedule.soc}
     sourced |= {
         f"{v:.2f}"
         for p in exp.periods

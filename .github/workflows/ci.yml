@@ -67,6 +67,32 @@ jobs:
       - name: Forecaster gates (leakage + walk-forward coverage)
         run: uv run --group forecast pytest tests/property/test_forecaster_features.py tests/unit/test_forecaster_model.py -q
 
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      # Every optional group, unlike the `check` job above. Coverage measured on the
+      # base install would report `forecaster` and `viz` as near-zero because their
+      # tests skip when the stack is absent, so the number would track which groups
+      # were installed rather than what is tested. This job exists to install them all.
+      - name: Sync dependencies (all groups)
+        run: uv sync --frozen --group forecast --group examples
+
+      # 89% at the time this gate was added. The threshold sits below that on purpose:
+      # it catches a module landing untested, not ordinary movement of a few lines.
+      # Raise it when the measured number moves up; never lower it to make a push pass.
+      - name: Coverage (fail under 85%)
+        run: >
+          uv run --group forecast --group examples pytest -m "not integration" -q
+          --cov=bess --cov-report=term-missing:skip-covered --cov-fail-under=85
+
   docker:
     runs-on: ubuntu-latest
     steps:

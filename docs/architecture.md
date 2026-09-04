@@ -56,7 +56,7 @@ api → narrate → explain → stochastic → recourse → optimizer → valida
 | `recourse` | Rolling-horizon / MPC re-optimization. |
 | `stochastic` | The risk-aware two-stage program: scenario-based optimization and its decision-value metrics. |
 | `explain` | Shadow prices and dispatch explanations. Offline and deterministic. |
-| `narrate` | Prose accounts of an `explain` result. The only layer that reaches a language model, and it sits above `explain` so that layer stays offline. Every quantity is substituted here from the solved model, never written by the model, and an unverifiable narration is replaced by a deterministic one. |
+| `narrate` | Prose accounts of an `explain` result. The only layer that reaches a language model, and it sits above `explain` so that layer stays offline. Every quantity is substituted here from the solved model, never written by the model, and a narration that cannot be verified is replaced by a deterministic one. **Not served:** its acceptance gate rejected 22.0% at n=50 against a 5% bar, so no endpoint exposes it and `api` does not import it. |
 | `api` | The serving entry point. |
 | `forecaster` | Probabilistic price forecasting (conformal intervals), day-ahead fundamentals features, a forecast-drift monitor, and the calibration machinery measured against it: a sharpness search over the learners and the drift-robust conformal constructions (weighted quantiles, adaptive levels). Neither of those two changed a shipped default. |
 | `scenarios` | Scenario generation from forecasts, with an extreme-value / residual-load-conditional tail, feeding `stochastic`. |

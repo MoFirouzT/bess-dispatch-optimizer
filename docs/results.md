@@ -1,7 +1,7 @@
 # Results
 
 What the stack was measured to be worth: the deterministic ceiling, the value of the
-uncertainty layer, the four questions that came back null, the dual that explains a
+uncertainty layer, the three questions that came back null, the dual that explains a
 schedule, and the scope this project does not cover.
 
 *Assumes:*
@@ -71,8 +71,12 @@ Reproduce with `uv run --group examples python examples/drift_demo.py` (syntheti
 
 Two later studies pushed on the intervals themselves and neither changed a shipped default.
 A 324-configuration [search for a narrower interval](studies/interval-sharpness.md) found one on NL, 4.5% tighter, and the per-hour calibration check rejected it: the narrowing fixes over-coverage at 21:00 and pushes 11:00 below the band.
-Conformal coverage does decay across a regime shift (0.897 in 2024 against 0.791 across the 2021 crisis ramp), so the two published repairs for it, weighted conformal and adaptive conformal inference, were built and measured; [both came back null](studies/drift-robust-conformal.md) at a monthly refit, adding at most +0.019 worst-year coverage.
-What that run did find is that the decay is mostly the *model* going stale rather than the calibration: refitting monthly rather than annually is worth +0.18 coverage on the crisis year and a 35% narrower interval.
+Conformal coverage does decay across a regime shift (0.897 in 2024 against 0.791 across the 2021 crisis ramp), so the two published repairs for it, weighted conformal and adaptive conformal inference, were built and measured.
+Scored on 2019 to 2025 with the model refit monthly, [the two composed](studies/drift-robust-conformal.md) add **+0.146 worst-year coverage on NL and +0.150 on BE** against a +0.03 bar, at 5.3% and 5.7% extra width.
+That is a real repair and it is still not adopted, because of the cadence it rests on.
+`refit_every_days` lives only in the evaluation harness: nothing in the serving path schedules a refit, and the same arm clamps its adaptive level on 71.6% of days and fails outright at an annual one.
+Refitting monthly rather than annually is itself worth +0.18 coverage on 2022 and +0.34 on 2021, with a 35% narrower interval, so the schedule has to be settled before the calibration default can change.
+An earlier reading of this phase reported a null at +0.019; it ran on a shorter span whose worst year was 2022, and widening the span to include 2021 is what moved it.
 
 A residual-path bootstrap then generates a few hundred price paths, and forward-selection reduction keeps the ~50 that best preserve the distribution (measured by Kantorovich distance), so the stochastic program stays small without discarding the tails that risk-aware dispatch cares about.
 
